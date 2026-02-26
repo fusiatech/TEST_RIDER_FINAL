@@ -1,0 +1,53 @@
+{
+  "name": "swarm-ui-vscode",
+  "displayName": "SwarmUI",
+  "description": "Connect VS Code to SwarmUI parallel agent orchestrator",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "swarm-ui.insertCode",
+        "title": "SwarmUI: Insert Code at Cursor"
+      },
+      {
+        "command": "swarm-ui.sendSelection",
+        "title": "SwarmUI: Send Selection as Task"
+      },
+      {
+        "command": "swarm-ui.sendTask",
+        "title": "SwarmUI: Send Task to Swarm"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "swarm-ui.sendSelection", "group": "swarmui" }
+      ]
+    },
+    "configuration": {
+      "title": "SwarmUI",
+      "properties": {
+        "swarmUI.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:3000",
+          "description": "SwarmUI WebSocket server URL (default port matches server.ts)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
