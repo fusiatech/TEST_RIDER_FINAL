@@ -124,6 +124,7 @@ export class Scheduler {
       prompt: task.prompt,
       mode: task.mode,
       source: 'scheduler',
+      jobType: task.jobType ?? 'scheduled-generic',
     })
 
     const now = Date.now()

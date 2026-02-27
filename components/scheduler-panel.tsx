@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSwarmStore } from '@/lib/store'
-import type { ScheduledTask } from '@/lib/types'
+import type { ScheduledTask, JobType } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -41,6 +41,15 @@ const MODE_COLORS: Record<string, string> = {
   project: '#34d399',
 }
 
+
+const JOB_TYPE_OPTIONS: Array<{ value: JobType; label: string }> = [
+  { value: 'scheduled-generic', label: 'Generic Scheduled Job' },
+  { value: 'scheduled-ci', label: 'CI Template (Deterministic)' },
+  { value: 'scheduled-report', label: 'Report Template (Deterministic)' },
+  { value: 'scheduled-deploy', label: 'Deploy Template (Deterministic)' },
+  { value: 'interactive', label: 'Interactive (usually manual)' },
+]
+
 function scheduleLabel(cron: string): string {
   const match = SCHEDULE_OPTIONS.find((o) => o.value === cron)
   return match?.label ?? cron
@@ -69,6 +78,7 @@ function TaskForm({
   const [mode, setMode] = useState<'chat' | 'swarm' | 'project'>(initial?.mode ?? 'swarm')
   const [cronExpression, setCronExpression] = useState(initial?.cronExpression ?? SCHEDULE_OPTIONS[2].value)
   const [enabled, setEnabled] = useState(initial?.enabled ?? true)
+  const [jobType, setJobType] = useState<JobType>(initial?.jobType ?? 'scheduled-generic')
 
   const handleSubmit = () => {
     if (!name.trim() || !prompt.trim()) return
@@ -91,6 +101,7 @@ function TaskForm({
       lastRun: initial?.lastRun,
       nextRun: Date.now() + (cronMs[cronExpression] ?? hourMs * 24),
       createdAt: initial?.createdAt ?? Date.now(),
+      jobType,
     }
     onSave(task)
   }
@@ -145,6 +156,20 @@ function TaskForm({
           className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         >
           {SCHEDULE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted">Job Type:</span>
+        <select
+          value={jobType}
+          onChange={(e) => setJobType(e.target.value as JobType)}
+          className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {JOB_TYPE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>

@@ -10,6 +10,7 @@ import type {
   AgentRole,
   AgentInstance,
   CLIProvider,
+  JobType,
 } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
@@ -34,6 +35,7 @@ import {
   type StageResult,
   type PipelineCallbacks,
 } from '@/server/pipeline-engine'
+import { DETERMINISTIC_TEMPLATES } from '@/server/orchestration/templates'
 
 export interface ScheduledPipelineOptions {
   prompt: string
@@ -42,6 +44,7 @@ export interface ScheduledPipelineOptions {
   mode: 'chat' | 'swarm' | 'project'
   onAgentOutput: (agentId: string, data: string) => void
   onAgentStatus: (agentId: string, status: string, exitCode?: number) => void
+  jobType?: JobType
 }
 
 const MOCK_AGENT_PATH = '/tmp/mock-agent.sh'
@@ -120,6 +123,16 @@ function buildAgentSpecs(
   return specs
 }
 
+
+function stageToRole(stage: string): AgentRole {
+  if (stage === 'research') return 'researcher'
+  if (stage === 'plan') return 'planner'
+  if (stage === 'code') return 'coder'
+  if (stage === 'validate') return 'validator'
+  if (stage === 'security') return 'security'
+  return 'synthesizer'
+}
+
 function stageResultToAgentInstances(
   stageResult: StageResult,
 ): AgentInstance[] {
@@ -143,7 +156,7 @@ function stageResultToAgentInstances(
 export async function runScheduledPipeline(
   options: ScheduledPipelineOptions,
 ): Promise<SwarmResult> {
-  const { prompt, settings, projectPath, mode, onAgentOutput, onAgentStatus } =
+  const { prompt, settings, projectPath, mode, onAgentOutput, onAgentStatus, jobType } =
     options
 
   resetCancellation()
@@ -161,6 +174,50 @@ export async function runScheduledPipeline(
 
   const allAgents: AgentInstance[] = []
   const allOutputs: string[] = []
+
+  const deterministicTemplate =
+    jobType && jobType in DETERMINISTIC_TEMPLATES
+      ? DETERMINISTIC_TEMPLATES[jobType as keyof typeof DETERMINISTIC_TEMPLATES]
+      : undefined
+
+  if (deterministicTemplate) {
+    onAgentOutput(
+      'system',
+      `[scheduled-pipeline] Deterministic template: ${deterministicTemplate.name}\n`,
+    )
+    for (const stage of deterministicTemplate.stages) {
+      if (isCancelled()) {
+        return {
+          finalOutput: 'Pipeline cancelled.',
+          confidence: 0,
+          agents: allAgents,
+          sources: [],
+          validationPassed: false,
+        }
+      }
+      const role = stageToRole(stage.stage)
+      const config: StageConfig = {
+        name: stage.stage,
+        role,
+        agents: buildAgentSpecs(role, stage.agents, `${prompt}
+
+${stage.prompt}`, enabledCLIs),
+      }
+      const result = await runStage(config, settings, callbacks)
+      allAgents.push(...stageResultToAgentInstances(result))
+      allOutputs.push(result.combinedOutput)
+    }
+
+    const finalOutput = allOutputs.filter((o) => o.length > 0).at(-1) ?? 'No output generated.'
+    const confidence = computeConfidence(allOutputs.filter((o) => o.length > 0))
+    return {
+      finalOutput,
+      confidence,
+      agents: allAgents,
+      sources: extractSources(allOutputs.join('\n')),
+      validationPassed: confidence >= settings.autoRerunThreshold,
+    }
+  }
 
   if (mode === 'chat') {
     onAgentOutput('system', '[scheduled-pipeline] Running in CHAT mode\n')

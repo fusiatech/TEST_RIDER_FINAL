@@ -1,7 +1,6 @@
-import type { SwarmJob, SwarmResult, AgentStatus as AgentStatusType, EnqueueAttachment } from '@/lib/types'
+import type { SwarmJob, SwarmResult, AgentStatus as AgentStatusType, EnqueueAttachment, JobType } from '@/lib/types'
 import { getJobs, saveJob } from '@/server/storage'
-import { runSwarmPipeline } from '@/server/orchestrator'
-import { runScheduledPipeline } from '@/server/scheduled-pipeline'
+import { getOrchestrator, resolveOrchestratorForJob } from '@/server/orchestration'
 import { getSettings } from '@/server/storage'
 import { broadcastToAll } from '@/server/ws-server'
 import { randomUUID } from 'node:crypto'
@@ -61,6 +60,7 @@ export class JobQueue {
     currentStage?: string
     /** T2.1: 'scheduler' = use pipeline-engine; 'user' = use runSwarmPipeline */
     source?: 'scheduler' | 'user'
+    jobType?: JobType
   }): SwarmJob {
     const job: SwarmJob = {
       id: params.id ?? randomUUID(),
@@ -72,6 +72,7 @@ export class JobQueue {
       progress: 0,
       source: params.source ?? 'user',
       ...(params.attachments && params.attachments.length > 0 ? { attachments: params.attachments } : {}),
+      jobType: params.jobType ?? (params.source === 'scheduler' ? 'scheduled-generic' : 'interactive'),
     }
     this.jobs.set(job.id, job)
     this.queue.push(job.id)
@@ -144,6 +145,7 @@ export class JobQueue {
           const pipelineOpts = {
             prompt: job.prompt,
             settings,
+            // routing decision emitted below
             projectPath: settings.projectPath ?? process.cwd(),
             mode: job.mode,
             onAgentOutput: (agentId: string, data: string) => {
@@ -160,14 +162,27 @@ export class JobQueue {
               this.updateStageProgress(job.id, agentId)
             },
           }
-          const result =
-            job.source === 'scheduler'
-              ? await runScheduledPipeline(pipelineOpts)
-              : await runSwarmPipeline(pipelineOpts)
+
+          const routingDecision = resolveOrchestratorForJob({
+            source: job.source ?? 'user',
+            settings,
+            jobType: job.jobType,
+          })
+          broadcastToAll({
+            type: 'agent-output',
+            agentId: 'system',
+            data: `[routing] job=${job.id} type=${routingDecision.jobType} orchestrator=${routingDecision.resolvedOrchestrator} reason=${routingDecision.reason}\n`,
+          })
+          const orchestrator = getOrchestrator(routingDecision.resolvedOrchestrator)
+          const result = await orchestrator.run({
+            ...pipelineOpts,
+            jobType: routingDecision.jobType,
+          })
 
           this.updateJob(job.id, {
             status: 'completed',
             result,
+            routingDecision,
             completedAt: Date.now(),
             progress: 100,
             currentStage: 'done',

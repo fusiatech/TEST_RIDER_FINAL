@@ -397,20 +397,25 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       }
     }
 
+    wsClient.onConnect = () => {
+      set({ wsConnected: true })
+    }
+
     wsClient.onDisconnect = () => {
       set({ wsConnected: false })
       toast.error('WebSocket disconnected', { description: 'Attempting to reconnect...' })
     }
 
-    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || '3001'
     const protocol =
       typeof window !== 'undefined' && window.location.protocol === 'https:'
         ? 'wss:'
         : 'ws:'
     const hostname =
       typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+    const defaultPort = typeof window !== 'undefined' ? window.location.port || '3000' : '3000'
+    const wsPort = process.env.NEXT_PUBLIC_WS_PORT || defaultPort
+
     wsClient.connect(`${protocol}//${hostname}:${wsPort}`)
-    set({ wsConnected: true })
   },
 
   setActiveTab: (tab: 'chat' | 'dashboard' | 'ide' | 'testing' | 'eclipse') => {
