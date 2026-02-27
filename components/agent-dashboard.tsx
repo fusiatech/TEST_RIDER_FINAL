@@ -13,6 +13,62 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Zap, ChevronDown, ChevronUp, Terminal, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+
+interface QueueHealthData {
+  queue?: {
+    activeWorkers: number
+    configuredConcurrency: number
+    queueDepth: number
+    queueDepthByPriority: Record<string, number>
+    lagMs: number
+    retryingJobs: number
+    retriesScheduled: number
+    dlqSize: number
+  }
+}
+
+function QueueHealthPanel() {
+  const [health, setHealth] = useState<QueueHealthData | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch('/api/health')
+        if (!res.ok) return
+        const json = (await res.json()) as QueueHealthData
+        if (mounted) setHealth(json)
+      } catch {
+        // no-op in ui-only mode
+      }
+    }
+    void fetchHealth()
+    const id = setInterval(() => void fetchHealth(), 3000)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
+  }, [])
+
+  const queue = health?.queue
+  const lagSeconds = queue ? Math.floor(queue.lagMs / 1000) : 0
+
+  return (
+    <Card className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Queue Health</h3>
+        <Badge variant="outline">P1 {queue?.queueDepthByPriority?.['3'] ?? 0} / P2 {queue?.queueDepthByPriority?.['2'] ?? 0} / P3 {queue?.queueDepthByPriority?.['1'] ?? 0}</Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+        <div><p className="text-muted">Workers</p><p className="font-semibold">{queue?.activeWorkers ?? 0}/{queue?.configuredConcurrency ?? 0}</p></div>
+        <div><p className="text-muted">Lag</p><p className="font-semibold">{lagSeconds}s</p></div>
+        <div><p className="text-muted">Retries</p><p className="font-semibold">{queue?.retryingJobs ?? 0} ({queue?.retriesScheduled ?? 0})</p></div>
+        <div><p className="text-muted">DLQ</p><p className="font-semibold">{queue?.dlqSize ?? 0}</p></div>
+      </div>
+    </Card>
+  )
+}
 
 const PIPELINE_STAGES: { role: AgentRole; label: string }[] = [
   { role: 'researcher', label: 'Research' },
@@ -375,6 +431,8 @@ export function AgentDashboard() {
         </Card>
         <StatsRing agents={agents} />
       </div>
+
+      <QueueHealthPanel />
 
       {/* Monitoring Stats Row */}
       <MonitoringStats
