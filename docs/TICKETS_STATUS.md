@@ -15,15 +15,9 @@
 
 | Ticket | Title | Status | Agent | Branch |
 |--------|-------|--------|-------|--------|
-<<<<<<< HEAD
-| T2.1 | Import pipeline-engine in orchestrator | Done | Agent 1 | cursor/phase2-T2.1-pipeline-engine |
+| T2.1 | Import pipeline-engine in orchestrator | In Progress | Agent 1 | cursor/phase2-T2.1-pipeline-engine |
 | T2.2 | Stage config alignment | Done | Agent 1 | cursor/phase2-T2.1-pipeline-engine |
 | T2.3 | Cancellation unification | Done | Agent 1 | cursor/phase2-T2.1-pipeline-engine |
-=======
-| T2.1 | Import pipeline-engine in orchestrator | In Progress | Agent 1 | cursor/phase2-T2.1-pipeline-engine |
-| T2.2 | Stage config alignment | Open | - | - |
-| T2.3 | Cancellation unification | Open | - | - |
->>>>>>> cursor/phase6-T6.1-subatomic
 
 ## Phase 3: Wire Anti-Hallucination
 
@@ -128,3 +122,6 @@
 | **Agent 2 (Orchestration)** | 4, 5, 11, 12 | Attachments, MCP, two units, deterministic templates |
 | **Agent 3 (UI)** | 6, 9, 15, 17, 21 | Ticket hierarchy, Proof tab, Testing dashboard, Eclipse dashboard, PRD |
 | **Agent 4 (Quality)** | 7, 8, 10, 16, 18, 22 | Evidence Ledger, escalation, quality gates, security gate, policy |
+
+---
+Verified on commit `b4f840b28861`.
