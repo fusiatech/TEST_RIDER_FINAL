@@ -1,6 +1,6 @@
 import { Low } from 'lowdb'
 import { JSONFile } from 'lowdb/node'
-import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry } from '@/lib/types'
+import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, TestRun } from '@/lib/types'
 import { DEFAULT_SETTINGS } from '@/lib/types'
 import path from 'node:path'
 
@@ -11,6 +11,7 @@ interface DbSchema {
   jobs: SwarmJob[]
   scheduledTasks: ScheduledTask[]
   evidence: EvidenceLedgerEntry[]
+  testRuns: TestRun[]
 }
 
 const DEFAULT_DATA: DbSchema = {
@@ -20,6 +21,7 @@ const DEFAULT_DATA: DbSchema = {
   jobs: [],
   scheduledTasks: [],
   evidence: [],
+  testRuns: [],
 }
 
 let dbInstance: Low<DbSchema> | null = null
@@ -38,6 +40,7 @@ export async function getDb(): Promise<Low<DbSchema>> {
 
     db.data = { ...DEFAULT_DATA, ...db.data }
     if (!db.data.evidence) db.data.evidence = []
+    if (!db.data.testRuns) db.data.testRuns = []
 
     dbInstance = db
     return db
@@ -226,4 +229,48 @@ export async function updateEvidence(
   db.data.evidence[idx] = merged
   await db.write()
   return merged
+}
+
+
+/* ── Test Runs ─────────────────────────────────────────────────── */
+
+export async function getTestRuns(): Promise<TestRun[]> {
+  const db = await getDb()
+  return [...db.data.testRuns].sort((a, b) => b.timestamp - a.timestamp)
+}
+
+export async function getTestRun(id: string): Promise<TestRun | undefined> {
+  const db = await getDb()
+  return db.data.testRuns.find((r) => r.id === id)
+}
+
+export async function saveTestRun(run: TestRun): Promise<void> {
+  const db = await getDb()
+  const idx = db.data.testRuns.findIndex((r) => r.id === run.id)
+  if (idx >= 0) {
+    db.data.testRuns[idx] = run
+  } else {
+    db.data.testRuns.push(run)
+  }
+  await db.write()
+}
+
+export async function deleteTestRun(id: string): Promise<void> {
+  const db = await getDb()
+  db.data.testRuns = db.data.testRuns.filter((r) => r.id !== id)
+  await db.write()
+}
+
+export async function queryTestRuns(opts?: {
+  source?: TestRun['source']
+  status?: TestRun['status']
+  limit?: number
+}): Promise<TestRun[]> {
+  const db = await getDb()
+  let runs = [...db.data.testRuns]
+  if (opts?.source) runs = runs.filter((r) => r.source === opts.source)
+  if (opts?.status) runs = runs.filter((r) => r.status === opts.status)
+  runs.sort((a, b) => b.timestamp - a.timestamp)
+  if (opts?.limit && opts.limit > 0) runs = runs.slice(0, opts.limit)
+  return runs
 }
