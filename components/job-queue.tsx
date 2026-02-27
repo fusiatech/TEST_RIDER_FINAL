@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSwarmStore } from '@/lib/store'
 import type { SwarmJob } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ReplayPanel } from '@/components/replay-panel'
 import {
   ListTodo,
   X,
@@ -50,7 +51,7 @@ function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function JobRow({ job }: { job: SwarmJob }) {
+function JobRow({ job, onReplay }: { job: SwarmJob; onReplay: (runId: string) => void }) {
   const cancelJob = useSwarmStore((s) => s.cancelJob)
   const retryJob = useSwarmStore((s) => s.retryJob)
   const sendMessage = useSwarmStore((s) => s.sendMessage)
@@ -161,6 +162,7 @@ function JobRow({ job }: { job: SwarmJob }) {
               if (job.result?.finalOutput) {
                 sendMessage(`Show me the result of: ${job.prompt.slice(0, 100)}`)
               }
+              onReplay(job.id)
             }}
             title="View result"
           >
@@ -189,6 +191,7 @@ export function JobQueue({ onClose }: { onClose: () => void }) {
   }, [hasRunning])
 
   const sortedJobs = [...jobs].sort((a, b) => b.createdAt - a.createdAt)
+  const [replayRunId, setReplayRunId] = useState<string | null>(null)
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-background" style={{ width: 420 }}>
@@ -206,6 +209,11 @@ export function JobQueue({ onClose }: { onClose: () => void }) {
       </div>
 
       <ScrollArea className="flex-1 p-3">
+        {replayRunId && (
+          <div className="mb-3">
+            <ReplayPanel runId={replayRunId} />
+          </div>
+        )}
         {sortedJobs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
             <div className="relative mb-4">
@@ -223,7 +231,7 @@ export function JobQueue({ onClose }: { onClose: () => void }) {
           <div className="space-y-2">
             <AnimatePresence mode="popLayout">
               {sortedJobs.map((job) => (
-                <JobRow key={job.id} job={job} />
+                <JobRow key={job.id} job={job} onReplay={setReplayRunId} />
               ))}
             </AnimatePresence>
           </div>

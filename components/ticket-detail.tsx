@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useSwarmStore } from '@/lib/store'
 import { X, Check, Clock, Tag, GitBranch, FileText, Shield, TestTube2, RotateCcw, Terminal } from 'lucide-react'
+import { ReplayPanel } from '@/components/replay-panel'
 
 const MAX_TRUNCATE = 2000
 function truncate(text: string, max = MAX_TRUNCATE): string {
@@ -64,7 +65,7 @@ const COMPLEXITY_COLORS: Record<string, string> = {
 }
 
 export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'proof'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'proof' | 'replay'>('details')
   const approveTicket = useSwarmStore((s) => s.approveTicket)
   const rejectTicket = useSwarmStore((s) => s.rejectTicket)
   const isReview = ticket.status === 'review'
@@ -127,10 +128,11 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
         <div className="mt-3 flex gap-1 border-b border-border">
           <button onClick={() => setActiveTab('details')} className={`px-3 py-1.5 text-xs font-medium rounded-t-md ${activeTab === 'details' ? 'bg-secondary text-foreground border border-b-0 border-border -mb-px' : 'text-muted hover:text-foreground'}`}>Details</button>
           <button onClick={() => setActiveTab('proof')} className={`px-3 py-1.5 text-xs font-medium rounded-t-md ${activeTab === 'proof' ? 'bg-secondary text-foreground border border-b-0 border-border -mb-px' : 'text-muted hover:text-foreground'}`}>Proof</button>
+          <button onClick={() => setActiveTab('replay')} className={`px-3 py-1.5 text-xs font-medium rounded-t-md ${activeTab === 'replay' ? 'bg-secondary text-foreground border border-b-0 border-border -mb-px' : 'text-muted hover:text-foreground'}`}>Replay</button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {activeTab === 'proof' ? <ProofTab ticket={ticket} /> : (
+        {activeTab === 'proof' ? <ProofTab ticket={ticket} /> : activeTab === 'replay' ? (ticket.evidenceIds && ticket.evidenceIds.length > 0 ? <ReplayPanel runId={ticket.evidenceIds[0]} /> : <p className="text-sm text-muted">No replay run linked to this ticket yet.</p>) : (
         <>
         {ticket.description && (
           <div>

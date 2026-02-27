@@ -241,6 +241,43 @@ export const EvidenceLedgerEntrySchema = z.object({
 })
 export type EvidenceLedgerEntry = z.infer<typeof EvidenceLedgerEntrySchema>
 
+/* ── Replay Timeline (append-only) ─────────────────────────────── */
+
+export const ReplayEventType = z.enum([
+  'run-created',
+  'job-status',
+  'prompt',
+  'agent-status',
+  'agent-output',
+  'check',
+  'run-completed',
+  'run-failed',
+])
+export type ReplayEventType = z.infer<typeof ReplayEventType>
+
+export const ReplayEventSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  timestamp: z.number(),
+  type: ReplayEventType,
+  payload: z.record(z.string(), z.unknown()),
+})
+export type ReplayEvent = z.infer<typeof ReplayEventSchema>
+
+export const ReplayRunSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  prompt: z.string(),
+  mode: z.enum(['chat', 'swarm', 'project']),
+  status: z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
+  createdAt: z.number(),
+  completedAt: z.number().optional(),
+  settingsSnapshot: SettingsSchema,
+  evidenceId: z.string().optional(),
+  events: z.array(ReplayEventSchema),
+})
+export type ReplayRun = z.infer<typeof ReplayRunSchema>
+
 /* ── Ticket ────────────────────────────────────────────────────── */
 
 export const TicketComplexity = z.enum(['S', 'M', 'L', 'XL'])
