@@ -238,6 +238,18 @@ export const EvidenceLedgerEntrySchema = z.object({
   testRunId: z.string().optional(),
   ticketIds: z.array(z.string()).optional(),
   filePaths: z.array(z.string()).optional(),
+  secretScan: z.object({
+    highConfidenceCount: z.number(),
+    findingCount: z.number(),
+    ignoredPathCount: z.number(),
+    findings: z.array(z.object({
+      filePath: z.string(),
+      line: z.number(),
+      detector: z.enum(['regex', 'entropy']),
+      rule: z.string(),
+      confidence: z.enum(['low', 'medium', 'high']),
+    })),
+  }).optional(),
 })
 export type EvidenceLedgerEntry = z.infer<typeof EvidenceLedgerEntrySchema>
 
@@ -275,6 +287,17 @@ export const TicketSchema = z.object({
   diff: z.string().optional(),
   testResults: z.string().optional(),
   confidence: z.number().optional(),
+  securityScan: z.object({
+    highConfidenceCount: z.number(),
+    findingCount: z.number(),
+    findings: z.array(z.object({
+      filePath: z.string(),
+      line: z.number(),
+      detector: z.enum(['regex', 'entropy']),
+      rule: z.string(),
+      confidence: z.enum(['low', 'medium', 'high']),
+    })),
+  }).optional(),
   createdAt: z.number(),
   updatedAt: z.number()
 })

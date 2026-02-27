@@ -5,6 +5,7 @@ import { runScheduledPipeline } from '@/server/scheduled-pipeline'
 import { getSettings } from '@/server/storage'
 import { broadcastToAll } from '@/server/ws-server'
 import { randomUUID } from 'node:crypto'
+import { createLogger, redactSensitiveOutput } from '@/server/logger'
 
 /** T2.2: Aligned with pipeline-engine STAGE_NAMES */
 const PIPELINE_STAGES = [
@@ -15,6 +16,8 @@ const PIPELINE_STAGES = [
   'security',
   'synthesize',
 ] as const
+
+const logger = createLogger('job-queue')
 
 export class JobQueue {
   private jobs: Map<string, SwarmJob> = new Map()
@@ -147,6 +150,8 @@ export class JobQueue {
             projectPath: settings.projectPath ?? process.cwd(),
             mode: job.mode,
             onAgentOutput: (agentId: string, data: string) => {
+              const safeData = redactSensitiveOutput(data)
+              logger.debug('CLI output', { jobId: job.id, agentId, data: safeData.slice(0, 500) })
               broadcastToAll({ type: 'agent-output', agentId, data })
               this.updateStageProgress(job.id, agentId)
             },

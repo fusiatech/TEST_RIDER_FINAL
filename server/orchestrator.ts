@@ -44,6 +44,7 @@ import {
   appendCliExcerpt,
   appendDiffSummary,
   linkTicketToEvidence,
+  appendSecretScanMetadata,
 } from '@/server/evidence'
 import {
   selectBestOutput as selectBestOutputAH,
@@ -624,6 +625,12 @@ async function runSwarmMode(
     try {
       const autoResult = await runSecurityChecks(projectPath, settings.testingConfig)
       securityChecksPassed = autoResult.passed
+      if (options.evidenceId && autoResult.secretScan) {
+        await appendSecretScanMetadata(options.evidenceId, autoResult.secretScan)
+      }
+      if ((autoResult.secretScan?.highConfidenceCount ?? 0) > 0) {
+        onAgentOutput('system', '[security] High-confidence secrets detected. Failing pipeline.\n')
+      }
       for (const check of autoResult.checks) {
         const status = check.passed ? 'PASSED' : 'FAILED'
         onAgentOutput('system', `[security] ${check.name}: ${status}\n`)
@@ -1000,6 +1007,25 @@ async function runProjectMode(
       try {
         const secResult = await runSecurityChecks(projectPath, settings.testingConfig)
         securityPassed = secResult.passed
+        if (options.evidenceId && secResult.secretScan) {
+          await appendSecretScanMetadata(options.evidenceId, secResult.secretScan)
+        }
+        if (secResult.secretScan) {
+          const ticketScan = {
+            highConfidenceCount: secResult.secretScan.highConfidenceCount,
+            findingCount: secResult.secretScan.findings.length,
+            findings: secResult.secretScan.findings.map((f) => ({
+              filePath: f.filePath,
+              line: f.line,
+              detector: f.detector,
+              rule: f.rule,
+              confidence: f.confidence,
+            })),
+          }
+          for (const t of ticketManager.getAllTickets()) {
+            ticketManager.updateTicket(t.id, { securityScan: ticketScan })
+          }
+        }
         for (const check of secResult.checks) {
           const status = check.passed ? 'PASSED' : 'FAILED'
           onAgentOutput('system', `[security] ${check.name}: ${status}\n`)
