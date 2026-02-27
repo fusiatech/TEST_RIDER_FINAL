@@ -1,0 +1,12 @@
+{
+  "totalJobs": 26,
+  "completed": 25,
+  "retriesScheduled": 2,
+  "dlqSize": 1,
+  "queueDepthByPriority": {
+    "1": 0,
+    "2": 0,
+    "3": 0
+  },
+  "lagMs": 0
+}

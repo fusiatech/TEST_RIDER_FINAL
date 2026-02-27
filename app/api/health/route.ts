@@ -29,6 +29,7 @@ export async function GET(): Promise<NextResponse> {
     uptime: process.uptime(),
     activeJobCount: jobQueue.getActiveJobCount(),
     queueDepth: jobQueue.getQueueDepth(),
+    queue: jobQueue.getQueueHealthMetrics(),
     installedCLIs: clis,
     lastPipelineRunTime: getLastPipelineRunTime(),
     memoryUsage: {
