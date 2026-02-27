@@ -6,6 +6,8 @@
 import { execSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import type { EvidenceLedgerEntry } from '@/lib/types'
+import type { SecretFinding, SecretScanResult } from '@/server/security-checks'
+import { redactSensitiveOutput } from '@/server/logger'
 import { createEvidence, updateEvidence } from '@/server/storage'
 import { isGitRepo } from '@/server/worktree-manager'
 
@@ -60,8 +62,25 @@ export function getGitDiffStat(workdir: string): string {
  * Truncate string to max length for CLI excerpt (2KB per agent).
  */
 export function truncateCliExcerpt(output: string): string {
-  if (output.length <= CLI_EXCERPT_MAX) return output
-  return output.slice(0, CLI_EXCERPT_MAX) + '\n...[truncated]'
+  const redacted = redactSensitiveOutput(output)
+  if (redacted.length <= CLI_EXCERPT_MAX) return redacted
+  return redacted.slice(0, CLI_EXCERPT_MAX) + '\n...[truncated]'
+}
+
+function summarizeFindings(findings: SecretFinding[]): Array<{
+  filePath: string
+  line: number
+  detector: 'regex' | 'entropy'
+  rule: string
+  confidence: 'low' | 'medium' | 'high'
+}> {
+  return findings.map((finding) => ({
+    filePath: finding.filePath,
+    line: finding.line,
+    detector: finding.detector,
+    rule: finding.rule,
+    confidence: finding.confidence,
+  }))
 }
 
 /**
@@ -92,6 +111,23 @@ export async function appendCliExcerpt(
   const excerpt = truncateCliExcerpt(output)
   await updateEvidence(evidenceId, {
     cliExcerpts: { [agentId]: excerpt },
+  })
+}
+
+/**
+ * Store secret scan metadata for evidence audit trail.
+ */
+export async function appendSecretScanMetadata(
+  evidenceId: string,
+  scan: SecretScanResult
+): Promise<void> {
+  await updateEvidence(evidenceId, {
+    secretScan: {
+      highConfidenceCount: scan.highConfidenceCount,
+      findingCount: scan.findings.length,
+      ignoredPathCount: scan.ignoredPaths.length,
+      findings: summarizeFindings(scan.findings),
+    },
   })
 }
 
