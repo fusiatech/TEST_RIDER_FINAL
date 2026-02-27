@@ -1,5 +1,5 @@
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:25-alpine AS deps
 
 # Install build tools required for node-pty and native modules
 RUN apk add --no-cache \
@@ -17,7 +17,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Install build tools for any native module rebuilds
 RUN apk add --no-cache \
@@ -40,7 +40,7 @@ ENV DOCKER_BUILD=true
 RUN npm run build
 
 # Stage 3: Runner
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 
 # Install runtime dependencies
 # - git: Required for GitHub integration (gh CLI operations)
