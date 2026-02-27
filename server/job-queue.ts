@@ -1,10 +1,11 @@
 import type { SwarmJob, SwarmResult, AgentStatus as AgentStatusType, EnqueueAttachment } from '@/lib/types'
-import { getJobs, saveJob } from '@/server/storage'
+import { getEvidence, getJobs, saveJob, updateReplayRun } from '@/server/storage'
 import { runSwarmPipeline } from '@/server/orchestrator'
 import { runScheduledPipeline } from '@/server/scheduled-pipeline'
 import { getSettings } from '@/server/storage'
 import { broadcastToAll } from '@/server/ws-server'
 import { randomUUID } from 'node:crypto'
+import { appendRunEvent, createRunReplay, setRunStatus } from '@/server/replay'
 
 /** T2.2: Aligned with pipeline-engine STAGE_NAMES */
 const PIPELINE_STAGES = [
@@ -76,6 +77,20 @@ export class JobQueue {
     this.jobs.set(job.id, job)
     this.queue.push(job.id)
     void saveJob(job)
+    void (async () => {
+      const settings = await getSettings()
+      await createRunReplay({
+        runId: job.id,
+        sessionId: job.sessionId,
+        prompt: job.prompt,
+        mode: job.mode,
+        settingsSnapshot: settings,
+      })
+      await appendRunEvent(job.id, 'job-status', {
+        status: job.status,
+        progress: job.progress,
+      })
+    })()
     broadcastToAll({ type: 'job-status', job })
     if (!this.processing) {
       void this.processNext()
@@ -109,6 +124,12 @@ export class JobQueue {
     const updated: SwarmJob = { ...job, status: 'cancelled', completedAt: Date.now() }
     this.jobs.set(id, updated)
     await saveJob(updated)
+    await setRunStatus(id, updated.status, updated.completedAt)
+    await appendRunEvent(id, 'job-status', {
+      status: updated.status,
+      progress: updated.progress,
+      currentStage: updated.currentStage,
+    })
     broadcastToAll({ type: 'job-status', job: updated })
   }
 
@@ -118,6 +139,12 @@ export class JobQueue {
     const updated: SwarmJob = { ...job, ...update, id: job.id }
     this.jobs.set(id, updated)
     void saveJob(updated)
+    void setRunStatus(id, updated.status, updated.completedAt)
+    void appendRunEvent(id, 'job-status', {
+      status: updated.status,
+      progress: updated.progress,
+      currentStage: updated.currentStage,
+    })
     broadcastToAll({ type: 'job-status', job: updated })
   }
 
@@ -146,8 +173,13 @@ export class JobQueue {
             settings,
             projectPath: settings.projectPath ?? process.cwd(),
             mode: job.mode,
+            evidenceId: undefined,
             onAgentOutput: (agentId: string, data: string) => {
               broadcastToAll({ type: 'agent-output', agentId, data })
+              void appendRunEvent(job.id, 'agent-output', {
+                agentId,
+                data: data.slice(0, 4000),
+              })
               this.updateStageProgress(job.id, agentId)
             },
             onAgentStatus: (agentId: string, status: string, exitCode?: number) => {
@@ -155,6 +187,11 @@ export class JobQueue {
                 type: 'agent-status',
                 agentId,
                 status: status as AgentStatusType,
+                exitCode,
+              })
+              void appendRunEvent(job.id, 'agent-status', {
+                agentId,
+                status,
                 exitCode,
               })
               this.updateStageProgress(job.id, agentId)
@@ -165,21 +202,46 @@ export class JobQueue {
               ? await runScheduledPipeline(pipelineOpts)
               : await runSwarmPipeline(pipelineOpts)
 
+          const evidenceId = pipelineOpts.evidenceId
+          if (evidenceId) {
+            await updateReplayRun(job.id, { evidenceId })
+          }
+          const evidence = evidenceId ? await getEvidence(evidenceId) : undefined
+
+          const completedAt = Date.now()
           this.updateJob(job.id, {
             status: 'completed',
             result,
-            completedAt: Date.now(),
+            completedAt,
             progress: 100,
             currentStage: 'done',
           })
+          await appendRunEvent(job.id, 'check', {
+            validationPassed: result.validationPassed,
+            confidence: result.confidence,
+            sourceCount: result.sources.length,
+          })
+          await appendRunEvent(job.id, 'run-completed', {
+            resultSummary: {
+              confidence: result.confidence,
+              validationPassed: result.validationPassed,
+            },
+            evidence,
+          })
+          await setRunStatus(job.id, 'completed', completedAt)
           broadcastToAll({ type: 'swarm-result', result })
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err)
+          const completedAt = Date.now()
           this.updateJob(job.id, {
             status: 'failed',
             error: message,
-            completedAt: Date.now(),
+            completedAt,
           })
+          await appendRunEvent(job.id, 'run-failed', {
+            error: message,
+          })
+          await setRunStatus(job.id, 'failed', completedAt)
           broadcastToAll({ type: 'swarm-error', error: message })
         }
 

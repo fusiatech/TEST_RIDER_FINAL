@@ -1,6 +1,6 @@
 import { Low } from 'lowdb'
 import { JSONFile } from 'lowdb/node'
-import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry } from '@/lib/types'
+import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, ReplayRun, ReplayEvent } from '@/lib/types'
 import { DEFAULT_SETTINGS } from '@/lib/types'
 import path from 'node:path'
 
@@ -11,6 +11,7 @@ interface DbSchema {
   jobs: SwarmJob[]
   scheduledTasks: ScheduledTask[]
   evidence: EvidenceLedgerEntry[]
+  replayRuns: ReplayRun[]
 }
 
 const DEFAULT_DATA: DbSchema = {
@@ -20,6 +21,7 @@ const DEFAULT_DATA: DbSchema = {
   jobs: [],
   scheduledTasks: [],
   evidence: [],
+  replayRuns: [],
 }
 
 let dbInstance: Low<DbSchema> | null = null
@@ -38,6 +40,7 @@ export async function getDb(): Promise<Low<DbSchema>> {
 
     db.data = { ...DEFAULT_DATA, ...db.data }
     if (!db.data.evidence) db.data.evidence = []
+    if (!db.data.replayRuns) db.data.replayRuns = []
 
     dbInstance = db
     return db
@@ -224,6 +227,61 @@ export async function updateEvidence(
       : existing.filePaths,
   }
   db.data.evidence[idx] = merged
+  await db.write()
+  return merged
+}
+
+
+/* ── Replay Runs (append-only events) ─────────────────────────── */
+
+export async function createReplayRun(run: ReplayRun): Promise<void> {
+  const db = await getDb()
+  if (db.data.replayRuns.some((r) => r.id === run.id)) {
+    throw new Error(`Replay run ${run.id} already exists`)
+  }
+  db.data.replayRuns.push(run)
+  await db.write()
+}
+
+export async function getReplayRun(id: string): Promise<ReplayRun | undefined> {
+  const db = await getDb()
+  return db.data.replayRuns.find((r) => r.id === id)
+}
+
+export async function getAllReplayRuns(): Promise<ReplayRun[]> {
+  const db = await getDb()
+  return db.data.replayRuns
+}
+
+export async function appendReplayEvent(runId: string, event: ReplayEvent): Promise<ReplayRun | null> {
+  const db = await getDb()
+  const idx = db.data.replayRuns.findIndex((r) => r.id === runId)
+  if (idx < 0) return null
+  const run = db.data.replayRuns[idx]
+  const updated: ReplayRun = {
+    ...run,
+    events: [...run.events, event],
+  }
+  db.data.replayRuns[idx] = updated
+  await db.write()
+  return updated
+}
+
+export async function updateReplayRun(
+  runId: string,
+  update: Partial<Omit<ReplayRun, 'id' | 'events'>>
+): Promise<ReplayRun | null> {
+  const db = await getDb()
+  const idx = db.data.replayRuns.findIndex((r) => r.id === runId)
+  if (idx < 0) return null
+  const existing = db.data.replayRuns[idx]
+  const merged: ReplayRun = {
+    ...existing,
+    ...update,
+    id: existing.id,
+    events: existing.events,
+  }
+  db.data.replayRuns[idx] = merged
   await db.write()
   return merged
 }
