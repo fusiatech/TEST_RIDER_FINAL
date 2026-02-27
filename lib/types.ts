@@ -252,6 +252,36 @@ export type TicketStatus = z.infer<typeof TicketStatus>
 export const TicketLevel = z.enum(['task', 'subtask', 'subatomic'])
 export type TicketLevel = z.infer<typeof TicketLevel>
 
+export const TicketApprovalGate = z.enum([
+  'review',
+  'epic_breakdown',
+  'task_breakdown',
+])
+export type TicketApprovalGate = z.infer<typeof TicketApprovalGate>
+
+export const TicketSLASchema = z.object({
+  targetMinutes: z.number().int().positive(),
+  warningThresholdPct: z.number().min(1).max(100).default(80),
+  startedAt: z.number().optional(),
+  breachAt: z.number().optional(),
+})
+export type TicketSLA = z.infer<typeof TicketSLASchema>
+
+export const TicketEscalationPolicySchema = z.object({
+  maxRetries: z.number().int().min(0).max(10).default(3),
+  escalateOnSLABreach: z.boolean().default(true),
+  escalationDelayMinutes: z.number().int().min(0).default(0),
+  escalationRoles: z.array(AgentRole).default(['planner', 'validator']),
+})
+export type TicketEscalationPolicy = z.infer<typeof TicketEscalationPolicySchema>
+
+export const TicketApprovalSchema = z.object({
+  requiredGates: z.array(TicketApprovalGate).default(['review']),
+  approvedGates: z.array(TicketApprovalGate).default([]),
+  approvedAt: z.record(z.string(), z.number()).optional(),
+})
+export type TicketApproval = z.infer<typeof TicketApprovalSchema>
+
 export const TicketSchema = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -275,6 +305,9 @@ export const TicketSchema = z.object({
   diff: z.string().optional(),
   testResults: z.string().optional(),
   confidence: z.number().optional(),
+  sla: TicketSLASchema.optional(),
+  escalationPolicy: TicketEscalationPolicySchema.optional(),
+  approvals: TicketApprovalSchema.optional(),
   createdAt: z.number(),
   updatedAt: z.number()
 })

@@ -11,6 +11,7 @@ import { TicketDetail } from '@/components/ticket-detail'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { canTicketExecute, computeCriticalPath, getMissingApprovalGates, getTicketSLARisk } from '@/lib/project-analytics'
 import {
   Search,
   ClipboardList,
@@ -162,6 +163,8 @@ function TicketCard({
   const rejectTicket = useSwarmStore((s) => s.rejectTicket)
   const RoleIcon = ROLE_ICONS[ticket.assignedRole]
   const isReview = ticket.status === 'review'
+  const missingGates = getMissingApprovalGates(ticket)
+  const slaRisk = getTicketSLARisk(ticket)
 
   return (
     <Card
@@ -189,6 +192,25 @@ function TicketCard({
             {ticket.status.replace('_', ' ')}
           </Badge>
         </div>
+        {(missingGates.length > 0 || slaRisk === 'at_risk' || slaRisk === 'breached') && (
+          <div className="flex flex-wrap gap-1">
+            {missingGates.length > 0 && (
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-500">
+                Awaiting: {missingGates.join(', ')}
+              </Badge>
+            )}
+            {slaRisk === 'at_risk' && (
+              <Badge variant="outline" className="text-[10px] border-orange-500/40 text-orange-500">
+                SLA at risk
+              </Badge>
+            )}
+            {slaRisk === 'breached' && (
+              <Badge variant="outline" className="text-[10px] border-red-500/40 text-red-500">
+                SLA breached
+              </Badge>
+            )}
+          </div>
+        )}
         {isReview && (
           <div className="flex items-center gap-2 pt-1">
             <Button
@@ -250,6 +272,22 @@ export function ProjectDashboard() {
   }, [allTickets])
 
   const selectedTicket = allTickets.find((t) => t.id === selectedTicketId)
+  const criticalPath = useMemo(() => computeCriticalPath(allTickets), [allTickets])
+  const criticalPathTitle = criticalPath.path
+    .map((id) => allTickets.find((t) => t.id === id)?.title ?? id)
+    .join(' → ')
+  const slaAtRiskCount = useMemo(
+    () => allTickets.filter((t) => getTicketSLARisk(t) === 'at_risk').length,
+    [allTickets],
+  )
+  const slaBreachedCount = useMemo(
+    () => allTickets.filter((t) => getTicketSLARisk(t) === 'breached').length,
+    [allTickets],
+  )
+  const approvalBlockedCount = useMemo(
+    () => allTickets.filter((t) => !canTicketExecute(t)).length,
+    [allTickets],
+  )
 
   const [rejectedExpanded, setRejectedExpanded] = useState(false)
 
@@ -313,6 +351,28 @@ export function ProjectDashboard() {
             <Clock className="mb-1 h-5 w-5 text-blue-500" />
             <span className="text-2xl font-bold text-foreground">{avgConfidence}%</span>
             <span className="text-xs text-muted">Avg Confidence</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="border-border md:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Critical Path</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-xs text-muted">{criticalPathTitle || 'No dependency chain available yet.'}</p>
+            <p className="text-xs text-foreground">Est. duration: {criticalPath.totalDurationMinutes} minutes</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">SLA / Approval Risk</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs">
+            <p className="text-orange-500">At-risk SLA: {slaAtRiskCount}</p>
+            <p className="text-red-500">Breached SLA: {slaBreachedCount}</p>
+            <p className="text-amber-500">Approval-blocked: {approvalBlockedCount}</p>
           </CardContent>
         </Card>
       </div>
