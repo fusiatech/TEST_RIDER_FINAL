@@ -13,7 +13,7 @@ import type {
 } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
-import { detectInstalledCLIs } from '@/server/cli-detect'
+import { detectCLIProviderDiagnostics } from '@/server/cli-detect'
 import { computeConfidence, extractSources } from '@/server/confidence'
 import { runSecurityChecks } from '@/server/security-checks'
 import {
@@ -62,11 +62,11 @@ echo "This is a mock response. Please install a real CLI agent."
 async function resolveAvailableCLIs(
   enabledCLIs: CLIProvider[],
 ): Promise<CLIProvider[]> {
-  const detected = await detectInstalledCLIs()
-  const installedIds = new Set(
-    detected.filter((c) => c.installed).map((c) => c.id),
+  const detected = detectCLIProviderDiagnostics()
+  const healthyIds = new Set(
+    detected.filter((c) => c.healthy).map((c) => c.id),
   )
-  const available = enabledCLIs.filter((id) => installedIds.has(id))
+  const available = enabledCLIs.filter((id) => healthyIds.has(id))
   if (available.length > 0) return available
   ensureMockAgent()
   const cursorEntry = CLI_REGISTRY.find((c) => c.id === 'cursor')
