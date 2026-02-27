@@ -241,6 +241,45 @@ export const EvidenceLedgerEntrySchema = z.object({
 })
 export type EvidenceLedgerEntry = z.infer<typeof EvidenceLedgerEntrySchema>
 
+/* ── Test Runs ─────────────────────────────────────────────────── */
+
+export const TestRunSource = z.enum(['orchestrator', 'ci', 'manual'])
+export type TestRunSource = z.infer<typeof TestRunSource>
+
+export const TestRunStatus = z.enum(['passed', 'failed'])
+export type TestRunStatus = z.infer<typeof TestRunStatus>
+
+export const TestFailureSchema = z.object({
+  id: z.string(),
+  testName: z.string(),
+  file: z.string().optional(),
+  line: z.number().int().positive().optional(),
+  message: z.string().optional(),
+})
+export type TestFailure = z.infer<typeof TestFailureSchema>
+
+export const TestRunCheckSchema = z.object({
+  name: z.string(),
+  passed: z.boolean(),
+  output: z.string(),
+})
+export type TestRunCheck = z.infer<typeof TestRunCheckSchema>
+
+export const TestRunSchema = z.object({
+  id: z.string(),
+  timestamp: z.number(),
+  source: TestRunSource,
+  status: TestRunStatus,
+  total: z.number().int().min(0),
+  passed: z.number().int().min(0),
+  failed: z.number().int().min(0),
+  checks: z.array(TestRunCheckSchema),
+  failures: z.array(TestFailureSchema),
+  logs: z.string(),
+  metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+})
+export type TestRun = z.infer<typeof TestRunSchema>
+
 /* ── Ticket ────────────────────────────────────────────────────── */
 
 export const TicketComplexity = z.enum(['S', 'M', 'L', 'XL'])

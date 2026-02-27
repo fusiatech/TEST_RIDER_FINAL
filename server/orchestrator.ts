@@ -6,6 +6,8 @@ import type {
   AgentInstance,
   CLIProvider,
   Ticket,
+  TestRun,
+  TestFailure,
 } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
@@ -52,6 +54,7 @@ import {
 } from '@/server/anti-hallucination'
 import type { AgentOutput } from '@/server/anti-hallucination'
 import { runPipeline, cancelAll } from '@/server/pipeline-engine'
+import { saveTestRun } from '@/server/storage'
 export { runPipeline, cancelAll }
 
 /* ── Public types ──────────────────────────────────────────────── */
@@ -204,6 +207,70 @@ function buildCancelledResult(agents: AgentInstance[]): SwarmResult {
     sources: [],
     validationPassed: false,
   }
+}
+
+
+function parseFailureLocation(output: string): { file?: string; line?: number } {
+  const patterns = [
+    /([\w./-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt)):(\d+)(?::\d+)?/m,
+    /at\s+([\w./-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt)):(\d+)(?::\d+)?/m,
+  ]
+  for (const pattern of patterns) {
+    const match = output.match(pattern)
+    if (match) {
+      return { file: match[1], line: Number(match[2]) }
+    }
+  }
+  return {}
+}
+
+function toTestRunFailures(checks: Awaited<ReturnType<typeof runSecurityChecks>>['checks']): TestFailure[] {
+  const failures: TestFailure[] = []
+  for (const check of checks) {
+    if (check.passed) continue
+    const { file, line } = parseFailureLocation(check.output)
+    failures.push({
+      id: `${Date.now()}-${failures.length + 1}`,
+      testName: check.name,
+      file,
+      line,
+      message: check.output.slice(0, 500),
+    })
+  }
+  return failures
+}
+
+async function persistTestRunFromChecks(params: {
+  checks: Awaited<ReturnType<typeof runSecurityChecks>>['checks']
+  passed: boolean
+  prompt: string
+  projectPath: string
+  mode: PipelineMode
+}): Promise<void> {
+  const { checks, passed, prompt, projectPath, mode } = params
+  const failed = checks.filter((c) => !c.passed).length
+  const run: TestRun = {
+    id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: Date.now(),
+    source: 'orchestrator',
+    status: passed ? 'passed' : 'failed',
+    total: checks.length,
+    passed: checks.length - failed,
+    failed,
+    checks: checks.map((check) => ({
+      name: check.name,
+      passed: check.passed,
+      output: check.output,
+    })),
+    failures: toTestRunFailures(checks),
+    logs: checks.map((check) => `[${check.passed ? 'PASSED' : 'FAILED'}] ${check.name}\n${check.output}`).join('\n\n'),
+    metadata: {
+      mode,
+      promptLength: prompt.length,
+      projectPath,
+    },
+  }
+  await saveTestRun(run)
 }
 
 /* ── Core: spawn a group of agents with 200ms stagger ──────────── */
@@ -624,6 +691,13 @@ async function runSwarmMode(
     try {
       const autoResult = await runSecurityChecks(projectPath, settings.testingConfig)
       securityChecksPassed = autoResult.passed
+      await persistTestRunFromChecks({
+        checks: autoResult.checks,
+        passed: autoResult.passed,
+        prompt,
+        projectPath,
+        mode: 'swarm',
+      })
       for (const check of autoResult.checks) {
         const status = check.passed ? 'PASSED' : 'FAILED'
         onAgentOutput('system', `[security] ${check.name}: ${status}\n`)
@@ -1000,6 +1074,13 @@ async function runProjectMode(
       try {
         const secResult = await runSecurityChecks(projectPath, settings.testingConfig)
         securityPassed = secResult.passed
+        await persistTestRunFromChecks({
+          checks: secResult.checks,
+          passed: secResult.passed,
+          prompt,
+          projectPath,
+          mode: 'project',
+        })
         for (const check of secResult.checks) {
           const status = check.passed ? 'PASSED' : 'FAILED'
           onAgentOutput('system', `[security] ${check.name}: ${status}\n`)
