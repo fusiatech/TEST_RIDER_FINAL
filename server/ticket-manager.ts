@@ -1,5 +1,6 @@
-import type { Ticket, AgentRole, TicketComplexity, Settings, TicketLevel } from '@/lib/types'
+import type { Ticket, AgentRole, TicketComplexity, Settings, TicketLevel, TicketApprovalGate } from '@/lib/types'
 import { randomUUID } from 'node:crypto'
+import { canTicketExecute, getMissingApprovalGates, getTicketSLARisk } from '@/lib/project-analytics'
 
 /** Parent level required for each ticket level. Epic is external to TicketManager. */
 const PARENT_LEVEL: Record<Exclude<TicketLevel, 'task'>, TicketLevel> = {
@@ -74,6 +75,25 @@ export class TicketManager {
       assignedRole: options.assignedRole,
       dependencies: options.dependencies ?? [],
       evidenceIds: [],
+      sla: {
+        targetMinutes: 120,
+        warningThresholdPct: 80,
+        startedAt: Date.now(),
+      },
+      escalationPolicy: {
+        maxRetries: 3,
+        escalateOnSLABreach: true,
+        escalationDelayMinutes: 0,
+        escalationRoles: ['planner', 'validator'],
+      },
+      approvals: {
+        requiredGates: level === 'task'
+          ? ['review', 'epic_breakdown']
+          : level === 'subtask' || level === 'subatomic'
+            ? ['review', 'task_breakdown']
+            : ['review'],
+        approvedGates: [],
+      },
       level,
       parentId,
       epicId,
@@ -177,13 +197,69 @@ export class TicketManager {
   }
 
   getReadyTickets(): Ticket[] {
+    this.enforceSLATimers()
+
     return Array.from(this.tickets.values()).filter((ticket) => {
       if (ticket.status !== 'backlog') return false
+      if (!canTicketExecute(ticket)) return false
       return ticket.dependencies.every((depId: string) => {
         const dep = this.tickets.get(depId)
-        return dep !== undefined && dep.status === 'done'
+        return dep !== undefined && dep.status === 'done' && canTicketExecute(dep)
       })
     })
+  }
+
+  approveGate(id: string, gate: TicketApprovalGate): Ticket | null {
+    const ticket = this.tickets.get(id)
+    if (!ticket) return null
+
+    const approved = new Set<string>((ticket.approvals?.approvedGates ?? []) as string[])
+    approved.add(gate)
+    const updated: Ticket = {
+      ...ticket,
+      approvals: {
+        requiredGates: (ticket.approvals?.requiredGates ?? ['review']) as TicketApprovalGate[],
+        approvedGates: Array.from(approved) as TicketApprovalGate[],
+        approvedAt: {
+          ...(ticket.approvals?.approvedAt ?? {}),
+          [gate]: Date.now(),
+        },
+      },
+      updatedAt: Date.now(),
+    }
+    this.tickets.set(id, updated)
+    this.onTicketUpdate?.(updated)
+    return updated
+  }
+
+  enforceSLATimers(now = Date.now()): Ticket[] {
+    const escalations: Ticket[] = []
+    for (const ticket of this.tickets.values()) {
+      if (ticket.status !== 'backlog' && ticket.status !== 'in_progress' && ticket.status !== 'review') continue
+
+      if (getTicketSLARisk(ticket, now) !== 'breached') continue
+
+      const rejected: Ticket = {
+        ...ticket,
+        status: 'rejected',
+        output: `${ticket.output ?? ''}\nSLA breach: exceeded ${ticket.sla?.targetMinutes ?? 0} minute target.`.trim(),
+        retryCount: Math.min(ticket.escalationPolicy?.maxRetries ?? 3, (ticket.retryCount ?? 0) + 1),
+        updatedAt: now,
+      }
+      this.tickets.set(ticket.id, rejected)
+      this.onTicketUpdate?.(rejected)
+
+      const shouldEscalate = rejected.escalationPolicy?.escalateOnSLABreach !== false
+      if (shouldEscalate) {
+        const escalation = this.createEscalationTicket(
+          rejected,
+          rejected.output ?? 'SLA breach',
+          `Missing approvals: ${getMissingApprovalGates(rejected).join(', ') || 'none'}`,
+        )
+        escalations.push(escalation)
+      }
+    }
+    return escalations
   }
 
   /**
