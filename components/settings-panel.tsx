@@ -43,6 +43,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Workflow,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCPConfig } from '@/components/mcp-config'
@@ -543,6 +544,74 @@ export function SettingsPanel() {
                     </select>
                   </div>
                 )}
+
+                <div className="rounded-md border border-border/60 bg-card/40 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Workflow className="h-4 w-4 text-muted" />
+                    <div>
+                      <span className="text-sm text-foreground/90">Job Routing</span>
+                      <p className="text-xs text-muted">Choose orchestrator per job type with auditable decisions.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 pl-6 text-xs">
+                    <label className="flex items-center justify-between gap-2">
+                      <span className="text-muted">Interactive jobs</span>
+                      <select
+                        value={settings.jobRouting?.interactive ?? 'agentic'}
+                        onChange={(e) =>
+                          updateSettings({
+                            jobRouting: {
+                              interactive: e.target.value as 'agentic' | 'deterministic',
+                              scheduled: settings.jobRouting?.scheduled ?? {
+                                generic: 'deterministic',
+                                ci: 'deterministic',
+                                report: 'deterministic',
+                                deploy: 'deterministic',
+                              },
+                            },
+                          })
+                        }
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                      >
+                        <option value="agentic">Agentic</option>
+                        <option value="deterministic">Deterministic</option>
+                      </select>
+                    </label>
+
+                    {([
+                      ['generic', 'Scheduled generic jobs'],
+                      ['ci', 'Scheduled CI jobs'],
+                      ['report', 'Scheduled report jobs'],
+                      ['deploy', 'Scheduled deploy jobs'],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="flex items-center justify-between gap-2">
+                        <span className="text-muted">{label}</span>
+                        <select
+                          value={settings.jobRouting?.scheduled?.[key] ?? 'deterministic'}
+                          onChange={(e) =>
+                            updateSettings({
+                              jobRouting: {
+                                interactive: settings.jobRouting?.interactive ?? 'agentic',
+                                scheduled: {
+                                  generic: settings.jobRouting?.scheduled?.generic ?? 'deterministic',
+                                  ci: settings.jobRouting?.scheduled?.ci ?? 'deterministic',
+                                  report: settings.jobRouting?.scheduled?.report ?? 'deterministic',
+                                  deploy: settings.jobRouting?.scheduled?.deploy ?? 'deterministic',
+                                  [key]: e.target.value as 'agentic' | 'deterministic',
+                                },
+                              },
+                            })
+                          }
+                          className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                        >
+                          <option value="deterministic">Deterministic</option>
+                          <option value="agentic">Agentic</option>
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             </section>
 

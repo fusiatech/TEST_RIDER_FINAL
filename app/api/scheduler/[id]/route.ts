@@ -8,6 +8,7 @@ const UpdateTaskSchema = z.object({
   cronExpression: z.string().optional(),
   prompt: z.string().optional(),
   mode: z.enum(['chat', 'swarm', 'project']).optional(),
+  jobType: z.enum(['interactive', 'scheduled-generic', 'scheduled-ci', 'scheduled-report', 'scheduled-deploy']).optional(),
 })
 
 export async function PUT(

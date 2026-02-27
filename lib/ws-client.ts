@@ -12,6 +12,7 @@ export class SwarmWSClient {
   private shouldReconnect = true
 
   onMessage: ((msg: WSMessage) => void) | null = null
+  onConnect: (() => void) | null = null
   onDisconnect: (() => void) | null = null
 
   connect(url?: string): void {
@@ -33,6 +34,7 @@ export class SwarmWSClient {
 
     this.ws.onopen = () => {
       this.retryCount = 0
+      this.onConnect?.()
     }
 
     this.ws.onmessage = (event: MessageEvent) => {

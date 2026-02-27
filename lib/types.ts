@@ -187,6 +187,15 @@ export const SettingsSchema = z.object({
   ideationSchedule: z.string().optional(),
   mcpServers: z.array(MCPServerSchema).optional(),
   githubConfig: GitHubConfigSchema.optional(),
+  jobRouting: z.object({
+    interactive: z.enum(['agentic', 'deterministic']),
+    scheduled: z.object({
+      generic: z.enum(['agentic', 'deterministic']),
+      ci: z.enum(['agentic', 'deterministic']),
+      report: z.enum(['agentic', 'deterministic']),
+      deploy: z.enum(['agentic', 'deterministic']),
+    }),
+  }).optional(),
 })
 export type Settings = z.infer<typeof SettingsSchema>
 
@@ -203,8 +212,26 @@ export const DEFAULT_SETTINGS: Settings = {
   worktreeIsolation: true,
   maxRuntimeSeconds: 120,
   researchDepth: 'medium',
-  autoRerunThreshold: 80
+  autoRerunThreshold: 80,
+  jobRouting: {
+    interactive: 'agentic',
+    scheduled: {
+      generic: 'deterministic',
+      ci: 'deterministic',
+      report: 'deterministic',
+      deploy: 'deterministic',
+    },
+  },
 }
+
+export const JobType = z.enum([
+  'interactive',
+  'scheduled-generic',
+  'scheduled-ci',
+  'scheduled-report',
+  'scheduled-deploy',
+])
+export type JobType = z.infer<typeof JobType>
 
 /* ── Swarm Result ──────────────────────────────────────────────── */
 
@@ -331,6 +358,12 @@ export const SwarmJobSchema = z.object({
   attachments: z.array(EnqueueAttachmentSchema).max(MAX_ATTACHMENTS).optional(),
   /** T2.1: 'scheduler' = use pipeline-engine; 'user' = use runSwarmPipeline */
   source: z.enum(['scheduler', 'user']).optional(),
+  jobType: JobType.optional(),
+  routingDecision: z.object({
+    jobType: JobType,
+    resolvedOrchestrator: z.enum(['agentic', 'deterministic']),
+    reason: z.string(),
+  }).optional(),
 })
 export type SwarmJob = z.infer<typeof SwarmJobSchema>
 
@@ -342,6 +375,7 @@ export const ScheduledTaskSchema = z.object({
   cronExpression: z.string(),
   prompt: z.string(),
   mode: z.enum(['chat', 'swarm', 'project']),
+  jobType: JobType.optional(),
   enabled: z.boolean(),
   lastRun: z.number().optional(),
   nextRun: z.number(),
