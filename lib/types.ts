@@ -57,6 +57,27 @@ export const CLIDefinitionSchema = z.object({
 })
 export type CLIDefinition = z.infer<typeof CLIDefinitionSchema>
 
+export const ProviderFailureReason = z.enum([
+  'missing_binary',
+  'unauthenticated',
+  'unsupported_flags',
+  'healthcheck_failed',
+])
+export type ProviderFailureReason = z.infer<typeof ProviderFailureReason>
+
+export const ProviderDiagnosticsSchema = z.object({
+  id: CLIProvider,
+  name: z.string(),
+  command: z.string(),
+  installed: z.boolean(),
+  authenticated: z.boolean(),
+  version: z.string().nullable(),
+  capabilities: z.record(z.string(), z.boolean()),
+  healthy: z.boolean(),
+  failureReasons: z.array(ProviderFailureReason),
+})
+export type ProviderDiagnostics = z.infer<typeof ProviderDiagnosticsSchema>
+
 /* ── Agent Status ──────────────────────────────────────────────── */
 
 export const AgentStatus = z.enum([

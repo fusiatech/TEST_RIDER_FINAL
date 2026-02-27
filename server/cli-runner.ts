@@ -4,6 +4,14 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { CLIProvider } from '@/lib/types'
 import { getCLICommandFromFile } from '@/lib/cli-registry'
+import { detectCLIProviderDiagnostics, canDispatchToProvider } from '@/server/cli-detect'
+
+export const FAILURE_REASON_MESSAGES = {
+  missing_binary: 'Provider binary is not installed',
+  unauthenticated: 'Provider is not authenticated',
+  unsupported_flags: 'Provider configuration uses unsupported flags',
+  healthcheck_failed: 'Provider health check failed',
+} as const
 
 /** Exit codes that should NOT trigger a retry (e.g. timeout kills). */
 const NON_RETRYABLE_EXIT_CODES = new Set([137, 143])
@@ -160,6 +168,21 @@ export function spawnCLI(options: CLIRunnerOptions): CLIRunnerHandle {
     maxRetries = 0,
     retryDelayMs = 2000,
   } = options
+
+  const diagnostics = detectCLIProviderDiagnostics()
+  const providerDiagnostics = diagnostics.find((diag) => diag.id === options.provider)
+
+  if (providerDiagnostics) {
+    const dispatch = canDispatchToProvider(providerDiagnostics)
+    if (!dispatch.ok && dispatch.reason) {
+      const details = FAILURE_REASON_MESSAGES[dispatch.reason]
+      onOutput(
+        `[cli-runner] Dispatch blocked for provider ${options.provider}: ${dispatch.reason} (${details})\n`,
+      )
+      onExit(2)
+      return { kill: () => {} }
+    }
+  }
 
   const promptFile = join('/tmp', `swarm-prompt-${randomUUID()}.txt`)
   writeFileSync(promptFile, prompt, 'utf-8')

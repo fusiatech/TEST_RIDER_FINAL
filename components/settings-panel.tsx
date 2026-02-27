@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSwarmStore } from '@/lib/store'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
-import type { AgentRole, CLIProvider, Settings as SettingsType, GitHubConfig } from '@/lib/types'
+import type { AgentRole, CLIProvider, Settings as SettingsType, GitHubConfig, ProviderDiagnostics } from '@/lib/types'
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/types'
 import {
   Dialog,
@@ -43,6 +43,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { MCPConfig } from '@/components/mcp-config'
@@ -202,6 +203,25 @@ export function SettingsPanel() {
   const [apiEndpoints, setApiEndpoints] = useState<Record<string, string>>({})
   const [showKey, setShowKey] = useState<Record<string, boolean>>({})
   const [testingProvider, setTestingProvider] = useState<string | null>(null)
+  const [providerDiagnostics, setProviderDiagnostics] = useState<Record<string, ProviderDiagnostics>>({})
+
+  const refreshProviderDiagnostics = useCallback(async () => {
+    try {
+      const res = await fetch('/api/cli/providers')
+      if (!res.ok) return
+      const data: unknown = await res.json()
+      const diagnostics = Array.isArray(data) ? data as ProviderDiagnostics[] : []
+      const next: Record<string, ProviderDiagnostics> = {}
+      for (const diag of diagnostics) next[diag.id] = diag
+      setProviderDiagnostics(next)
+    } catch {
+      // noop
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshProviderDiagnostics()
+  }, [refreshProviderDiagnostics])
 
   const toggleCLI = (id: CLIProvider) => {
     const current = settings.enabledCLIs
@@ -228,6 +248,13 @@ export function SettingsPanel() {
       }
       setTestingProvider(null)
     }, 1000)
+  }
+
+  const remediationForReason = (reason: string) => {
+    if (reason === 'missing_binary') return { label: 'Install CLI', command: 'npm i -g <provider-cli>' }
+    if (reason === 'unauthenticated') return { label: 'Authenticate', command: '<provider-cli> auth login' }
+    if (reason === 'unsupported_flags') return { label: 'Review Flags', command: 'Update CLI args in lib/cli-registry.ts' }
+    return { label: 'Run Health Check', command: '<provider-cli> --version' }
   }
 
   const testingConfig = settings.testingConfig ?? {
@@ -267,6 +294,9 @@ export function SettingsPanel() {
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground/80">
                 <Cpu className="h-4 w-4" />
                 CLI Agents
+                <Button type="button" variant="ghost" size="sm" className="ml-auto h-7" onClick={() => void refreshProviderDiagnostics()}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
               </h3>
               <div className="space-y-2">
                 {CLI_REGISTRY.map((cli) => (
@@ -274,25 +304,58 @@ export function SettingsPanel() {
                     key={cli.id}
                     className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{
-                          backgroundColor:
-                            cli.installed !== false ? '#22c55e' : '#ef4444',
-                        }}
-                      />
-                      <span className="text-sm text-foreground/90">{cli.name}</span>
-                      {cli.installed === false && (
-                        <Badge variant="outline" className="text-xs text-muted">
-                          not installed
-                        </Badge>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-2 w-2 rounded-full"
+                          style={{
+                            backgroundColor:
+                              (providerDiagnostics[cli.id]?.healthy ?? cli.installed !== false) ? '#22c55e' : '#ef4444',
+                          }}
+                        />
+                        <span className="text-sm text-foreground/90">{cli.name}</span>
+                        {providerDiagnostics[cli.id] && !providerDiagnostics[cli.id].healthy && (
+                          <Badge variant="outline" className="text-xs text-red-400">
+                            needs attention
+                          </Badge>
+                        )}
+                      </div>
+                      {providerDiagnostics[cli.id] && (
+                        <div className="mt-1 space-y-1">
+                          <p className="text-[11px] text-muted">
+                            version: {providerDiagnostics[cli.id].version ?? 'unknown'} · auth: {providerDiagnostics[cli.id].authenticated ? 'ok' : 'missing'}
+                          </p>
+                          {!providerDiagnostics[cli.id].healthy && (
+                            <div className="rounded border border-red-500/30 bg-red-500/5 p-2">
+                              {providerDiagnostics[cli.id].failureReasons.map((reason) => {
+                                const remediation = remediationForReason(reason)
+                                return (
+                                  <div key={reason} className="mb-1 flex items-center justify-between gap-2 text-[11px] text-red-300">
+                                    <span className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{reason}</span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 px-2 text-[10px]"
+                                      onClick={() => navigator.clipboard?.writeText(remediation.command)}
+                                    >
+                                      {remediation.label}
+                                    </Button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <Switch
-                      checked={settings.enabledCLIs.includes(cli.id)}
-                      onCheckedChange={() => toggleCLI(cli.id)}
-                    />
+                    <div className="flex flex-col items-end gap-1">
+                      <Switch
+                        checked={settings.enabledCLIs.includes(cli.id)}
+                        disabled={providerDiagnostics[cli.id] ? !providerDiagnostics[cli.id].healthy : false}
+                        onCheckedChange={() => toggleCLI(cli.id)}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
