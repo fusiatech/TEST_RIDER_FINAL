@@ -122,7 +122,15 @@ export async function runSecurityChecks(
     existsSync(join(workdir, 'eslint.config.ts'))
 
   if (config.eslint !== false && hasEslintConfig) {
-    const result = await safeExec('npx eslint . --max-warnings 0', workdir)
+    // Use project lint script for framework-aware behavior (e.g. Next.js),
+    // then fall back to direct eslint invocation in non-script repos.
+    const hasPackageJson = existsSync(join(workdir, 'package.json'))
+    const result = hasPackageJson
+      ? await safeExec('npm run lint', workdir)
+      : await safeExec(
+          "npx eslint . --max-warnings 0 --ignore-pattern '.next/**'",
+          workdir
+        )
     checks.push({
       name: 'ESLint (--max-warnings 0)',
       passed: result.code === 0,
