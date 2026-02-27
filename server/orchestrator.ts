@@ -30,6 +30,11 @@ import {
 } from '@/server/prompt-builder'
 import { TicketManager } from '@/server/ticket-manager'
 import {
+  evaluateGuardrailPolicy,
+  formatRefusalPayload,
+  createGuardrailEscalation,
+} from '@/server/guardrail-policy'
+import {
   isGitHubAuthenticated,
   createBranch,
   commitChanges,
@@ -202,6 +207,61 @@ function buildCancelledResult(agents: AgentInstance[]): SwarmResult {
     confidence: 0,
     agents,
     sources: [],
+    validationPassed: false,
+  }
+}
+
+function applyGuardrailOrRefuse(params: {
+  mode: PipelineMode
+  prompt: string
+  settings: Settings
+  confidence: number
+  sources: string[]
+  candidateOutput: string
+  upstreamValidationPassed: boolean
+  agents: AgentInstance[]
+  onAgentOutput: (agentId: string, data: string) => void
+}): SwarmResult {
+  const policy = evaluateGuardrailPolicy({
+    minConfidence: params.settings.autoRerunThreshold,
+    minEvidenceCount: 1,
+    confidence: params.confidence,
+    evidence: params.sources,
+    candidateOutput: params.candidateOutput,
+    upstreamValidationPassed: params.upstreamValidationPassed,
+    context: {
+      pipeline: 'orchestrator',
+      mode: params.mode,
+      promptSnippet: params.prompt.slice(0, 200),
+    },
+  })
+
+  if (policy.passed || !policy.refusalPayload) {
+    return {
+      finalOutput: params.candidateOutput,
+      confidence: params.confidence,
+      agents: params.agents,
+      sources: params.sources,
+      validationPassed: true,
+    }
+  }
+
+  const refusal = formatRefusalPayload(policy.refusalPayload)
+  const escalation = createGuardrailEscalation(
+    new TicketManager(),
+    refusal,
+    policy.refusalPayload.context,
+  )
+  params.onAgentOutput(
+    'system',
+    `[orchestrator] Guardrail refusal. Escalation: ${escalation.id}\n${refusal}\n`,
+  )
+
+  return {
+    finalOutput: refusal,
+    confidence: params.confidence,
+    agents: params.agents,
+    sources: params.sources,
     validationPassed: false,
   }
 }
@@ -420,13 +480,21 @@ async function runChatMode(
     await appendDiffSummary(options.evidenceId, options.projectPath)
   }
 
-  return {
-    finalOutput: outputs[0] ?? 'No output received.',
+  const finalOutput = outputs[0] ?? 'No output received.'
+  const sources = extractSources(finalOutput)
+
+  return applyGuardrailOrRefuse({
+    mode: 'chat',
+    prompt: options.prompt,
+    settings: options.settings,
     confidence: 50,
+    sources,
+    candidateOutput: finalOutput,
+    upstreamValidationPassed: true,
     agents,
-    sources: extractSources(outputs[0] ?? ''),
-    validationPassed: true,
-  }
+    onAgentOutput: options.onAgentOutput,
+  })
+
 }
 
 /* ── Swarm Mode (full 6-stage pipeline) ────────────────────────── */
@@ -728,32 +796,20 @@ async function runSwarmMode(
       await appendDiffSummary(options.evidenceId, projectPath)
     }
 
-    /* T3.4: Refusal stub - return "refused" when confidence < 30 and no evidence */
-    if (finalConfidence < 30 && sources.length === 0) {
-      onAgentOutput(
-        'system',
-        `[orchestrator] Refusal: confidence ${finalConfidence}% < 30 with no evidence\n`,
-      )
-      return {
-        finalOutput: 'refused',
-        confidence: finalConfidence,
-        agents: allAgents,
-        sources: [],
-        validationPassed: false,
-      }
-    }
-
-    /* T3.2: Use selectBestOutput for synthesis fallback when synthesizer empty */
     const bestCodeOutput = selectBestOutput(codeOutputs, codeStageAgents)
-    return {
-      finalOutput:
-        synthesizerOutput || bestCodeOutput || combinedCode || 'No output generated.',
+    return applyGuardrailOrRefuse({
+      mode: 'swarm',
+      prompt,
+      settings,
       confidence: finalConfidence,
-      agents: allAgents,
       sources,
-      validationPassed:
+      candidateOutput:
+        synthesizerOutput || bestCodeOutput || combinedCode || 'No output generated.',
+      upstreamValidationPassed:
         securityChecksPassed && finalConfidence >= threshold,
-    }
+      agents: allAgents,
+      onAgentOutput,
+    })
   } // end for loop
 
   onAgentStatus('system', 'completed', 0)
@@ -768,13 +824,18 @@ async function runSwarmMode(
   const fallbackConfidence = computeConfidence(
     allOutputs.filter((o) => o.length > 0),
   )
-  return {
-    finalOutput: allOutputs.filter((o) => o.length > 0).pop() || 'No output generated.',
+  return applyGuardrailOrRefuse({
+    mode: 'swarm',
+    prompt,
+    settings,
     confidence: fallbackConfidence,
-    agents: allAgents,
     sources: extractSources(allOutputs.filter((o) => o.length > 0).join('\n')),
-    validationPassed: fallbackConfidence >= settings.autoRerunThreshold,
-  }
+    candidateOutput: allOutputs.filter((o) => o.length > 0).pop() || 'No output generated.',
+    upstreamValidationPassed: fallbackConfidence >= settings.autoRerunThreshold,
+    agents: allAgents,
+    onAgentOutput,
+  })
+
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
@@ -937,18 +998,43 @@ async function runProjectMode(
       allOutputs.push(output)
 
       if (output.length > 0) {
-        ticketManager.completeTicket(ticket.id, output)
-        if (options.evidenceId) {
-          await linkTicketToEvidence(options.evidenceId, ticket.id)
-          ticketManager.updateTicket(ticket.id, {
-            evidenceIds: [...(ticket.evidenceIds ?? []), options.evidenceId],
-          })
-        }
-        if (settings.githubConfig?.enabled) {
-          const completedTicket = ticketManager.getTicket(ticket.id)
-          if (completedTicket) {
-            await handleTicketApproval(completedTicket, settings, projectPath, onAgentOutput)
+        const ticketSources = extractSources(output)
+        const ticketPolicy = evaluateGuardrailPolicy({
+          minConfidence: settings.autoRerunThreshold,
+          minEvidenceCount: 1,
+          confidence: computeConfidence([output]),
+          evidence: ticketSources,
+          candidateOutput: output,
+          upstreamValidationPassed: true,
+          context: {
+            pipeline: 'orchestrator',
+            mode: 'project',
+            promptSnippet: `${prompt.slice(0, 120)} | ticket: ${ticket.title}`,
+          },
+        })
+
+        if (ticketPolicy.passed) {
+          ticketManager.completeTicket(ticket.id, output)
+          if (options.evidenceId) {
+            await linkTicketToEvidence(options.evidenceId, ticket.id)
+            ticketManager.updateTicket(ticket.id, {
+              evidenceIds: [...(ticket.evidenceIds ?? []), options.evidenceId],
+            })
           }
+          if (settings.githubConfig?.enabled) {
+            const completedTicket = ticketManager.getTicket(ticket.id)
+            if (completedTicket) {
+              await handleTicketApproval(completedTicket, settings, projectPath, onAgentOutput)
+            }
+          }
+        } else {
+          const refusal = formatRefusalPayload(ticketPolicy.refusalPayload!)
+          ticketManager.failTicket(ticket.id, refusal)
+          createGuardrailEscalation(ticketManager, refusal, {
+            pipeline: 'orchestrator',
+            mode: 'project',
+            promptSnippet: `${prompt.slice(0, 120)} | ticket: ${ticket.title}`,
+          })
         }
       } else {
         if (options.evidenceId) {
@@ -1025,14 +1111,18 @@ async function runProjectMode(
       `[orchestrator] Project complete. Confidence: ${confidence}%\n`,
     )
 
-    return {
-      finalOutput: selectBestOutput(allOutputs) || 'No output generated.',
+    return applyGuardrailOrRefuse({
+      mode: 'project',
+      prompt,
+      settings,
       confidence,
-      agents: allAgents,
       sources: extractSources(allJoined),
-      validationPassed:
+      candidateOutput: selectBestOutput(allOutputs) || 'No output generated.',
+      upstreamValidationPassed:
         securityPassed && confidence >= settings.autoRerunThreshold,
-    }
+      agents: allAgents,
+      onAgentOutput,
+    })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     onAgentOutput('system', `[orchestrator] Project error: ${message}\n`)
