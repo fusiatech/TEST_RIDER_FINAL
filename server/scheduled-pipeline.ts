@@ -16,6 +16,12 @@ import { CLI_REGISTRY } from '@/lib/cli-registry'
 import { detectInstalledCLIs } from '@/server/cli-detect'
 import { computeConfidence, extractSources } from '@/server/confidence'
 import { runSecurityChecks } from '@/server/security-checks'
+import { TicketManager } from '@/server/ticket-manager'
+import {
+  evaluateGuardrailPolicy,
+  formatRefusalPayload,
+  createGuardrailEscalation,
+} from '@/server/guardrail-policy'
 import {
   buildResearchPrompt,
   buildPlanPrompt,
@@ -136,6 +142,63 @@ function stageResultToAgentInstances(
   }))
 }
 
+function applyScheduledGuardrail(params: {
+  mode: 'chat' | 'swarm' | 'project'
+  prompt: string
+  settings: Settings
+  confidence: number
+  sources: string[]
+  candidateOutput: string
+  upstreamValidationPassed: boolean
+  agents: AgentInstance[]
+  onAgentOutput: (agentId: string, data: string) => void
+}): SwarmResult {
+  const policy = evaluateGuardrailPolicy({
+    minConfidence: params.settings.autoRerunThreshold,
+    minEvidenceCount: 1,
+    confidence: params.confidence,
+    evidence: params.sources,
+    candidateOutput: params.candidateOutput,
+    upstreamValidationPassed: params.upstreamValidationPassed,
+    context: {
+      pipeline: 'scheduled',
+      mode: params.mode,
+      promptSnippet: params.prompt.slice(0, 200),
+    },
+  })
+
+  if (policy.passed || !policy.refusalPayload) {
+    return {
+      finalOutput: params.candidateOutput,
+      confidence: params.confidence,
+      agents: params.agents,
+      sources: params.sources,
+      validationPassed: true,
+    }
+  }
+
+  const refusal = formatRefusalPayload(policy.refusalPayload)
+  const escalation = createGuardrailEscalation(
+    new TicketManager(),
+    refusal,
+    policy.refusalPayload.context,
+  )
+  params.onAgentOutput(
+    'system',
+    `[scheduled-pipeline] Guardrail refusal. Escalation: ${escalation.id}
+${refusal}
+`,
+  )
+
+  return {
+    finalOutput: refusal,
+    confidence: params.confidence,
+    agents: params.agents,
+    sources: params.sources,
+    validationPassed: false,
+  }
+}
+
 /**
  * Run pipeline using pipeline-engine for scheduled/background jobs.
  * Supports chat (1 stage) and swarm (6 stages) modes.
@@ -178,13 +241,17 @@ export async function runScheduledPipeline(
     allAgents.push(...stageResultToAgentInstances(result))
     allOutputs.push(result.combinedOutput)
 
-    return {
-      finalOutput: result.combinedOutput || 'No output received.',
+    return applyScheduledGuardrail({
+      mode: 'chat',
+      prompt,
+      settings,
       confidence: 50,
-      agents: allAgents,
       sources: extractSources(result.combinedOutput),
-      validationPassed: true,
-    }
+      candidateOutput: result.combinedOutput || 'No output received.',
+      upstreamValidationPassed: true,
+      agents: allAgents,
+      onAgentOutput,
+    })
   }
 
   if (mode === 'swarm') {
@@ -385,15 +452,19 @@ export async function runScheduledPipeline(
     const sources = extractSources(allOutputsJoined)
     const threshold = settings.autoRerunThreshold
 
-    return {
-      finalOutput:
-        synthesizerOutput || combinedCode || 'No output generated.',
+    return applyScheduledGuardrail({
+      mode: 'swarm',
+      prompt,
+      settings,
       confidence: finalConfidence,
-      agents: allAgents,
       sources,
-      validationPassed:
+      candidateOutput:
+        synthesizerOutput || combinedCode || 'No output generated.',
+      upstreamValidationPassed:
         securityChecksPassed && finalConfidence >= threshold,
-    }
+      agents: allAgents,
+      onAgentOutput,
+    })
   }
 
   /* Project mode: fallback to simple swarm-like flow */
