@@ -30,6 +30,7 @@ const STATUS_CONFIG: Record<
   completed: { label: 'Completed', color: '#22c55e', bg: 'bg-green-500/10', Icon: CheckCircle2 },
   failed: { label: 'Failed', color: '#ef4444', bg: 'bg-red-500/10', Icon: AlertTriangle },
   cancelled: { label: 'Cancelled', color: '#71717a', bg: 'bg-zinc-500/10', Icon: Ban },
+  'dead-letter': { label: 'Dead Letter', color: '#f97316', bg: 'bg-orange-500/10', Icon: AlertTriangle },
 }
 
 const MODE_COLORS: Record<string, string> = {

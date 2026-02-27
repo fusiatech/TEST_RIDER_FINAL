@@ -312,7 +312,7 @@ export type Project = z.infer<typeof ProjectSchema>
 
 /* ── Swarm Job ─────────────────────────────────────────────────── */
 
-export const SwarmJobStatus = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled'])
+export const SwarmJobStatus = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled', 'dead-letter'])
 export type SwarmJobStatus = z.infer<typeof SwarmJobStatus>
 
 export const SwarmJobSchema = z.object({
@@ -331,6 +331,12 @@ export const SwarmJobSchema = z.object({
   attachments: z.array(EnqueueAttachmentSchema).max(MAX_ATTACHMENTS).optional(),
   /** T2.1: 'scheduler' = use pipeline-engine; 'user' = use runSwarmPipeline */
   source: z.enum(['scheduler', 'user']).optional(),
+  priority: z.number().int().min(1).max(10).optional(),
+  retryCount: z.number().int().min(0).optional(),
+  maxRetries: z.number().int().min(0).optional(),
+  nextRetryAt: z.number().optional(),
+  idempotencyKey: z.string().optional(),
+  dedupeHash: z.string().optional(),
 })
 export type SwarmJob = z.infer<typeof SwarmJobSchema>
 
