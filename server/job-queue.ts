@@ -5,6 +5,12 @@ import { runScheduledPipeline } from '@/server/scheduled-pipeline'
 import { getSettings } from '@/server/storage'
 import { broadcastToAll } from '@/server/ws-server'
 import { randomUUID } from 'node:crypto'
+import {
+  recordQueueLag,
+  incrementCounter,
+  observeHistogram,
+  exportAuditEvent,
+} from '@/server/observability'
 
 /** T2.2: Aligned with pipeline-engine STAGE_NAMES */
 const PIPELINE_STAGES = [
@@ -75,6 +81,16 @@ export class JobQueue {
     }
     this.jobs.set(job.id, job)
     this.queue.push(job.id)
+    incrementCounter('swarm_jobs_enqueued_total', 'Total queued jobs', {
+      source: job.source ?? 'user',
+      mode: job.mode,
+    })
+    exportAuditEvent('job.enqueued', {
+      jobId: job.id,
+      source: job.source ?? 'user',
+      mode: job.mode,
+      createdAt: job.createdAt,
+    })
     void saveJob(job)
     broadcastToAll({ type: 'job-status', job })
     if (!this.processing) {
@@ -132,6 +148,8 @@ export class JobQueue {
         if (job.status === 'cancelled') continue
 
         this.running = job.id
+        const lagMs = Date.now() - job.createdAt
+        recordQueueLag(lagMs, job.source ?? 'user')
         this.updateJob(job.id, {
           status: 'running',
           startedAt: Date.now(),
@@ -140,6 +158,7 @@ export class JobQueue {
         })
 
         try {
+          const runStart = process.hrtime.bigint()
           const settings = await getSettings()
           const pipelineOpts = {
             prompt: job.prompt,
@@ -165,6 +184,17 @@ export class JobQueue {
               ? await runScheduledPipeline(pipelineOpts)
               : await runSwarmPipeline(pipelineOpts)
 
+          const runSeconds = Number(process.hrtime.bigint() - runStart) / 1_000_000_000
+          observeHistogram('swarm_job_runtime_seconds', 'Runtime of queued jobs in seconds', runSeconds, {
+            mode: job.mode,
+            source: job.source ?? 'user',
+          })
+          incrementCounter('swarm_jobs_completed_total', 'Completed jobs', {
+            mode: job.mode,
+            source: job.source ?? 'user',
+          })
+          exportAuditEvent('job.completed', { jobId: job.id, runSeconds, queueLagMs: lagMs })
+
           this.updateJob(job.id, {
             status: 'completed',
             result,
@@ -175,6 +205,11 @@ export class JobQueue {
           broadcastToAll({ type: 'swarm-result', result })
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err)
+          incrementCounter('swarm_jobs_failed_total', 'Failed jobs', {
+            mode: job.mode,
+            source: job.source ?? 'user',
+          })
+          exportAuditEvent('job.failed', { jobId: job.id, error: message, queueLagMs: lagMs })
           this.updateJob(job.id, {
             status: 'failed',
             error: message,
