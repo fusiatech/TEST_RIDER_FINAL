@@ -52,6 +52,12 @@ import {
 } from '@/server/anti-hallucination'
 import type { AgentOutput } from '@/server/anti-hallucination'
 import { runPipeline, cancelAll } from '@/server/pipeline-engine'
+import {
+  withSpan,
+  observeHistogram,
+  incrementCounter,
+  exportAuditEvent,
+} from '@/server/observability'
 export { runPipeline, cancelAll }
 
 /* ── Public types ──────────────────────────────────────────────── */
@@ -224,6 +230,7 @@ async function runStage(
   options: SwarmPipelineOptions,
   useWorktrees: boolean,
 ): Promise<StageRunResult> {
+  return withSpan(`orchestrator.stage.${role}`, { role, count }, async () => {
   const enabledCLIs: CLIProvider[] =
     settings.enabledCLIs.length > 0 ? settings.enabledCLIs : ['cursor']
   const chatsPerAgent: number = settings.chatsPerAgent ?? 1
@@ -297,6 +304,11 @@ async function runStage(
               maxRuntimeMs: settings.maxRuntimeSeconds * 1000,
               customTemplate: settings.customCLICommand,
               onOutput: (data: string) => {
+                if (data.includes('Retrying (')) {
+                  incrementCounter('swarm_cli_retries_total', 'CLI retry attempts', {
+                    provider: agent.provider,
+                  })
+                }
                 chatOutputs[chatIndex] += data
                 options.onAgentOutput(agent.id, data)
               },
@@ -394,6 +406,7 @@ async function runStage(
   }
 
   return { outputs: successOutputs, agents }
+  })
 }
 
 /* ── Chat Mode ─────────────────────────────────────────────────── */
@@ -626,6 +639,11 @@ async function runSwarmMode(
       securityChecksPassed = autoResult.passed
       for (const check of autoResult.checks) {
         const status = check.passed ? 'PASSED' : 'FAILED'
+        if (!check.passed) {
+          incrementCounter('swarm_guardrail_failures_total', 'Security/guardrail check failures', {
+            check: check.name,
+          })
+        }
         onAgentOutput('system', `[security] ${check.name}: ${status}\n`)
         if (!check.passed) {
           onAgentOutput(
@@ -1061,9 +1079,11 @@ async function runProjectMode(
 export async function runSwarmPipeline(
   options: SwarmPipelineOptions,
 ): Promise<SwarmResult> {
+  const pipelineStart = process.hrtime.bigint()
   cancelled = false
   activeProcesses.length = 0
 
+  const result = await withSpan('orchestrator.pipeline', { mode: options.mode ?? 'auto' }, async () => {
   const resolvedCLIs = await resolveAvailableCLIs(
     options.settings.enabledCLIs.length > 0
       ? options.settings.enabledCLIs
@@ -1079,6 +1099,10 @@ export async function runSwarmPipeline(
   options.onAgentOutput('system', `[orchestrator] Mode: ${mode}\n`)
 
   options.evidenceId = await createPipelineEvidence(options.projectPath)
+  exportAuditEvent('pipeline.evidence.created', {
+    evidenceId: options.evidenceId,
+    projectPath: options.projectPath,
+  })
 
   let result: SwarmResult
   switch (mode) {
@@ -1094,5 +1118,16 @@ export async function runSwarmPipeline(
   }
 
   lastPipelineRunTime = Date.now()
+  return result
+  })
+
+  const durationSec = Number(process.hrtime.bigint() - pipelineStart) / 1_000_000_000
+  observeHistogram('swarm_pipeline_duration_seconds', 'Swarm pipeline latency in seconds', durationSec, {
+    mode: options.mode ?? 'auto',
+  })
+  incrementCounter('swarm_pipeline_runs_total', 'Total pipeline runs', {
+    mode: options.mode ?? 'auto',
+    validation_passed: String(result.validationPassed),
+  })
   return result
 }

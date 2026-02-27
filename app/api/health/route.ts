@@ -3,6 +3,7 @@ import { jobQueue } from '@/server/job-queue'
 import { detectInstalledCLIs } from '@/server/cli-detect'
 import { getLastPipelineRunTime } from '@/server/orchestrator'
 import { getCacheStats } from '@/server/output-cache'
+import { withApiMetrics } from '@/server/api-observability'
 
 let cachedCLIs: { id: string; installed: boolean }[] | null = null
 let cliCacheTime = 0
@@ -19,24 +20,26 @@ async function getInstalledCLIs(): Promise<{ id: string; installed: boolean }[]>
 }
 
 export async function GET(): Promise<NextResponse> {
-  const mem = process.memoryUsage()
-  const clis = await getInstalledCLIs()
-  const cacheStats = getCacheStats()
+  return withApiMetrics('/api/health', 'GET', null, async () => {
+    const mem = process.memoryUsage()
+    const clis = await getInstalledCLIs()
+    const cacheStats = getCacheStats()
 
-  return NextResponse.json({
-    status: 'ok',
-    version: '1.0.0',
-    uptime: process.uptime(),
-    activeJobCount: jobQueue.getActiveJobCount(),
-    queueDepth: jobQueue.getQueueDepth(),
-    installedCLIs: clis,
-    lastPipelineRunTime: getLastPipelineRunTime(),
-    memoryUsage: {
-      rss: mem.rss,
-      heapTotal: mem.heapTotal,
-      heapUsed: mem.heapUsed,
-      external: mem.external,
-    },
-    cacheStats,
+    return NextResponse.json({
+      status: 'ok',
+      version: '1.0.0',
+      uptime: process.uptime(),
+      activeJobCount: jobQueue.getActiveJobCount(),
+      queueDepth: jobQueue.getQueueDepth(),
+      installedCLIs: clis,
+      lastPipelineRunTime: getLastPipelineRunTime(),
+      memoryUsage: {
+        rss: mem.rss,
+        heapTotal: mem.heapTotal,
+        heapUsed: mem.heapUsed,
+        external: mem.external,
+      },
+      cacheStats,
+    })
   })
 }

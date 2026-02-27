@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-02-27T01:39:48.047Z",
+  "runs": 3,
+  "durations": [
+    9.126762856,
+    8.727906275,
+    8.85750337
+  ],
+  "avgDurationSec": 8.904057500333334,
+  "traces": [
+    {
+      "run": 1,
+      "outputSample": "[mock-agent] No CLI agents are installed.\r\n[mock-agent] Prompt received: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\r\n\r\n## C",
+      "confidence": 60,
+      "validationPassed": false
+    },
+    {
+      "run": 2,
+      "outputSample": "[mock-agent] No CLI agents are installed.\r\n[mock-agent] Prompt received: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\r\n\r\n## C",
+      "confidence": 60,
+      "validationPassed": false
+    },
+    {
+      "run": 3,
+      "outputSample": "[mock-agent] No CLI agents are installed.\r\n[mock-agent] Prompt received: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\r\n\r\n## C",
+      "confidence": 60,
+      "validationPassed": false
+    }
+  ],
+  "metricsSnapshotPath": "artifacts/metrics-snapshot.prom",
+  "auditLogPath": "artifacts/audit-events.ndjson",
+  "traceSamplePath": "artifacts/trace-samples.ndjson",
+  "traceSampleTail": [
+    "{\"traceId\":\"f8bd71d78cbb4a6fbcffca4f7d547a12\",\"spanId\":\"ef397250c3f14c07\",\"name\":\"orchestrator.stage.synthesizer\",\"durationSec\":0.02473004,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.145Z\"}",
+    "{\"traceId\":\"f8bd71d78cbb4a6fbcffca4f7d547a12\",\"spanId\":\"16c1d9ce193749c6\",\"name\":\"orchestrator.pipeline\",\"durationSec\":8.727482642,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.188Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"a7f6c4e45d6845d6\",\"name\":\"orchestrator.stage.researcher\",\"durationSec\":0.024828941,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.328Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"c904b6a651f942ba\",\"name\":\"orchestrator.stage.planner\",\"durationSec\":0.027264784,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.355Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"80424302f1864163\",\"name\":\"orchestrator.stage.coder\",\"durationSec\":0.114282892,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.487Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"a1546b9f2fbe4d25\",\"name\":\"orchestrator.stage.validator\",\"durationSec\":0.025031009,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.512Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"b6cbcfe448b7413d\",\"name\":\"orchestrator.stage.validator\",\"durationSec\":0.02504129,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:39.537Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"34b58aa288d94f96\",\"name\":\"orchestrator.stage.security\",\"durationSec\":0.027004363,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:47.970Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"e767431201074dd6\",\"name\":\"orchestrator.stage.synthesizer\",\"durationSec\":0.028343708,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:47.999Z\"}",
+    "{\"traceId\":\"1bcb442bb5bb403ca366c8041b565324\",\"spanId\":\"21d747c676ce4f6d\",\"name\":\"orchestrator.pipeline\",\"durationSec\":8.856756671,\"status\":\"ok\",\"at\":\"2026-02-27T01:39:48.046Z\"}"
+  ]
+}
