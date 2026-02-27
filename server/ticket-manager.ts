@@ -1,10 +1,31 @@
-import type { Ticket, AgentRole, TicketComplexity, Settings, TicketLevel } from '@/lib/types'
+import type { Ticket, AgentRole, TicketComplexity, Settings, TicketLevel, Epic, TicketStatus, UserRole, DesignPack, DevPack } from '@/lib/types'
+import { TICKET_HIERARCHY, validateTicketHierarchy } from '@/lib/types'
 import { randomUUID } from 'node:crypto'
+import {
+  StatusTransitionEngine,
+  getTransitionEngine,
+  type Actor,
+  type TransitionContext,
+  type TransitionValidationResult,
+  type TransitionExecutionResult,
+  type StatusTransitionRule,
+} from './status-transitions'
 
-/** Parent level required for each ticket level. Epic is external to TicketManager. */
-const PARENT_LEVEL: Record<Exclude<TicketLevel, 'task'>, TicketLevel> = {
+/** Parent level required for each ticket level in the full hierarchy */
+const PARENT_LEVEL: Record<Exclude<TicketLevel, 'feature'>, TicketLevel> = {
+  epic: 'feature',
+  story: 'epic',
+  task: 'story',
   subtask: 'task',
   subatomic: 'subtask',
+}
+
+/** Ticket hierarchy node for tree representation */
+export interface TicketHierarchyNode {
+  ticket: Ticket
+  children: TicketHierarchyNode[]
+  depth: number
+  path: string[]
 }
 
 const PIPELINE_STAGES: AgentRole[] = [
@@ -19,9 +40,48 @@ const PIPELINE_STAGES: AgentRole[] = [
 export class TicketManager {
   private tickets: Map<string, Ticket> = new Map()
   private onTicketUpdate: ((ticket: Ticket) => void) | null = null
+  private transitionEngine: StatusTransitionEngine
+  private designPacks: Map<string, DesignPack> = new Map()
+  private devPacks: Map<string, DevPack> = new Map()
+  private testResults: Map<string, { passed: boolean; output: string }> = new Map()
+  private codeReviews: Map<string, { approved: boolean; reviewer: string }> = new Map()
+
+  constructor() {
+    this.transitionEngine = getTransitionEngine()
+  }
 
   setUpdateCallback(cb: (ticket: Ticket) => void): void {
     this.onTicketUpdate = cb
+  }
+
+  getTransitionEngine(): StatusTransitionEngine {
+    return this.transitionEngine
+  }
+
+  setDesignPack(ticketId: string, pack: DesignPack): void {
+    this.designPacks.set(ticketId, pack)
+  }
+
+  setDevPack(ticketId: string, pack: DevPack): void {
+    this.devPacks.set(ticketId, pack)
+  }
+
+  setTestResult(ticketId: string, result: { passed: boolean; output: string }): void {
+    this.testResults.set(ticketId, result)
+  }
+
+  setCodeReview(ticketId: string, review: { approved: boolean; reviewer: string }): void {
+    this.codeReviews.set(ticketId, review)
+  }
+
+  private getTransitionContext(): TransitionContext {
+    return {
+      allTickets: this.getAllTickets(),
+      designPacks: this.designPacks,
+      devPacks: this.devPacks,
+      testResults: this.testResults,
+      codeReviews: this.codeReviews,
+    }
   }
 
   createTicket(options: {
@@ -33,20 +93,32 @@ export class TicketManager {
     level?: TicketLevel
     parentId?: string
     epicId?: string
+    storyId?: string
+    featureId?: string
   }): Ticket {
     const level = options.level
     const parentId = options.parentId
     const epicId = options.epicId
+    const storyId = options.storyId
+    const featureId = options.featureId
 
     if (level) {
-      if (!epicId) {
-        throw new Error(`createTicket: epicId is required when level is ${level}`)
-      }
-      if (level === 'task') {
-        if (!parentId) {
-          throw new Error(`createTicket: parentId (epicId) is required when level is task`)
+      if (level === 'feature') {
+        // Feature is top-level, no parent required
+      } else if (level === 'epic') {
+        if (!featureId) {
+          throw new Error(`createTicket: featureId is required when level is epic`)
+        }
+      } else if (level === 'story') {
+        if (!epicId) {
+          throw new Error(`createTicket: epicId is required when level is story`)
+        }
+      } else if (level === 'task') {
+        if (!storyId) {
+          throw new Error(`createTicket: storyId is required when level is task`)
         }
       } else {
+        // subtask, subatomic - require parentId
         if (!parentId) {
           throw new Error(`createTicket: parentId is required when level is ${level}`)
         }
@@ -54,11 +126,11 @@ export class TicketManager {
         if (!parent) {
           throw new Error(`createTicket: parent ticket ${parentId} not found`)
         }
-        const requiredParentLevel = PARENT_LEVEL[level]
-        if (parent.level !== requiredParentLevel) {
-          throw new Error(
-            `createTicket: ${level} requires parent with level ${requiredParentLevel}, got ${parent.level ?? 'undefined'}`
-          )
+        if (parent.level) {
+          const validation = validateTicketHierarchy(parent.level, level)
+          if (!validation.valid) {
+            throw new Error(`createTicket: ${validation.error}`)
+          }
         }
       }
     }
@@ -77,6 +149,7 @@ export class TicketManager {
       level,
       parentId,
       epicId,
+      storyId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
@@ -105,6 +178,100 @@ export class TicketManager {
 
   getTicket(id: string): Ticket | null {
     return this.tickets.get(id) ?? null
+  }
+
+  /* ── Status Transition Methods ─────────────────────────────────── */
+
+  validateStatusTransition(
+    ticketId: string,
+    toStatus: TicketStatus,
+    actor: Actor
+  ): TransitionValidationResult {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) {
+      return {
+        valid: false,
+        errors: [`Ticket ${ticketId} not found`],
+        warnings: [],
+        missingFields: [],
+        blockedByStatuses: [],
+      }
+    }
+
+    return this.transitionEngine.validateTransition(
+      ticket,
+      toStatus,
+      actor,
+      this.getTransitionContext()
+    )
+  }
+
+  executeStatusTransition(
+    ticketId: string,
+    toStatus: TicketStatus,
+    actor: Actor
+  ): TransitionExecutionResult {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) {
+      return {
+        success: false,
+        ticket: {} as Ticket,
+        actionsExecuted: [],
+        errors: [`Ticket ${ticketId} not found`],
+      }
+    }
+
+    const result = this.transitionEngine.executeTransition(
+      ticket,
+      toStatus,
+      actor,
+      this.getTransitionContext(),
+      (updatedTicket) => {
+        this.tickets.set(updatedTicket.id, updatedTicket)
+        this.onTicketUpdate?.(updatedTicket)
+      }
+    )
+
+    if (result.success) {
+      // Handle side effects based on status
+      if (toStatus === 'done') {
+        this.unblockDependents(ticketId)
+      } else if (toStatus === 'rejected') {
+        this.blockDependents(ticketId)
+      }
+    }
+
+    return result
+  }
+
+  getAvailableTransitions(
+    ticketId: string,
+    actor: Actor
+  ): Array<{ rule: StatusTransitionRule; validation: TransitionValidationResult }> {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) return []
+
+    return this.transitionEngine.getAvailableTransitions(
+      ticket,
+      actor,
+      this.getTransitionContext()
+    )
+  }
+
+  getBlockingReasons(
+    ticketId: string,
+    toStatus: TicketStatus,
+    actor: Actor
+  ): string[] {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) return [`Ticket ${ticketId} not found`]
+
+    return this.transitionEngine.getBlockingReasons(
+      ticket,
+      toStatus,
+      actor,
+      this.getTransitionContext()
+    )
   }
 
   /** T10.2: Create escalation ticket when original fails 3 times */
@@ -233,6 +400,129 @@ export class TicketManager {
 
   reset(): void {
     this.tickets.clear()
+  }
+
+  /**
+   * Get the full hierarchy tree for a ticket.
+   * Returns the ticket and all its descendants organized as a tree.
+   */
+  getTicketHierarchy(ticketId: string): TicketHierarchyNode | null {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) return null
+
+    const buildNode = (t: Ticket, depth: number, path: string[]): TicketHierarchyNode => {
+      const children = this.getChildTickets(t.id)
+      const currentPath = [...path, t.id]
+      
+      return {
+        ticket: t,
+        depth,
+        path: currentPath,
+        children: children.map((child) => buildNode(child, depth + 1, currentPath)),
+      }
+    }
+
+    return buildNode(ticket, 0, [])
+  }
+
+  /**
+   * Get all direct children of a ticket based on parentId.
+   */
+  getChildTickets(parentId: string): Ticket[] {
+    return Array.from(this.tickets.values()).filter((t) => t.parentId === parentId)
+  }
+
+  /**
+   * Get all ancestors of a ticket (parent, grandparent, etc.)
+   */
+  getTicketAncestors(ticketId: string): Ticket[] {
+    const ancestors: Ticket[] = []
+    let current = this.tickets.get(ticketId)
+    
+    while (current?.parentId) {
+      const parent = this.tickets.get(current.parentId)
+      if (!parent) break
+      ancestors.push(parent)
+      current = parent
+    }
+    
+    return ancestors
+  }
+
+  /**
+   * Get all descendants of a ticket (children, grandchildren, etc.)
+   */
+  getTicketDescendants(ticketId: string): Ticket[] {
+    const descendants: Ticket[] = []
+    const queue = this.getChildTickets(ticketId)
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      descendants.push(current)
+      queue.push(...this.getChildTickets(current.id))
+    }
+    
+    return descendants
+  }
+
+  /**
+   * Validate that a ticket can be moved to a new parent.
+   */
+  validateMove(ticketId: string, newParentId: string): { valid: boolean; error?: string } {
+    const ticket = this.tickets.get(ticketId)
+    if (!ticket) {
+      return { valid: false, error: `Ticket ${ticketId} not found` }
+    }
+
+    const newParent = this.tickets.get(newParentId)
+    if (!newParent) {
+      return { valid: false, error: `New parent ${newParentId} not found` }
+    }
+
+    if (!ticket.level || !newParent.level) {
+      return { valid: false, error: 'Both tickets must have a level defined' }
+    }
+
+    const hierarchyValidation = validateTicketHierarchy(newParent.level, ticket.level)
+    if (!hierarchyValidation.valid) {
+      return hierarchyValidation
+    }
+
+    // Check for circular reference
+    const descendants = this.getTicketDescendants(ticketId)
+    if (descendants.some((d) => d.id === newParentId)) {
+      return { valid: false, error: 'Cannot move ticket to its own descendant' }
+    }
+
+    return { valid: true }
+  }
+
+  /**
+   * Move a ticket to a new parent.
+   */
+  moveTicket(ticketId: string, newParentId: string): Ticket | null {
+    const validation = this.validateMove(ticketId, newParentId)
+    if (!validation.valid) {
+      throw new Error(`moveTicket: ${validation.error}`)
+    }
+
+    return this.updateTicket(ticketId, { parentId: newParentId })
+  }
+
+  /**
+   * Get tickets by level.
+   */
+  getTicketsByLevel(level: TicketLevel): Ticket[] {
+    return Array.from(this.tickets.values()).filter((t) => t.level === level)
+  }
+
+  /**
+   * Get the root tickets (features or tickets without parents).
+   */
+  getRootTickets(): Ticket[] {
+    return Array.from(this.tickets.values()).filter(
+      (t) => !t.parentId && (t.level === 'feature' || !t.level)
+    )
   }
 
   private unblockDependents(completedId: string): void {

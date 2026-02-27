@@ -1,16 +1,24 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', Icon: Sun },
   { value: 'dark', label: 'Dark', Icon: Moon },
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
+
+function enableThemeTransition() {
+  document.documentElement.classList.add('theme-transition')
+  setTimeout(() => {
+    document.documentElement.classList.remove('theme-transition')
+  }, 250)
+}
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -31,6 +39,22 @@ export function ThemeToggle() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const handleThemeChange = useCallback((newTheme: string) => {
+    if (newTheme === theme) return
+    
+    enableThemeTransition()
+    setTheme(newTheme)
+    setOpen(false)
+    
+    const label = THEME_OPTIONS.find((o) => o.value === newTheme)?.label ?? newTheme
+    toast.success(`Theme changed to ${label}`, {
+      duration: 2000,
+      icon: newTheme === 'dark' ? <Moon className="h-4 w-4" /> : 
+            newTheme === 'light' ? <Sun className="h-4 w-4" /> : 
+            <Monitor className="h-4 w-4" />,
+    })
+  }, [theme, setTheme])
 
   if (!mounted) {
     return (
@@ -63,10 +87,7 @@ export function ThemeToggle() {
           {THEME_OPTIONS.map((option) => (
             <button
               key={option.value}
-              onClick={() => {
-                setTheme(option.value)
-                setOpen(false)
-              }}
+              onClick={() => handleThemeChange(option.value)}
               className={cn(
                 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
                 theme === option.value
@@ -103,9 +124,26 @@ export function ThemeToggleCompact() {
   const isDark = resolvedTheme === 'dark'
 
   const cycleTheme = () => {
-    if (theme === 'dark') setTheme('light')
-    else if (theme === 'light') setTheme('system')
-    else setTheme('dark')
+    enableThemeTransition()
+    
+    let newTheme: string
+    if (theme === 'dark') {
+      newTheme = 'light'
+    } else if (theme === 'light') {
+      newTheme = 'system'
+    } else {
+      newTheme = 'dark'
+    }
+    
+    setTheme(newTheme)
+    
+    const label = THEME_OPTIONS.find((o) => o.value === newTheme)?.label ?? newTheme
+    toast.success(`Theme changed to ${label}`, {
+      duration: 2000,
+      icon: newTheme === 'dark' ? <Moon className="h-4 w-4" /> : 
+            newTheme === 'light' ? <Sun className="h-4 w-4" /> : 
+            <Monitor className="h-4 w-4" />,
+    })
   }
 
   return (

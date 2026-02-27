@@ -1,0 +1,22 @@
+{
+  "id": "sample-theme",
+  "name": "Sample Dark Theme",
+  "version": "1.0.0",
+  "description": "A sample dark theme extension demonstrating the extension system",
+  "author": "SwarmUI Team",
+  "main": "index.js",
+  "category": "theme",
+  "license": "MIT",
+  "keywords": ["theme", "dark", "sample"],
+  "contributes": {
+    "themes": [
+      {
+        "id": "sample-dark",
+        "label": "Sample Dark",
+        "uiTheme": "vs-dark",
+        "path": "./theme.json"
+      }
+    ]
+  },
+  "activationEvents": ["onStartup"]
+}

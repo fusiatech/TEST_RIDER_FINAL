@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { FileTree, type FileNode } from '@/components/file-tree'
 import { useSwarmStore } from '@/lib/store'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
 
 interface FileBrowserProps {
   rootPath?: string
@@ -15,6 +15,14 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
   const [loading, setLoading] = useState(true)
   const activeFilePath = useSwarmStore((s) => s.activeFilePath)
   const openFileInIde = useSwarmStore((s) => s.openFileInIde)
+  const setFilesLoading = useSwarmStore((s) => s.setFilesLoading)
+  const fileTreeVersion = useSwarmStore((s) => s.fileTreeVersion)
+  const watchProject = useSwarmStore((s) => s.watchProject)
+  const unwatchProject = useSwarmStore((s) => s.unwatchProject)
+  const watchedProjectPath = useSwarmStore((s) => s.watchedProjectPath)
+  const initWebSocket = useSwarmStore((s) => s.initWebSocket)
+  const isWatching = watchedProjectPath === rootPath && rootPath !== undefined
+  const hasInitializedWatch = useRef(false)
 
   const loadDirectory = useCallback(async (dirPath?: string) => {
     const query = dirPath ? `?path=${encodeURIComponent(dirPath)}` : ''
@@ -40,10 +48,34 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
     return () => {
       cancelled = true
     }
-  }, [rootPath, loadDirectory])
+  }, [rootPath, loadDirectory, fileTreeVersion])
+
+  useEffect(() => {
+    if (rootPath && !hasInitializedWatch.current) {
+      hasInitializedWatch.current = true
+      initWebSocket()
+      watchProject(rootPath)
+    }
+    return () => {
+      if (hasInitializedWatch.current) {
+        unwatchProject()
+        hasInitializedWatch.current = false
+      }
+    }
+  }, [rootPath, initWebSocket, watchProject, unwatchProject])
+
+  const toggleWatching = useCallback(() => {
+    if (!rootPath) return
+    if (isWatching) {
+      unwatchProject()
+    } else {
+      watchProject(rootPath)
+    }
+  }, [rootPath, isWatching, watchProject, unwatchProject])
 
   const handleFileSelect = useCallback(
     async (filePath: string) => {
+      setFilesLoading(true)
       try {
         const res = await fetch(`/api/files/${encodeURIComponent(filePath)}`)
         if (!res.ok) return
@@ -70,9 +102,11 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
         onFileSelect?.(filePath, content)
       } catch {
         // Failed to load file content
+      } finally {
+        setFilesLoading(false)
       }
     },
-    [openFileInIde, onFileSelect]
+    [openFileInIde, onFileSelect, setFilesLoading]
   )
 
   if (loading) {
@@ -84,10 +118,37 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
   }
 
   return (
-    <FileTree
-      files={rootFiles}
-      onSelect={handleFileSelect}
-      selectedPath={activeFilePath ?? undefined}
-    />
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-border/50 px-2 py-1">
+        <span className="text-xs text-muted-foreground">Files</span>
+        <button
+          onClick={toggleWatching}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          title={isWatching ? 'Stop watching for changes' : 'Watch for file changes'}
+        >
+          {isWatching ? (
+            <>
+              <Eye className="h-3 w-3 text-green-500" />
+              <span className="text-green-500">Watching</span>
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-3 w-3" />
+              <span>Watch</span>
+            </>
+          )}
+        </button>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <FileTree
+          files={rootFiles}
+          onSelect={handleFileSelect}
+          selectedPath={activeFilePath ?? undefined}
+          onRefresh={() => {
+            loadDirectory(rootPath).then(setRootFiles).catch(() => setRootFiles([]))
+          }}
+        />
+      </div>
+    </div>
   )
 }

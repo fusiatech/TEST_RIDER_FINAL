@@ -1,6 +1,6 @@
 import { exec } from 'child_process'
-import { existsSync } from 'fs'
-import { join } from 'path'
+import { existsSync, readFileSync, readdirSync } from 'fs'
+import { join, extname } from 'path'
 import { promisify } from 'util'
 
 const execAsync = promisify(exec)
@@ -23,6 +23,8 @@ export interface TestingConfig {
   typescript?: boolean
   eslint?: boolean
   npmAudit?: boolean
+  secretDetection?: boolean
+  sastChecks?: boolean
   customCommand?: string
 }
 
@@ -30,6 +32,228 @@ const DEFAULT_TESTING_CONFIG: TestingConfig = {
   typescript: true,
   eslint: true,
   npmAudit: true,
+  secretDetection: true,
+  sastChecks: true,
+}
+
+/** Secret detection patterns */
+const SECRET_PATTERNS = [
+  { name: 'AWS Access Key', pattern: /AKIA[0-9A-Z]{16}/ },
+  { name: 'GitHub Token', pattern: /gh[pousr]_[A-Za-z0-9_]{36,}/ },
+  { name: 'Private Key', pattern: /-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/ },
+  { name: 'Generic API Key', pattern: /api[_-]?key['":\s]*[=:]\s*['"][A-Za-z0-9]{20,}['"]/i },
+  { name: 'Generic Secret', pattern: /secret['":\s]*[=:]\s*['"][A-Za-z0-9]{20,}['"]/i },
+  { name: 'Password in URL', pattern: /:\/\/[^:]+:[^@]+@/ },
+  { name: 'Slack Token', pattern: /xox[baprs]-[0-9]{10,}-[A-Za-z0-9]+/ },
+  { name: 'Google API Key', pattern: /AIza[0-9A-Za-z_-]{35}/ },
+  { name: 'Stripe Key', pattern: /sk_live_[0-9a-zA-Z]{24,}/ },
+  { name: 'OpenAI Key', pattern: /sk-[A-Za-z0-9]{48}/ },
+]
+
+/** SAST-like vulnerability patterns */
+const VULNERABILITY_PATTERNS = [
+  { name: 'SQL Injection', pattern: /`SELECT.*\$\{.*\}`|`INSERT.*\$\{.*\}`|`UPDATE.*\$\{.*\}`|`DELETE.*\$\{.*\}`/i },
+  { name: 'Command Injection', pattern: /exec\s*\(\s*`[^`]*\$\{[^}]+\}[^`]*`\s*\)/ },
+  { name: 'Eval Usage', pattern: /\beval\s*\([^)]*\$\{/ },
+  { name: 'Unsafe innerHTML', pattern: /\.innerHTML\s*=\s*[^'"][^;]*\$\{/ },
+  { name: 'Disabled TLS', pattern: /rejectUnauthorized\s*:\s*false/ },
+  { name: 'Hardcoded Password', pattern: /password\s*[:=]\s*['"][^'"]{8,}['"](?!.*process\.env)/i },
+]
+
+/** Files to skip during scanning */
+const SKIP_PATTERNS = [
+  /node_modules/,
+  /\.git/,
+  /\.next/,
+  /dist/,
+  /build/,
+  /coverage/,
+  /\.min\.js$/,
+  /\.map$/,
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+]
+
+/** File extensions to scan */
+const SCANNABLE_EXTENSIONS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+  '.json', '.yml', '.yaml', '.env', '.sh', '.bash',
+])
+
+interface SecretFinding {
+  file: string
+  line: number
+  pattern: string
+  snippet: string
+}
+
+interface VulnerabilityFinding {
+  file: string
+  line: number
+  pattern: string
+  snippet: string
+}
+
+/**
+ * Recursively scan directory for files
+ */
+function getFilesToScan(dir: string, files: string[] = []): string[] {
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      
+      if (SKIP_PATTERNS.some(p => p.test(fullPath))) {
+        continue
+      }
+      
+      if (entry.isDirectory()) {
+        getFilesToScan(fullPath, files)
+      } else if (entry.isFile()) {
+        const ext = extname(entry.name).toLowerCase()
+        if (SCANNABLE_EXTENSIONS.has(ext) || entry.name.startsWith('.env')) {
+          files.push(fullPath)
+        }
+      }
+    }
+  } catch {
+    // Directory not accessible
+  }
+  return files
+}
+
+/**
+ * Scan a file for secrets
+ */
+function scanFileForSecrets(filePath: string): SecretFinding[] {
+  const findings: SecretFinding[] = []
+  
+  try {
+    const content = readFileSync(filePath, 'utf-8')
+    const lines = content.split('\n')
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      
+      // Skip comments and environment variable references
+      if (line.trim().startsWith('//') || line.trim().startsWith('#')) continue
+      if (line.includes('process.env')) continue
+      if (line.includes('${') && line.includes('ENV')) continue
+      
+      for (const { name, pattern } of SECRET_PATTERNS) {
+        if (pattern.test(line)) {
+          findings.push({
+            file: filePath,
+            line: i + 1,
+            pattern: name,
+            snippet: line.slice(0, 100).trim(),
+          })
+        }
+      }
+    }
+  } catch {
+    // File not readable
+  }
+  
+  return findings
+}
+
+/**
+ * Scan a file for vulnerabilities
+ */
+function scanFileForVulnerabilities(filePath: string): VulnerabilityFinding[] {
+  const findings: VulnerabilityFinding[] = []
+  
+  try {
+    const content = readFileSync(filePath, 'utf-8')
+    const lines = content.split('\n')
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      
+      // Skip comments
+      if (line.trim().startsWith('//') || line.trim().startsWith('#')) continue
+      
+      for (const { name, pattern } of VULNERABILITY_PATTERNS) {
+        if (pattern.test(line)) {
+          findings.push({
+            file: filePath,
+            line: i + 1,
+            pattern: name,
+            snippet: line.slice(0, 100).trim(),
+          })
+        }
+      }
+    }
+  } catch {
+    // File not readable
+  }
+  
+  return findings
+}
+
+/**
+ * Run secret detection scan
+ */
+export async function runSecretDetection(workdir: string): Promise<SecurityCheck> {
+  const files = getFilesToScan(workdir)
+  const allFindings: SecretFinding[] = []
+  
+  for (const file of files) {
+    const findings = scanFileForSecrets(file)
+    allFindings.push(...findings)
+  }
+  
+  if (allFindings.length === 0) {
+    return {
+      name: 'Secret Detection',
+      passed: true,
+      output: `Scanned ${files.length} files. No hardcoded secrets found.`,
+    }
+  }
+  
+  const output = allFindings
+    .slice(0, 10)
+    .map(f => `${f.file}:${f.line} - ${f.pattern}: ${f.snippet}`)
+    .join('\n')
+  
+  return {
+    name: 'Secret Detection',
+    passed: false,
+    output: `Found ${allFindings.length} potential secret(s):\n${output}${allFindings.length > 10 ? `\n... and ${allFindings.length - 10} more` : ''}`,
+  }
+}
+
+/**
+ * Run SAST-like vulnerability scan
+ */
+export async function runSASTChecks(workdir: string): Promise<SecurityCheck> {
+  const files = getFilesToScan(workdir)
+  const allFindings: VulnerabilityFinding[] = []
+  
+  for (const file of files) {
+    const findings = scanFileForVulnerabilities(file)
+    allFindings.push(...findings)
+  }
+  
+  if (allFindings.length === 0) {
+    return {
+      name: 'SAST Vulnerability Scan',
+      passed: true,
+      output: `Scanned ${files.length} files. No vulnerability patterns found.`,
+    }
+  }
+  
+  const output = allFindings
+    .slice(0, 10)
+    .map(f => `${f.file}:${f.line} - ${f.pattern}: ${f.snippet}`)
+    .join('\n')
+  
+  return {
+    name: 'SAST Vulnerability Scan',
+    passed: false,
+    output: `Found ${allFindings.length} potential vulnerability(ies):\n${output}${allFindings.length > 10 ? `\n... and ${allFindings.length - 10} more` : ''}`,
+  }
 }
 
 /**
@@ -78,8 +302,8 @@ async function safeExec(
  * - **ESLint** (`npx eslint . --max-warnings 0`) — if an ESLint config exists
  * - **npm audit** (`npm audit --json`) — if `package.json` exists
  *
- * Checks that cannot run (missing config, command not found) are marked as
- * passed/skipped so they do not block the pipeline.
+ * Checks that cannot run because required tooling is missing are marked as
+ * failed. Checks with missing config files are skipped.
  *
  * @param workdir - The directory to run the checks in.
  * @param testingConfig - Optional. Enables/disables checks. Default: all enabled.
@@ -141,24 +365,33 @@ export async function runSecurityChecks(
     const result = await safeExec('npm audit --json', workdir)
 
     let hasCritical = false
+    let parsed = false
+    let parseError = ''
     try {
       const audit = JSON.parse(result.output) as {
         metadata?: { vulnerabilities?: { critical?: number; high?: number } }
       }
+      parsed = true
       const vulns = audit?.metadata?.vulnerabilities
       if (vulns && ((vulns.critical ?? 0) > 0 || (vulns.high ?? 0) > 0)) {
         hasCritical = true
       }
-    } catch {
-      // If JSON parsing fails we'll just report the raw output
+    } catch (error) {
+      parseError = error instanceof Error ? error.message : String(error)
     }
+
+    const toolingFailed = result.code !== 0 && !parsed
+    const parseFailed = !parsed
+    const passed = !toolingFailed && !parseFailed && !hasCritical
 
     checks.push({
       name: 'npm audit',
-      passed: !hasCritical,
+      passed,
       output: hasCritical
         ? 'Critical or high severity vulnerabilities found.'
-        : result.output.slice(0, 500)
+        : parseFailed
+          ? `Failed to parse npm audit output: ${parseError || 'Unknown parsing error'}\n${result.output.slice(0, 500)}`
+          : result.output.slice(0, 500)
     })
   } else if (config.npmAudit !== false) {
     checks.push({
@@ -166,6 +399,18 @@ export async function runSecurityChecks(
       passed: true,
       output: 'Skipped — no package.json found.'
     })
+  }
+
+  // Secret Detection
+  if (config.secretDetection !== false) {
+    const secretCheck = await runSecretDetection(workdir)
+    checks.push(secretCheck)
+  }
+
+  // SAST Vulnerability Scan
+  if (config.sastChecks !== false) {
+    const sastCheck = await runSASTChecks(workdir)
+    checks.push(sastCheck)
   }
 
   const allPassed = checks.every((c) => c.passed)

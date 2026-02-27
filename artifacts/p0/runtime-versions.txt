@@ -1,0 +1,3 @@
+﻿Node/npm baseline check (2026-02-27T06:24:24.9109606+00:00)
+node -v failed: The term 'node' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+npm -v failed: The term 'npm' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spelling of the name, or if a path was included, verify that the path is correct and try again.

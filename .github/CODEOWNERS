@@ -1,0 +1,40 @@
+# SwarmUI Code Owners
+# These owners will be requested for review when PRs touch matching files
+
+# Default owners for everything
+* @swarm-ui/maintainers
+
+# Core application
+/app/ @swarm-ui/frontend
+/components/ @swarm-ui/frontend
+/lib/ @swarm-ui/core
+
+# Server-side code
+/server/ @swarm-ui/backend
+/server.ts @swarm-ui/backend
+
+# API routes
+/app/api/ @swarm-ui/backend
+
+# Configuration
+/next.config.ts @swarm-ui/core
+/tsconfig.json @swarm-ui/core
+/package.json @swarm-ui/core
+
+# Styling
+/app/globals.css @swarm-ui/frontend
+/tailwind.config.* @swarm-ui/frontend
+
+# CI/CD and DevOps
+/.github/ @swarm-ui/devops
+/Dockerfile @swarm-ui/devops
+/docker-compose.yml @swarm-ui/devops
+/.dockerignore @swarm-ui/devops
+
+# Documentation
+*.md @swarm-ui/docs
+/docs/ @swarm-ui/docs
+
+# Security-sensitive files
+/.env* @swarm-ui/security
+/server/auth* @swarm-ui/security

@@ -103,7 +103,7 @@ export function IdeationBot({ onClose }: { onClose: () => void }) {
             <Sparkles className="h-3 w-3" />
             Generate Ideas
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close idea generator panel">
             <X className="h-4 w-4" />
           </Button>
         </div>

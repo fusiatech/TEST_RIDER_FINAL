@@ -1,16 +1,19 @@
 /**
  * Evidence ledger helpers for pipeline runs.
  * T8.1, T8.2, T8.4: Create evidence, append excerpts, diff summary.
+ * GAP-011: Enhanced with file snapshots, test results, screenshots.
  */
 
 import { execSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import type { EvidenceLedgerEntry } from '@/lib/types'
-import { createEvidence, updateEvidence } from '@/server/storage'
+import { randomUUID, createHash } from 'node:crypto'
+import { readFileSync, existsSync } from 'node:fs'
+import type { EvidenceLedgerEntry, FileSnapshot, LinkedTestResult, Screenshot, TestResult } from '@/lib/types'
+import { createEvidence, updateEvidence, getEvidence } from '@/server/storage'
 import { isGitRepo } from '@/server/worktree-manager'
 
 const CLI_EXCERPT_MAX = 2048
 const DIFF_SUMMARY_MAX = 1024
+const FILE_SNAPSHOT_MAX = 100 * 1024
 
 export interface GitInfo {
   branch: string
@@ -118,4 +121,132 @@ export async function linkTicketToEvidence(
   await updateEvidence(evidenceId, {
     ticketIds: [ticketId],
   })
+}
+
+/**
+ * GAP-011: Capture a file snapshot with content hash.
+ * Returns the snapshot object or null if file doesn't exist or is too large.
+ */
+export async function captureFileSnapshot(filePath: string): Promise<FileSnapshot | null> {
+  try {
+    if (!existsSync(filePath)) {
+      return null
+    }
+
+    const content = readFileSync(filePath, 'utf-8')
+    
+    if (content.length > FILE_SNAPSHOT_MAX) {
+      return {
+        path: filePath,
+        content: content.slice(0, FILE_SNAPSHOT_MAX) + '\n...[truncated]',
+        hash: createHash('sha256').update(content).digest('hex'),
+      }
+    }
+
+    return {
+      path: filePath,
+      content,
+      hash: createHash('sha256').update(content).digest('hex'),
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * GAP-011: Append file snapshot to evidence entry.
+ */
+export async function appendFileSnapshot(
+  evidenceId: string,
+  snapshot: FileSnapshot
+): Promise<void> {
+  const existing = await getEvidence(evidenceId)
+  const snapshots = existing?.fileSnapshots ?? []
+  
+  const existingIdx = snapshots.findIndex(s => s.path === snapshot.path)
+  if (existingIdx >= 0) {
+    snapshots[existingIdx] = snapshot
+  } else {
+    snapshots.push(snapshot)
+  }
+  
+  await updateEvidence(evidenceId, {
+    fileSnapshots: snapshots,
+  })
+}
+
+/**
+ * GAP-011: Link a test result to evidence entry.
+ */
+export async function linkTestResult(
+  evidenceId: string,
+  testResult: TestResult
+): Promise<void> {
+  const existing = await getEvidence(evidenceId)
+  const results: LinkedTestResult[] = existing?.testResults ?? []
+  
+  const linkedResult: LinkedTestResult = {
+    testId: testResult.id,
+    passed: testResult.status === 'passed',
+    output: testResult.error || testResult.stackTrace || `Test ${testResult.status} in ${testResult.duration}ms`,
+  }
+  
+  const existingIdx = results.findIndex(r => r.testId === testResult.id)
+  if (existingIdx >= 0) {
+    results[existingIdx] = linkedResult
+  } else {
+    results.push(linkedResult)
+  }
+  
+  await updateEvidence(evidenceId, {
+    testResults: results,
+  })
+}
+
+/**
+ * GAP-011: Link multiple test results to evidence entry.
+ */
+export async function linkTestResults(
+  evidenceId: string,
+  testResults: TestResult[]
+): Promise<void> {
+  for (const result of testResults) {
+    await linkTestResult(evidenceId, result)
+  }
+}
+
+/**
+ * GAP-011: Append a screenshot reference to evidence entry.
+ */
+export async function appendScreenshot(
+  evidenceId: string,
+  screenshot: Screenshot
+): Promise<void> {
+  const existing = await getEvidence(evidenceId)
+  const screenshots = existing?.screenshots ?? []
+  screenshots.push(screenshot)
+  
+  await updateEvidence(evidenceId, {
+    screenshots,
+  })
+}
+
+/**
+ * GAP-011: Capture multiple file snapshots and append to evidence.
+ */
+export async function captureAndAppendFileSnapshots(
+  evidenceId: string,
+  filePaths: string[]
+): Promise<number> {
+  let captured = 0
+  
+  for (const filePath of filePaths) {
+    const snapshot = await captureFileSnapshot(filePath)
+    if (snapshot) {
+      await appendFileSnapshot(evidenceId, snapshot)
+      captured++
+    }
+  }
+  
+  return captured
 }

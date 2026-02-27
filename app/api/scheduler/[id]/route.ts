@@ -31,18 +31,30 @@ export async function PUT(
     }
 
     const update = result.data
-    if (update.enabled === true) {
-      await scheduler.enableTask(id)
-    } else if (update.enabled === false) {
-      await scheduler.disableTask(id)
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json(
+        { error: 'At least one update field is required' },
+        { status: 400 }
+      )
     }
 
-    const updated = await scheduler.getTask(id)
+    const updated = await scheduler.updateTask(id, update)
+    if (!updated) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+    }
+
     return NextResponse.json(updated)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  return PUT(request, context)
 }
 
 export async function DELETE(

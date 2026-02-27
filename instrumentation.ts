@@ -1,6 +1,6 @@
-export async function register(): Promise<void> {
+export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const { startStandaloneWSServer } = await import('@/server/ws-standalone')
-    startStandaloneWSServer()
+    const { initTelemetry } = await import('./lib/telemetry')
+    initTelemetry()
   }
 }

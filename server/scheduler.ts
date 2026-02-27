@@ -71,6 +71,46 @@ export class Scheduler {
     await saveScheduledTask(updated)
   }
 
+  async updateTask(
+    id: string,
+    patch: Partial<Pick<ScheduledTask, 'name' | 'cronExpression' | 'prompt' | 'mode' | 'enabled'>>
+  ): Promise<ScheduledTask | undefined> {
+    await this.ensureLoaded()
+    const existing = this.tasks.get(id)
+    if (!existing) {
+      return undefined
+    }
+
+    const nextEnabled = patch.enabled ?? existing.enabled
+    const cronExpression = patch.cronExpression ?? existing.cronExpression
+    const shouldRecalculateNextRun =
+      patch.enabled === true ||
+      (nextEnabled && patch.cronExpression !== undefined)
+
+    const updated: ScheduledTask = {
+      ...existing,
+      ...patch,
+      cronExpression,
+      enabled: nextEnabled,
+      ...(shouldRecalculateNextRun ? { nextRun: this.getNextRunTime(cronExpression) } : {}),
+    }
+
+    this.tasks.set(id, updated)
+    await saveScheduledTask(updated)
+
+    if (!this.started) {
+      return updated
+    }
+
+    if (updated.enabled) {
+      this.scheduleTask(updated)
+    } else {
+      this.clearTimer(id)
+    }
+
+    return updated
+  }
+
   async getTasks(): Promise<ScheduledTask[]> {
     await this.ensureLoaded()
     return Array.from(this.tasks.values())

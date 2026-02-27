@@ -44,7 +44,7 @@ export function LivePreview() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') handleUrlSubmit()
           }}
-          placeholder="http://localhost:3001"
+          placeholder={process.env.NEXT_PUBLIC_PREVIEW_URL || 'http://localhost:3000'}
           className="h-7 flex-1 text-xs bg-background"
         />
         <Button

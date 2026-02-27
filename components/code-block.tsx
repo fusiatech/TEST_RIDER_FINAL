@@ -54,20 +54,9 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   }
 
   const handleInsertToVSCode = () => {
-    try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const ws = new WebSocket(`${protocol}//${window.location.host}/api/ws`)
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'insert-code', code }))
-        ws.close()
-        toast.success('Sent to VS Code')
-      }
-      ws.onerror = () => {
-        toast.error('Failed to connect to VS Code')
-      }
-    } catch {
-      toast.error('Failed to send to VS Code')
-    }
+    toast.info('Insert is currently unavailable', {
+      description: 'The VS Code bridge is not configured in this environment.',
+    })
   }
 
   return (

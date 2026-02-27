@@ -4,6 +4,7 @@
  * T2.1: Wire pipeline-engine for scheduler/background jobs.
  */
 import { writeFileSync, chmodSync } from 'node:fs'
+import { getTempFile } from '@/lib/paths'
 import type {
   Settings,
   SwarmResult,
@@ -44,7 +45,7 @@ export interface ScheduledPipelineOptions {
   onAgentStatus: (agentId: string, status: string, exitCode?: number) => void
 }
 
-const MOCK_AGENT_PATH = '/tmp/mock-agent.sh'
+const MOCK_AGENT_PATH = getTempFile('mock-agent.sh')
 
 function ensureMockAgent(): void {
   const script = `#!/bin/bash

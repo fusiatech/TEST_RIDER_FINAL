@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: swarm-ui
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: swarm-ui
+          app: swarm-ui
+          __path__: /var/log/swarm-ui/*.log
+
+  - job_name: swarm-ui-json
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            component: component
+            traceId: traceId
+            spanId: spanId
+      - labels:
+          level:
+          component:
+          traceId:
+          spanId:
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: swarm-ui-structured
+          app: swarm-ui
+          __path__: /var/log/swarm-ui/app.log

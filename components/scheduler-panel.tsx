@@ -233,6 +233,7 @@ function TaskRow({
           size="icon"
           className="h-7 w-7 text-muted hover:text-foreground"
           onClick={onEdit}
+          aria-label={`Edit task "${task.name}"`}
         >
           <Pencil className="h-3 w-3" />
         </Button>
@@ -241,6 +242,7 @@ function TaskRow({
           size="icon"
           className="h-7 w-7 text-muted hover:text-red-400"
           onClick={() => deleteScheduledTask(task.id)}
+          aria-label={`Delete task "${task.name}"`}
         >
           <Trash2 className="h-3 w-3" />
         </Button>
@@ -278,7 +280,7 @@ export function SchedulerPanel({ onClose }: { onClose: () => void }) {
             <Plus className="h-3 w-3" />
             New Schedule
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close scheduler panel">
             <X className="h-4 w-4" />
           </Button>
         </div>

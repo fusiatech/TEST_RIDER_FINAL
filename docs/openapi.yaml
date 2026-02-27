@@ -1,0 +1,2312 @@
+openapi: 3.0.3
+info:
+  title: SwarmUI API
+  description: |
+    API documentation for SwarmUI - AI-powered development environment with parallel CLI agent orchestration.
+    
+    ## Overview
+    SwarmUI provides a comprehensive API for managing:
+    - Chat sessions with AI agents
+    - Project and ticket management
+    - Background job processing
+    - Git operations
+    - File system operations
+    - Terminal sessions
+    - Testing and debugging
+    
+    ## Authentication
+    Most endpoints require authentication via NextAuth.js session cookies.
+    
+    ## WebSocket
+    Real-time updates are available via WebSocket at `ws://localhost:3000`.
+    See [WebSocket API documentation](./WEBSOCKET_API.md) for details.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    name: SwarmUI Team
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: http://localhost:4000
+    description: Alternative dev port
+
+tags:
+  - name: Health
+    description: Health check and monitoring endpoints
+  - name: Sessions
+    description: Chat session management
+  - name: Projects
+    description: Project management
+  - name: Tickets
+    description: Ticket management within projects
+  - name: Epics
+    description: Epic management within projects
+  - name: Jobs
+    description: Background job queue management
+  - name: Scheduler
+    description: Scheduled task management
+  - name: Git
+    description: Git operations (status, commit, push, pull, branches)
+  - name: Files
+    description: File system operations
+  - name: Terminal
+    description: Terminal session management
+  - name: Tests
+    description: Test runner operations
+  - name: Debug
+    description: Debugging and breakpoint management
+  - name: Settings
+    description: Application settings
+  - name: Extensions
+    description: Extension management
+  - name: Admin
+    description: Administrative operations (requires admin role)
+  - name: MCP
+    description: Model Context Protocol operations
+  - name: Metrics
+    description: Prometheus metrics
+
+paths:
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Comprehensive health check
+      description: Returns detailed health status including dependency checks, memory usage, and system metrics
+      operationId: getHealth
+      responses:
+        '200':
+          description: Health status response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /api/health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Simple liveness check for Kubernetes probes
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      description: Readiness check for Kubernetes probes - verifies service can accept traffic
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+        '503':
+          description: Service not ready
+
+  /api/metrics:
+    get:
+      tags: [Metrics]
+      summary: Prometheus metrics
+      description: Returns Prometheus-format metrics for monitoring
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/sessions:
+    get:
+      tags: [Sessions]
+      summary: List all sessions
+      operationId: listSessions
+      responses:
+        '200':
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+    post:
+      tags: [Sessions]
+      summary: Create a new session
+      operationId: createSession
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: Session title
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /api/sessions/{id}:
+    get:
+      tags: [Sessions]
+      summary: Get session by ID
+      operationId: getSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+    patch:
+      tags: [Sessions]
+      summary: Update session
+      operationId: updateSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                messages:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ChatMessage'
+      responses:
+        '200':
+          description: Session updated
+    delete:
+      tags: [Sessions]
+      summary: Delete session
+      operationId: deleteSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session deleted
+
+  /api/projects:
+    get:
+      tags: [Projects]
+      summary: List all projects
+      operationId: listProjects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags: [Projects]
+      summary: Create a new project
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /api/projects/{id}:
+    get:
+      tags: [Projects]
+      summary: Get project by ID
+      operationId: getProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          description: Project not found
+    patch:
+      tags: [Projects]
+      summary: Update project
+      operationId: updateProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectUpdate'
+      responses:
+        '200':
+          description: Project updated
+    delete:
+      tags: [Projects]
+      summary: Delete project
+      operationId: deleteProject
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project deleted
+
+  /api/projects/{id}/tickets:
+    get:
+      tags: [Tickets]
+      summary: List tickets for a project
+      operationId: listProjectTickets
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: level
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketLevel'
+      responses:
+        '200':
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+    post:
+      tags: [Tickets]
+      summary: Create a ticket
+      operationId: createTicket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreate'
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+  /api/projects/{id}/epics:
+    get:
+      tags: [Epics]
+      summary: List epics for a project
+      operationId: listProjectEpics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of epics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Epic'
+    post:
+      tags: [Epics]
+      summary: Create an epic
+      operationId: createEpic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EpicCreate'
+      responses:
+        '201':
+          description: Epic created
+
+  /api/projects/{id}/prd:
+    get:
+      tags: [Projects]
+      summary: Get project PRD
+      operationId: getProjectPrd
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PRD content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prd:
+                    type: string
+                  status:
+                    type: string
+                    enum: [draft, approved, rejected]
+    put:
+      tags: [Projects]
+      summary: Update project PRD
+      operationId: updateProjectPrd
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prd:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, approved, rejected]
+      responses:
+        '200':
+          description: PRD updated
+
+  /api/jobs:
+    get:
+      tags: [Jobs]
+      summary: List all jobs
+      operationId: listJobs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SwarmJob'
+    post:
+      tags: [Jobs]
+      summary: Create a new job
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt, sessionId]
+              properties:
+                prompt:
+                  type: string
+                sessionId:
+                  type: string
+                mode:
+                  type: string
+                  enum: [chat, swarm, project]
+                priority:
+                  type: integer
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwarmJob'
+
+  /api/jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get job by ID
+      operationId: getJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwarmJob'
+        '404':
+          description: Job not found
+    delete:
+      tags: [Jobs]
+      summary: Cancel job
+      operationId: cancelJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job cancelled
+
+  /api/scheduler:
+    get:
+      tags: [Scheduler]
+      summary: List scheduled tasks
+      operationId: listScheduledTasks
+      responses:
+        '200':
+          description: List of scheduled tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledTask'
+    post:
+      tags: [Scheduler]
+      summary: Create scheduled task
+      operationId: createScheduledTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduledTaskCreate'
+      responses:
+        '201':
+          description: Task created
+
+  /api/scheduler/{id}:
+    get:
+      tags: [Scheduler]
+      summary: Get scheduled task
+      operationId: getScheduledTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task details
+    patch:
+      tags: [Scheduler]
+      summary: Update scheduled task
+      operationId: updateScheduledTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                cronExpression:
+                  type: string
+      responses:
+        '200':
+          description: Task updated
+    delete:
+      tags: [Scheduler]
+      summary: Delete scheduled task
+      operationId: deleteScheduledTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task deleted
+
+  /api/git/status:
+    get:
+      tags: [Git]
+      summary: Get git status
+      operationId: getGitStatus
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+          description: Project path (defaults to settings.projectPath)
+      responses:
+        '200':
+          description: Git status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitStatus'
+
+  /api/git/diff:
+    get:
+      tags: [Git]
+      summary: Get git diff
+      operationId: getGitDiff
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+        - name: staged
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Git diff
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  diff:
+                    type: string
+
+  /api/git/commit:
+    post:
+      tags: [Git]
+      summary: Create a commit
+      operationId: createGitCommit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                path:
+                  type: string
+      responses:
+        '200':
+          description: Commit created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hash:
+                    type: string
+                  message:
+                    type: string
+
+  /api/git/stage:
+    post:
+      tags: [Git]
+      summary: Stage files
+      operationId: stageFiles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                all:
+                  type: boolean
+      responses:
+        '200':
+          description: Files staged
+
+  /api/git/discard:
+    post:
+      tags: [Git]
+      summary: Discard changes
+      operationId: discardChanges
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Changes discarded
+
+  /api/git/push:
+    post:
+      tags: [Git]
+      summary: Push to remote
+      operationId: gitPush
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remote:
+                  type: string
+                  default: origin
+                branch:
+                  type: string
+      responses:
+        '200':
+          description: Push successful
+
+  /api/git/pull:
+    post:
+      tags: [Git]
+      summary: Pull from remote
+      operationId: gitPull
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remote:
+                  type: string
+                  default: origin
+                branch:
+                  type: string
+      responses:
+        '200':
+          description: Pull successful
+
+  /api/git/branches:
+    get:
+      tags: [Git]
+      summary: List branches
+      operationId: listBranches
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitBranch'
+    post:
+      tags: [Git]
+      summary: Create branch
+      operationId: createBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                startPoint:
+                  type: string
+      responses:
+        '201':
+          description: Branch created
+
+  /api/git/branches/{name}:
+    delete:
+      tags: [Git]
+      summary: Delete branch
+      operationId: deleteBranch
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Branch deleted
+
+  /api/files:
+    get:
+      tags: [Files]
+      summary: List files in directory
+      operationId: listFiles
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+          description: Directory path to list
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileEntry'
+
+  /api/files/{path}:
+    get:
+      tags: [Files]
+      summary: Read file content
+      operationId: readFile
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: File path (URL encoded)
+      responses:
+        '200':
+          description: File content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+                  path:
+                    type: string
+    put:
+      tags: [Files]
+      summary: Write file content
+      operationId: writeFile
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+      responses:
+        '200':
+          description: File written
+    delete:
+      tags: [Files]
+      summary: Delete file
+      operationId: deleteFile
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File deleted
+
+  /api/files/search:
+    get:
+      tags: [Files]
+      summary: Search files
+      operationId: searchFiles
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: path
+          in: query
+          schema:
+            type: string
+          description: Base path to search in
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FileSearchResult'
+
+  /api/terminal:
+    get:
+      tags: [Terminal]
+      summary: List terminal sessions
+      operationId: listTerminals
+      responses:
+        '200':
+          description: List of terminals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TerminalSession'
+    post:
+      tags: [Terminal]
+      summary: Create terminal session
+      operationId: createTerminal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cwd:
+                  type: string
+                shell:
+                  type: string
+      responses:
+        '201':
+          description: Terminal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminalSession'
+
+  /api/terminal/{id}:
+    get:
+      tags: [Terminal]
+      summary: Get terminal session
+      operationId: getTerminal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Terminal details
+    delete:
+      tags: [Terminal]
+      summary: Close terminal session
+      operationId: closeTerminal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Terminal closed
+
+  /api/terminal/{id}/write:
+    post:
+      tags: [Terminal]
+      summary: Write to terminal
+      operationId: writeToTerminal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: string
+      responses:
+        '200':
+          description: Data written
+
+  /api/terminal/{id}/resize:
+    post:
+      tags: [Terminal]
+      summary: Resize terminal
+      operationId: resizeTerminal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cols, rows]
+              properties:
+                cols:
+                  type: integer
+                rows:
+                  type: integer
+      responses:
+        '200':
+          description: Terminal resized
+
+  /api/tests:
+    get:
+      tags: [Tests]
+      summary: List test jobs
+      operationId: listTestJobs
+      responses:
+        '200':
+          description: List of test jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TestJob'
+    post:
+      tags: [Tests]
+      summary: Run tests
+      operationId: runTests
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectPath:
+                  type: string
+                filter:
+                  type: string
+                watch:
+                  type: boolean
+      responses:
+        '201':
+          description: Test job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestJob'
+
+  /api/tests/{id}:
+    get:
+      tags: [Tests]
+      summary: Get test job
+      operationId: getTestJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestJob'
+    delete:
+      tags: [Tests]
+      summary: Cancel test job
+      operationId: cancelTestJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test job cancelled
+
+  /api/debug:
+    get:
+      tags: [Debug]
+      summary: List debug sessions
+      operationId: listDebugSessions
+      responses:
+        '200':
+          description: List of debug sessions
+    post:
+      tags: [Debug]
+      summary: Create debug session
+      operationId: createDebugSession
+      responses:
+        '201':
+          description: Debug session created
+
+  /api/debug/{id}:
+    get:
+      tags: [Debug]
+      summary: Get debug session
+      operationId: getDebugSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debug session details
+    delete:
+      tags: [Debug]
+      summary: End debug session
+      operationId: endDebugSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Debug session ended
+
+  /api/debug/{id}/breakpoint:
+    get:
+      tags: [Debug]
+      summary: List breakpoints
+      operationId: listBreakpoints
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of breakpoints
+    post:
+      tags: [Debug]
+      summary: Add breakpoint
+      operationId: addBreakpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file, line]
+              properties:
+                file:
+                  type: string
+                line:
+                  type: integer
+                condition:
+                  type: string
+      responses:
+        '201':
+          description: Breakpoint added
+
+  /api/settings:
+    get:
+      tags: [Settings]
+      summary: Get application settings
+      operationId: getSettings
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+    put:
+      tags: [Settings]
+      summary: Update settings
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Settings updated
+
+  /api/settings/rotate-key:
+    post:
+      tags: [Settings]
+      summary: Rotate API key
+      operationId: rotateApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider:
+                  type: string
+      responses:
+        '200':
+          description: Key rotated
+
+  /api/extensions:
+    get:
+      tags: [Extensions]
+      summary: List extensions
+      operationId: listExtensions
+      responses:
+        '200':
+          description: List of extensions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Extension'
+    post:
+      tags: [Extensions]
+      summary: Install extension
+      operationId: installExtension
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                version:
+                  type: string
+      responses:
+        '201':
+          description: Extension installed
+
+  /api/extensions/{id}:
+    get:
+      tags: [Extensions]
+      summary: Get extension
+      operationId: getExtension
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Extension details
+    delete:
+      tags: [Extensions]
+      summary: Uninstall extension
+      operationId: uninstallExtension
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Extension uninstalled
+
+  /api/mcp:
+    post:
+      tags: [MCP]
+      summary: Execute MCP tool
+      operationId: executeMcpTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MCPToolCall'
+      responses:
+        '200':
+          description: Tool result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResult'
+
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      summary: List users
+      operationId: listUsers
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '403':
+          description: Forbidden - requires admin role
+    post:
+      tags: [Admin]
+      summary: Create user
+      operationId: createUser
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+                role:
+                  $ref: '#/components/schemas/UserRole'
+      responses:
+        '201':
+          description: User created
+        '403':
+          description: Forbidden
+
+  /api/admin/users/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update user
+      operationId: updateUser
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  $ref: '#/components/schemas/UserRole'
+                name:
+                  type: string
+      responses:
+        '200':
+          description: User updated
+        '403':
+          description: Forbidden
+    delete:
+      tags: [Admin]
+      summary: Delete user
+      operationId: deleteUser
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted
+        '403':
+          description: Forbidden
+
+  /api/admin/audit:
+    get:
+      tags: [Admin]
+      summary: Get audit logs
+      operationId: getAuditLogs
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLogEntry'
+                  total:
+                    type: integer
+        '403':
+          description: Forbidden
+
+  /api/admin/backup:
+    post:
+      tags: [Admin]
+      summary: Create backup
+      operationId: createBackup
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filename:
+                    type: string
+                  size:
+                    type: integer
+                  timestamp:
+                    type: string
+                    format: date-time
+        '403':
+          description: Forbidden
+
+  /api/validate:
+    post:
+      tags: [Settings]
+      summary: Validate configuration
+      operationId: validateConfig
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+  /api/test-connection:
+    post:
+      tags: [Settings]
+      summary: Test API connection
+      operationId: testConnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, apiKey]
+              properties:
+                provider:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: NextAuth.js session cookie
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+        responseTimeMs:
+          type: number
+        checks:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [healthy, degraded, unhealthy]
+              message:
+                type: string
+              latencyMs:
+                type: number
+        dependencies:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+              latencyMs:
+                type: number
+              lastChecked:
+                type: string
+                format: date-time
+        details:
+          type: object
+          properties:
+            activeJobCount:
+              type: integer
+            queueDepth:
+              type: integer
+            memoryUsage:
+              type: object
+              properties:
+                heapUsed:
+                  type: integer
+                heapTotal:
+                  type: integer
+                heapUsagePercent:
+                  type: number
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        createdAt:
+          type: integer
+          description: Unix timestamp
+        updatedAt:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        timestamp:
+          type: integer
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentInstance'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+
+    AgentInstance:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          $ref: '#/components/schemas/AgentRole'
+        label:
+          type: string
+        provider:
+          $ref: '#/components/schemas/CLIProvider'
+        status:
+          $ref: '#/components/schemas/AgentStatus'
+        output:
+          type: string
+        startedAt:
+          type: integer
+        finishedAt:
+          type: integer
+        exitCode:
+          type: integer
+
+    AgentRole:
+      type: string
+      enum: [researcher, planner, coder, validator, security, synthesizer]
+
+    CLIProvider:
+      type: string
+      enum: [cursor, gemini, claude, copilot, codex, rovo, custom]
+
+    AgentStatus:
+      type: string
+      enum: [pending, spawning, running, completed, failed, cancelled]
+
+    Attachment:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        size:
+          type: integer
+        dataUrl:
+          type: string
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        prd:
+          type: string
+        prdStatus:
+          type: string
+          enum: [draft, approved, rejected]
+        features:
+          type: array
+          items:
+            type: string
+        epics:
+          type: array
+          items:
+            $ref: '#/components/schemas/Epic'
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        status:
+          type: string
+          enum: [planning, in_progress, completed, archived]
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+
+    ProjectCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [planning, in_progress, completed, archived]
+
+    Epic:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        ticketIds:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, active, completed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+
+    EpicCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        acceptanceCriteria:
+          type: array
+          items:
+            type: string
+        complexity:
+          $ref: '#/components/schemas/TicketComplexity'
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        level:
+          $ref: '#/components/schemas/TicketLevel'
+        assignedRole:
+          $ref: '#/components/schemas/AgentRole'
+        assignedProvider:
+          $ref: '#/components/schemas/CLIProvider'
+        parentId:
+          type: string
+        epicId:
+          type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+        output:
+          type: string
+        diff:
+          type: string
+        confidence:
+          type: number
+        sla:
+          $ref: '#/components/schemas/SLAConfig'
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+
+    TicketCreate:
+      type: object
+      required: [title, description, complexity, assignedRole]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        acceptanceCriteria:
+          type: array
+          items:
+            type: string
+        complexity:
+          $ref: '#/components/schemas/TicketComplexity'
+        assignedRole:
+          $ref: '#/components/schemas/AgentRole'
+        level:
+          $ref: '#/components/schemas/TicketLevel'
+        parentId:
+          type: string
+        epicId:
+          type: string
+
+    TicketComplexity:
+      type: string
+      enum: [S, M, L, XL]
+
+    TicketStatus:
+      type: string
+      enum: [backlog, in_progress, review, approved, rejected, done]
+
+    TicketLevel:
+      type: string
+      enum: [feature, epic, story, task, subtask, subatomic]
+
+    SLAConfig:
+      type: object
+      properties:
+        responseTimeHours:
+          type: number
+        resolutionTimeHours:
+          type: number
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+
+    SwarmJob:
+      type: object
+      properties:
+        id:
+          type: string
+        sessionId:
+          type: string
+        prompt:
+          type: string
+        mode:
+          type: string
+          enum: [chat, swarm, project]
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        currentStage:
+          type: string
+        result:
+          $ref: '#/components/schemas/SwarmResult'
+        error:
+          type: string
+        createdAt:
+          type: integer
+        startedAt:
+          type: integer
+        completedAt:
+          type: integer
+
+    JobStatus:
+      type: string
+      enum: [queued, running, completed, failed, cancelled]
+
+    SwarmResult:
+      type: object
+      properties:
+        finalOutput:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 100
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentInstance'
+        sources:
+          type: array
+          items:
+            type: string
+        validationPassed:
+          type: boolean
+
+    ScheduledTask:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        cronExpression:
+          type: string
+        prompt:
+          type: string
+        mode:
+          type: string
+          enum: [chat, swarm, project]
+        enabled:
+          type: boolean
+        lastRun:
+          type: integer
+        nextRun:
+          type: integer
+        createdAt:
+          type: integer
+
+    ScheduledTaskCreate:
+      type: object
+      required: [name, cronExpression, prompt]
+      properties:
+        name:
+          type: string
+        cronExpression:
+          type: string
+        prompt:
+          type: string
+        mode:
+          type: string
+          enum: [chat, swarm, project]
+
+    GitStatus:
+      type: object
+      properties:
+        branch:
+          type: string
+        upstream:
+          type: string
+        ahead:
+          type: integer
+        behind:
+          type: integer
+        staged:
+          type: array
+          items:
+            type: string
+        unstaged:
+          type: array
+          items:
+            type: string
+        untracked:
+          type: array
+          items:
+            type: string
+
+    GitBranch:
+      type: object
+      properties:
+        name:
+          type: string
+        upstream:
+          type: string
+          nullable: true
+        current:
+          type: boolean
+        isRemote:
+          type: boolean
+
+    FileEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [file, directory]
+        size:
+          type: integer
+        modified:
+          type: string
+          format: date-time
+
+    FileSearchResult:
+      type: object
+      properties:
+        path:
+          type: string
+        name:
+          type: string
+        matches:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type: integer
+              content:
+                type: string
+
+    TerminalSession:
+      type: object
+      properties:
+        id:
+          type: string
+        pid:
+          type: integer
+        cwd:
+          type: string
+        shell:
+          type: string
+        createdAt:
+          type: integer
+
+    TestJob:
+      type: object
+      properties:
+        id:
+          type: string
+        projectPath:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        result:
+          $ref: '#/components/schemas/TestRunSummary'
+        error:
+          type: string
+        createdAt:
+          type: integer
+        startedAt:
+          type: integer
+        completedAt:
+          type: integer
+
+    TestRunSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: integer
+        framework:
+          type: string
+        total:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        skipped:
+          type: integer
+        duration:
+          type: number
+        coverage:
+          type: object
+          properties:
+            lines:
+              type: object
+              properties:
+                pct:
+                  type: number
+
+    Settings:
+      type: object
+      properties:
+        enabledCLIs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CLIProvider'
+        parallelCounts:
+          type: object
+          additionalProperties:
+            type: integer
+        worktreeIsolation:
+          type: boolean
+        maxRuntimeSeconds:
+          type: integer
+          minimum: 10
+          maximum: 600
+        researchDepth:
+          type: string
+          enum: [shallow, medium, deep]
+        autoRerunThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        projectPath:
+          type: string
+        previewUrl:
+          type: string
+        continuousMode:
+          type: boolean
+        autoApproveTickets:
+          type: boolean
+        backgroundProcessing:
+          type: boolean
+        maxConcurrentJobs:
+          type: integer
+          minimum: 1
+          maximum: 5
+        mcpServers:
+          type: array
+          items:
+            $ref: '#/components/schemas/MCPServer'
+        githubConfig:
+          $ref: '#/components/schemas/GitHubConfig'
+
+    MCPServer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        command:
+          type: string
+        args:
+          type: array
+          items:
+            type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        enabled:
+          type: boolean
+
+    GitHubConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        autoCreatePR:
+          type: boolean
+        baseBranch:
+          type: string
+        branchPrefix:
+          type: string
+
+    MCPToolCall:
+      type: object
+      required: [serverId, toolName]
+      properties:
+        serverId:
+          type: string
+        toolName:
+          type: string
+        args:
+          type: object
+
+    MCPToolResult:
+      type: object
+      properties:
+        serverId:
+          type: string
+        toolName:
+          type: string
+        result:
+          type: object
+        error:
+          type: string
+        timestamp:
+          type: integer
+
+    Extension:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        permissions:
+          type: array
+          items:
+            type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+
+    UserRole:
+      type: string
+      enum: [admin, editor, viewer]
+
+    AuditAction:
+      type: string
+      enum:
+        - user_login
+        - user_logout
+        - project_create
+        - project_update
+        - project_delete
+        - ticket_create
+        - ticket_update
+        - ticket_delete
+        - ticket_approve
+        - ticket_reject
+        - job_start
+        - job_cancel
+        - job_complete
+        - job_fail
+        - settings_update
+        - api_key_rotate
+        - extension_install
+        - extension_uninstall
+        - file_create
+        - file_update
+        - file_delete
+        - git_commit
+        - git_push
+        - git_pull
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        userId:
+          type: string
+        userEmail:
+          type: string
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        details:
+          type: object
+        ipAddress:
+          type: string
+        userAgent:
+          type: string

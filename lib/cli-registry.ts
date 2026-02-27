@@ -7,7 +7,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'cursor',
     args: ['-p', '--force'],
     promptFlag: '',
-    enabled: true
+    enabled: true,
+    description: 'Cursor AI-powered code editor CLI',
+    color: '#00d4aa',
+    supportsAPI: false,
   },
   {
     id: 'gemini',
@@ -15,7 +18,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'gemini',
     args: ['-p'],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'Google Gemini AI assistant',
+    color: '#4285f4',
+    supportsAPI: true,
   },
   {
     id: 'claude',
@@ -23,7 +29,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'claude',
     args: ['-p', '--output-format', 'stream-json'],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'Anthropic Claude AI assistant with API support',
+    color: '#d97706',
+    supportsAPI: true,
   },
   {
     id: 'copilot',
@@ -31,7 +40,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'copilot',
     args: ['-p'],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'GitHub Copilot AI pair programmer',
+    color: '#6e40c9',
+    supportsAPI: false,
   },
   {
     id: 'codex',
@@ -39,7 +51,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'codex',
     args: ['exec'],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'OpenAI Codex code generation',
+    color: '#10a37f',
+    supportsAPI: true,
   },
   {
     id: 'rovo',
@@ -47,7 +62,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: 'acli',
     args: ['rovodev', 'run'],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'Atlassian Rovo development assistant',
+    color: '#0052cc',
+    supportsAPI: false,
   },
   {
     id: 'custom',
@@ -55,7 +73,10 @@ export const CLI_REGISTRY: CLIDefinition[] = [
     command: '',
     args: [],
     promptFlag: '',
-    enabled: false
+    enabled: false,
+    description: 'Custom CLI command with {PROMPT} placeholder',
+    color: '#6b7280',
+    supportsAPI: false,
   }
 ]
 
@@ -82,6 +103,51 @@ export function shellEscape(s: string): string {
 }
 
 /**
+ * Validate and sanitize a file path to prevent shell injection.
+ * Rejects paths containing dangerous shell metacharacters.
+ * @throws Error if the path contains dangerous characters.
+ */
+export function sanitizePath(path: string): string {
+  if (!path || typeof path !== 'string') {
+    throw new Error('Path must be a non-empty string')
+  }
+  
+  const dangerousPatterns = [
+    /[`$(){}|;&<>!]/,
+    /\n|\r/,
+    /\0/,
+  ]
+  
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(path)) {
+      throw new Error(`Path contains dangerous characters: ${path}`)
+    }
+  }
+  
+  return path
+}
+
+/**
+ * Validate a custom CLI template for security.
+ * Ensures the template doesn't contain obvious injection attempts.
+ * @throws Error if the template is invalid or contains dangerous patterns.
+ */
+export function validateCustomTemplate(template: string): void {
+  if (!template || typeof template !== 'string') {
+    throw new Error('Custom template must be a non-empty string')
+  }
+  
+  if (!template.includes('{PROMPT}')) {
+    throw new Error('Custom CLI provider requires a command template containing {PROMPT}')
+  }
+  
+  const promptPlaceholderCount = (template.match(/\{PROMPT\}/g) || []).length
+  if (promptPlaceholderCount > 1) {
+    throw new Error('Custom template must contain exactly one {PROMPT} placeholder')
+  }
+}
+
+/**
  * Backward-compatible command builder used by server/cli-runner.ts.
  * Assembles a single shell command string from a provider id and prompt.
  */
@@ -92,12 +158,8 @@ export function getCLICommand(
   customTemplate?: string
 ): string {
   if (provider === 'custom') {
-    if (!customTemplate || !customTemplate.includes('{PROMPT}')) {
-      throw new Error(
-        'Custom CLI provider requires a command template containing {PROMPT}'
-      )
-    }
-    return customTemplate.replace('{PROMPT}', shellEscape(prompt))
+    validateCustomTemplate(customTemplate!)
+    return customTemplate!.replace('{PROMPT}', shellEscape(prompt))
   }
 
   const cli = CLI_REGISTRY.find((c) => c.id === provider)
@@ -109,7 +171,8 @@ export function getCLICommand(
   const parts = [cli.command, ...cli.args, escaped]
 
   if (workdir) {
-    return `cd "${workdir}" && ${parts.join(' ')}`
+    const sanitizedWorkdir = sanitizePath(workdir)
+    return `cd ${shellEscape(sanitizedWorkdir)} && ${parts.join(' ')}`
   }
 
   return parts.join(' ')
@@ -135,17 +198,15 @@ export function getCLICommandFromFile(
   workdir?: string,
   customTemplate?: string
 ): string {
-  const fileRef = `"$(cat ${shellEscape(promptFile)})"`
+  const sanitizedPromptFile = sanitizePath(promptFile)
+  const fileRef = `"$(cat ${shellEscape(sanitizedPromptFile)})"`
 
   if (provider === 'custom') {
-    if (!customTemplate || !customTemplate.includes('{PROMPT}')) {
-      throw new Error(
-        'Custom CLI provider requires a command template containing {PROMPT}'
-      )
-    }
-    const cmd = customTemplate.replace('{PROMPT}', fileRef)
+    validateCustomTemplate(customTemplate!)
+    const cmd = customTemplate!.replace('{PROMPT}', fileRef)
     if (workdir) {
-      return `cd "${workdir}" && ${cmd}`
+      const sanitizedWorkdir = sanitizePath(workdir)
+      return `cd ${shellEscape(sanitizedWorkdir)} && ${cmd}`
     }
     return cmd
   }
@@ -158,7 +219,8 @@ export function getCLICommandFromFile(
   const parts = [cli.command, ...cli.args, fileRef]
 
   if (workdir) {
-    return `cd "${workdir}" && ${parts.join(' ')}`
+    const sanitizedWorkdir = sanitizePath(workdir)
+    return `cd ${shellEscape(sanitizedWorkdir)} && ${parts.join(' ')}`
   }
 
   return parts.join(' ')

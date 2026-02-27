@@ -1,4 +1,4 @@
-import type { AgentRole, CLIProvider, Settings } from '@/lib/types'
+import type { AgentRole, CLIProvider, Settings, MCPServer } from '@/lib/types'
 
 /* ── Stage-specific prompt builders ──────────────────────────── */
 
@@ -58,7 +58,8 @@ export function buildCodePrompt(
   userPrompt: string,
   planContext: string,
   agentIndex: number,
-  totalCoders: number
+  totalCoders: number,
+  mcpToolContext?: string
 ): string {
   let approachDirective: string
   if (totalCoders === 1) {
@@ -71,7 +72,7 @@ export function buildCodePrompt(
     approachDirective = `Implement approach ${agentIndex + 1}, focusing on a different strategy than the other agents.`
   }
 
-  return [
+  const sections = [
     `You are a coding agent (${agentIndex + 1} of ${totalCoders}). Your job is to write production-quality code.`,
     '',
     '## Plan',
@@ -88,7 +89,37 @@ export function buildCodePrompt(
     '- Follow existing project conventions',
     '- Handle errors gracefully',
     '- Include comments only where logic is non-obvious',
-  ].join('\n')
+  ]
+
+  if (mcpToolContext) {
+    sections.push('')
+    sections.push('## MCP Tools Available')
+    sections.push(mcpToolContext)
+  }
+
+  return sections.join('\n')
+}
+
+export function buildMCPToolContext(mcpServers: MCPServer[]): string {
+  const enabledServers = mcpServers.filter((s) => s.enabled)
+  if (enabledServers.length === 0) return ''
+
+  const lines = [
+    'You have access to MCP (Model Context Protocol) tools. To call a tool, use this format:',
+    '[MCP_TOOL_CALL] server=<serverId> tool=<toolName> args={"param": "value"}',
+    '',
+    'Available servers:',
+  ]
+
+  for (const server of enabledServers) {
+    lines.push(`- ${server.name} (id: ${server.id})`)
+  }
+
+  lines.push('')
+  lines.push('Use MCP tools when you need to access external services, APIs, or data sources.')
+  lines.push('The tool results will be appended to your output automatically.')
+
+  return lines.join('\n')
 }
 
 export function buildValidatePrompt(

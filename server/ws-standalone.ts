@@ -114,7 +114,7 @@ export function startStandaloneWSServer(): void {
   if (started) return
   started = true
 
-  const WS_PORT = parseInt(process.env.WS_PORT || '3001', 10)
+  const WS_PORT = parseInt(process.env.WS_PORT || '3002', 10)
   wss = new WebSocketServer({ port: WS_PORT })
 
   wss.on('connection', (ws: WebSocket) => {

@@ -2,8 +2,10 @@ import { createServer } from 'node:http'
 import { parse } from 'node:url'
 import next from 'next'
 import { startWSServer } from '@/server/ws-server'
+import { startLSPServer, stopLSPServer } from '@/server/lsp-server'
 import { cancelSwarm } from '@/server/orchestrator'
 import { createLogger } from '@/server/logger'
+import { stopFileWatcher } from '@/server/file-watcher'
 
 const logger = createLogger('server')
 
@@ -21,10 +23,12 @@ app.prepare().then(() => {
   })
 
   const wss = startWSServer(server)
+  startLSPServer(server)
 
   server.listen(port, hostname, () => {
     logger.info(`SwarmUI ready on http://${hostname}:${port}`)
     logger.info('WebSocket server attached to same port')
+    logger.info('LSP WebSocket server available at /api/lsp/ws')
     logger.info(`Mode: ${dev ? 'development' : 'production'}`)
   })
 
@@ -37,6 +41,12 @@ app.prepare().then(() => {
 
     cancelSwarm()
     logger.info('Cancelled running swarms')
+
+    stopFileWatcher()
+    logger.info('Stopped file watcher')
+
+    stopLSPServer()
+    logger.info('Stopped LSP server')
 
     for (const client of wss.clients) {
       try {

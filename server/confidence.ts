@@ -4,7 +4,28 @@
  * Compares N agent outputs using pairwise Jaccard word-overlap similarity,
  * extracts referenced sources (file paths, URLs, package names), and produces
  * a human-readable diff summary of agreements/disagreements.
+ *
+ * Optionally uses OpenAI embeddings for semantic similarity when enabled.
  */
+
+import {
+  computeSemanticSimilarity,
+  computeHybridSimilarity,
+} from '@/server/semantic-validator'
+
+/* ── Types ────────────────────────────────────────────────────── */
+
+export interface ConfidenceOptions {
+  useSemanticValidation?: boolean
+  openaiApiKey?: string
+}
+
+export interface ConfidenceResult {
+  score: number
+  jaccardScore: number
+  semanticScore?: number
+  method: 'jaccard' | 'semantic' | 'hybrid'
+}
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
@@ -47,19 +68,10 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 const MIN_MEANINGFUL_LENGTH = 20
 
 /**
- * Compute a confidence score (0–100) from N agent outputs.
- *
- * - Empty or trivially-short outputs (likely crashes) are excluded before
- *   comparison so they cannot inflate the score via empty-vs-empty Jaccard = 1.
- * - With zero meaningful outputs we return 0.
- * - With a single meaningful output there is nothing to compare, so we return 50.
- * - With multiple outputs we calculate the average pairwise Jaccard similarity
- *   and scale it to 0–100.  If average similarity exceeds 0.90 we cap at 95.
- *
- * @param outputs - Array of raw text outputs from agent runs.
- * @returns A confidence score between 0 and 100 (inclusive).
+ * Compute Jaccard-only confidence score (0–100) from N agent outputs.
+ * This is the original implementation, kept for backward compatibility.
  */
-export function computeConfidence(outputs: string[]): number {
+export function computeJaccardConfidence(outputs: string[]): number {
   const meaningful = outputs.filter(
     (o) => o.trim().length > MIN_MEANINGFUL_LENGTH,
   )
@@ -83,6 +95,113 @@ export function computeConfidence(outputs: string[]): number {
   if (avgSimilarity >= 0.9) return 95
 
   return Math.round(avgSimilarity * 100)
+}
+
+/**
+ * Compute a confidence score (0–100) from N agent outputs.
+ *
+ * - Empty or trivially-short outputs (likely crashes) are excluded before
+ *   comparison so they cannot inflate the score via empty-vs-empty Jaccard = 1.
+ * - With zero meaningful outputs we return 0.
+ * - With a single meaningful output there is nothing to compare, so we return 50.
+ * - With multiple outputs we calculate the average pairwise Jaccard similarity
+ *   and scale it to 0–100.  If average similarity exceeds 0.90 we cap at 95.
+ *
+ * @param outputs - Array of raw text outputs from agent runs.
+ * @returns A confidence score between 0 and 100 (inclusive).
+ */
+export function computeConfidence(outputs: string[]): number {
+  return computeJaccardConfidence(outputs)
+}
+
+/**
+ * Compute confidence with optional semantic validation.
+ *
+ * When semantic validation is enabled and an API key is provided,
+ * uses a hybrid approach (30% Jaccard + 70% Semantic).
+ * Falls back to Jaccard-only if no API key or semantic validation disabled.
+ *
+ * @param outputs - Array of raw text outputs from agent runs.
+ * @param options - Configuration for semantic validation.
+ * @returns A ConfidenceResult with score and method used.
+ */
+export async function computeConfidenceWithOptions(
+  outputs: string[],
+  options: ConfidenceOptions = {},
+): Promise<ConfidenceResult> {
+  const jaccardScore = computeJaccardConfidence(outputs)
+
+  const { useSemanticValidation, openaiApiKey } = options
+
+  if (!useSemanticValidation || !openaiApiKey || openaiApiKey.trim().length === 0) {
+    return {
+      score: jaccardScore,
+      jaccardScore,
+      method: 'jaccard',
+    }
+  }
+
+  try {
+    const meaningful = outputs.filter(
+      (o) => o.trim().length > MIN_MEANINGFUL_LENGTH,
+    )
+
+    if (meaningful.length < 2) {
+      return {
+        score: jaccardScore,
+        jaccardScore,
+        method: 'jaccard',
+      }
+    }
+
+    const jaccardNormalized = jaccardScore / 100
+
+    const { hybrid, semantic } = await computeHybridSimilarity(
+      meaningful,
+      jaccardNormalized,
+      openaiApiKey,
+    )
+
+    const hybridScore = Math.min(95, Math.round(hybrid * 100))
+
+    return {
+      score: hybridScore,
+      jaccardScore,
+      semanticScore: Math.round(semantic * 100),
+      method: 'hybrid',
+    }
+  } catch (error) {
+    console.warn('Semantic validation failed, falling back to Jaccard:', error)
+    return {
+      score: jaccardScore,
+      jaccardScore,
+      method: 'jaccard',
+    }
+  }
+}
+
+/**
+ * Compute semantic-only confidence score.
+ * Returns 0-100 based purely on embedding similarity.
+ */
+export async function computeSemanticConfidence(
+  outputs: string[],
+  apiKey: string,
+): Promise<number> {
+  const meaningful = outputs.filter(
+    (o) => o.trim().length > MIN_MEANINGFUL_LENGTH,
+  )
+
+  if (meaningful.length === 0) return 0
+  if (meaningful.length === 1) return 50
+
+  try {
+    const similarity = await computeSemanticSimilarity(meaningful, apiKey)
+    const score = Math.round(similarity * 100)
+    return Math.min(95, score)
+  } catch {
+    return computeJaccardConfidence(outputs)
+  }
 }
 
 /**

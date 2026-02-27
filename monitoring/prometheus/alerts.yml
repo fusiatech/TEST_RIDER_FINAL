@@ -1,0 +1,167 @@
+groups:
+  - name: swarm-ui-alerts
+    rules:
+      # High Error Rate - More than 5% of requests returning 5xx
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP error rate detected"
+          description: "More than 5% of HTTP requests are returning 5xx errors. Current rate: {{ $value | printf \"%.2f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/high-error-rate"
+
+      # High Latency - p95 response time exceeds 2 seconds
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency detected"
+          description: "95th percentile response time is above 2 seconds. Current p95: {{ $value | printf \"%.2f\" }}s"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/high-latency"
+
+      # Queue Backlog - Queue depth exceeds 10 for 5 minutes
+      - alert: QueueBacklog
+        expr: swarm_queued_jobs > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job queue backlog detected"
+          description: "Queue depth has been above 10 for more than 5 minutes. Current depth: {{ $value }}"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/queue-backlog"
+
+      # Low Confidence - Average confidence below 50% for 10 minutes
+      - alert: LowConfidence
+        expr: |
+          histogram_quantile(0.5, sum(rate(swarm_confidence_score_bucket[10m])) by (le)) < 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low agent confidence scores"
+          description: "Median confidence score has been below 50% for 10 minutes. Current median: {{ $value | printf \"%.1f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/low-confidence"
+
+      # High Memory Usage - Memory usage above 80% for 5 minutes
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes
+          ) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Node.js memory usage"
+          description: "Heap memory usage has been above 80% for 5 minutes. Current usage: {{ $value | printf \"%.1f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/high-memory"
+
+      # Critical Memory Usage - Memory usage above 90% for 2 minutes
+      - alert: CriticalMemoryUsage
+        expr: |
+          (
+            nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes
+          ) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical Node.js memory usage"
+          description: "Heap memory usage has been above 90% for 2 minutes. Immediate action required. Current usage: {{ $value | printf \"%.1f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/critical-memory"
+
+      # No Active Agents - No agent spawns for 30 minutes during business hours (9am-6pm UTC weekdays)
+      - alert: NoActiveAgents
+        expr: |
+          increase(swarm_agent_spawns_total[30m]) == 0
+          and ON() (hour() >= 9 and hour() < 18)
+          and ON() (day_of_week() >= 1 and day_of_week() <= 5)
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "No agent activity during business hours"
+          description: "No agents have been spawned in the last 30 minutes during business hours. This may indicate no user activity or a system issue."
+          runbook_url: "https://docs.swarm-ui.io/runbooks/no-agents"
+
+      # High Agent Failure Rate - More than 20% of agent spawns failing
+      - alert: HighAgentFailureRate
+        expr: |
+          (
+            sum(rate(swarm_agent_failures_total[10m]))
+            /
+            sum(rate(swarm_agent_spawns_total[10m]))
+          ) * 100 > 20
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High agent failure rate"
+          description: "More than 20% of agent spawns are failing. Current failure rate: {{ $value | printf \"%.1f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/agent-failures"
+
+      # WebSocket Connection Drop - Sudden drop in WebSocket connections
+      - alert: WebSocketConnectionDrop
+        expr: |
+          (
+            swarm_websocket_connections - swarm_websocket_connections offset 5m
+          ) / swarm_websocket_connections offset 5m * 100 < -50
+          and swarm_websocket_connections offset 5m > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sudden drop in WebSocket connections"
+          description: "WebSocket connections dropped by more than 50% in the last 5 minutes. This may indicate a network issue or server problem."
+          runbook_url: "https://docs.swarm-ui.io/runbooks/websocket-drop"
+
+      # Low Cache Hit Rate - Cache hit rate below 30% for 15 minutes
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(swarm_cache_hits_total[15m])
+            /
+            (rate(swarm_cache_hits_total[15m]) + rate(swarm_cache_misses_total[15m]))
+          ) * 100 < 30
+          and (rate(swarm_cache_hits_total[15m]) + rate(swarm_cache_misses_total[15m])) > 0
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate has been below 30% for 15 minutes. Current rate: {{ $value | printf \"%.1f\" }}%"
+          runbook_url: "https://docs.swarm-ui.io/runbooks/low-cache-hit"
+
+      # Service Down - Health endpoint not responding
+      - alert: ServiceDown
+        expr: up{job="swarm-ui"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SwarmUI service is down"
+          description: "The SwarmUI service has been unreachable for more than 1 minute."
+          runbook_url: "https://docs.swarm-ui.io/runbooks/service-down"
+
+      # Pipeline Stalled - No completed pipelines for 1 hour during business hours
+      - alert: PipelineStalled
+        expr: |
+          increase(swarm_pipeline_runs_total{status="completed"}[1h]) == 0
+          and increase(swarm_pipeline_runs_total[1h]) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No pipelines completing"
+          description: "Pipelines are being started but none have completed in the last hour. Check for stuck jobs."
+          runbook_url: "https://docs.swarm-ui.io/runbooks/pipeline-stalled"

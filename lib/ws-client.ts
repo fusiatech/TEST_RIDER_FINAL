@@ -1,18 +1,35 @@
 import { WSMessageSchema } from '@/lib/types'
 import type { WSMessage } from '@/lib/types'
 
+export type FileChangeHandler = (event: 'add' | 'change' | 'unlink', path: string) => void
+
 const MAX_RECONNECT_RETRIES = 5
 const RECONNECT_DELAY_MS = 3000
 
+function getDefaultWsUrl(): string {
+  const configuredUrl = process.env.NEXT_PUBLIC_WS_URL
+  if (configuredUrl) {
+    return configuredUrl
+  }
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}`
+  }
+  return 'ws://localhost:3000'
+}
+
 export class SwarmWSClient {
   private ws: WebSocket | null = null
-  private url: string = 'ws://localhost:3001'
+  private url = getDefaultWsUrl()
   private retryCount = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private shouldReconnect = true
 
+  onConnect: (() => void) | null = null
   onMessage: ((msg: WSMessage) => void) | null = null
   onDisconnect: (() => void) | null = null
+  onFileChange: FileChangeHandler | null = null
+  onAuthError: ((error: string) => void) | null = null
 
   connect(url?: string): void {
     if (url) {
@@ -33,14 +50,20 @@ export class SwarmWSClient {
 
     this.ws.onopen = () => {
       this.retryCount = 0
+      this.onConnect?.()
     }
 
     this.ws.onmessage = (event: MessageEvent) => {
       this.handleIncoming(String(event.data))
     }
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event: CloseEvent) => {
       this.onDisconnect?.()
+      
+      if (event.code === 1006 && this.retryCount === 0) {
+        this.onAuthError?.('WebSocket connection failed - authentication may be required')
+      }
+      
       this.scheduleReconnect()
     }
 
@@ -64,14 +87,28 @@ export class SwarmWSClient {
       return
     }
 
-    this.onMessage?.(result.data)
+    const msg = result.data
+
+    if (msg.type === 'file-changed' && this.onFileChange) {
+      this.onFileChange(msg.event, msg.path)
+    }
+
+    this.onMessage?.(msg)
+  }
+
+  watchProject(projectPath: string): void {
+    this.send({ type: 'watch-project', projectPath })
+  }
+
+  unwatchProject(): void {
+    this.send({ type: 'unwatch-project' })
   }
 
   send(msg: WSMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg))
     } else {
-      console.warn('[SwarmWSClient] Cannot send — WebSocket not open')
+      console.warn('[SwarmWSClient] Cannot send - WebSocket not open')
     }
   }
 

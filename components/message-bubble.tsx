@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
 import type { ChatMessage } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -125,7 +124,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="prose prose-invert prose-sm max-w-none text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw]}
                 components={extendedMarkdownComponents}
               >
                 {message.content}

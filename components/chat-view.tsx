@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useSwarmStore } from '@/lib/store'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -12,9 +13,14 @@ import { AgentDashboard } from '@/components/agent-dashboard'
 import { ProjectDashboard } from '@/components/project-dashboard'
 import { TestingDashboard } from '@/components/testing-dashboard'
 import { EclipseDashboard } from '@/components/eclipse-dashboard'
+import { ObservabilityDashboard } from '@/components/observability-dashboard'
 import { LivePreview } from '@/components/live-preview'
 import { DevEnvironment } from '@/components/dev-environment'
 import { FileUpload } from '@/components/file-upload'
+import { VoiceInputButton, VoiceInputIndicator } from '@/components/voice-input-button'
+import { SpellCheckInput } from '@/components/spell-check-input'
+import { ErrorBoundary } from '@/components/error-boundary'
+import { MinimalErrorFallback } from '@/components/error-fallback'
 import { ROLE_LABELS } from '@/lib/types'
 import type { Attachment } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -40,6 +46,7 @@ import {
   Eye,
   CircleHelp,
   Cpu,
+  BarChart3,
 } from 'lucide-react'
 
 import type { AppMode } from '@/lib/store'
@@ -77,13 +84,23 @@ const MODE_LABELS: Record<AppMode, string> = {
   project: 'Project',
 }
 
+const VALID_TABS = ['chat', 'dashboard', 'ide', 'testing', 'eclipse', 'observability'] as const
+type TabType = typeof VALID_TABS[number]
+
+function isValidTab(tab: string | null): tab is TabType {
+  return tab !== null && VALID_TABS.includes(tab as TabType)
+}
+
 export function ChatView() {
   const [input, setInput] = useState('')
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [isVoiceListening, setIsVoiceListening] = useState(false)
   const agentDropdownRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
   const messages = useSwarmStore((s) => s.messages)
   const agents = useSwarmStore((s) => s.agents)
@@ -99,6 +116,22 @@ export function ChatView() {
   const setSelectedAgent = useSwarmStore((s) => s.setSelectedAgent)
   const showPreview = useSwarmStore((s) => s.showPreview)
   const togglePreview = useSwarmStore((s) => s.togglePreview)
+
+  // G-IA-01: Sync tab state with URL on mount
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (isValidTab(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams, activeTab, setActiveTab])
+
+  // G-IA-01: Update URL when tab changes
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', tab)
+    router.push(`?${params.toString()}`, { scroll: false })
+  }, [setActiveTab, searchParams, router])
 
   const enabledCLIs = CLI_REGISTRY.filter((cli) => settings.enabledCLIs.includes(cli.id))
   const currentAgent = enabledCLIs.find((c) => c.id === selectedAgent) ?? enabledCLIs[0] ?? CLI_REGISTRY[0]
@@ -124,12 +157,9 @@ export function ChatView() {
   const handleSend = (text?: string) => {
     const trimmed = (text ?? input).trim()
     if (!trimmed || isRunning) return
-    sendMessage(trimmed)
+    sendMessage(trimmed, attachments)
     setInput('')
     setAttachments([])
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-    }
   }
 
   const handleCancel = () => {
@@ -146,12 +176,13 @@ export function ChatView() {
     }
   }
 
-  const handleTextareaInput = () => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`
-  }
+  const handleVoiceTranscript = useCallback((transcript: string, _isFinal: boolean) => {
+    setInput(transcript)
+  }, [])
+
+  const handleVoiceListeningChange = useCallback((listening: boolean) => {
+    setIsVoiceListening(listening)
+  }, [])
 
   const runningAgents = agents.filter((a) => a.status === 'running' || a.status === 'spawning')
   const currentPrompts = MODE_PROMPTS[mode]
@@ -179,7 +210,7 @@ export function ChatView() {
             <button
               role="tab"
               aria-selected={activeTab === 'chat'}
-              onClick={() => setActiveTab('chat')}
+              onClick={() => handleTabChange('chat')}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
                 activeTab === 'chat'
@@ -193,7 +224,7 @@ export function ChatView() {
             <button
               role="tab"
               aria-selected={activeTab === 'dashboard'}
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleTabChange('dashboard')}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
                 activeTab === 'dashboard'
@@ -212,7 +243,7 @@ export function ChatView() {
             <button
               role="tab"
               aria-selected={activeTab === 'testing'}
-              onClick={() => setActiveTab('testing')}
+              onClick={() => handleTabChange('testing')}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
                 activeTab === 'testing'
@@ -226,7 +257,7 @@ export function ChatView() {
             <button
               role="tab"
               aria-selected={activeTab === 'eclipse'}
-              onClick={() => setActiveTab('eclipse')}
+              onClick={() => handleTabChange('eclipse')}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
                 activeTab === 'eclipse'
@@ -240,7 +271,7 @@ export function ChatView() {
             <button
               role="tab"
               aria-selected={activeTab === 'ide'}
-              onClick={() => setActiveTab('ide')}
+              onClick={() => handleTabChange('ide')}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
                 activeTab === 'ide'
@@ -250,6 +281,20 @@ export function ChatView() {
             >
               <Code2 className="h-3.5 w-3.5" />
               IDE
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'observability'}
+              onClick={() => handleTabChange('observability')}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                activeTab === 'observability'
+                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
+                  : 'text-muted hover:text-foreground'
+              )}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Observability
             </button>
           </div>
           {isRunning && (
@@ -276,7 +321,15 @@ export function ChatView() {
             transition={{ duration: 0.15 }}
             className="flex-1 min-h-0"
           >
-            <DevEnvironment />
+            <ErrorBoundary
+              fallback={(props) => (
+                <div className="flex h-full items-center justify-center p-8">
+                  <MinimalErrorFallback {...props} />
+                </div>
+              )}
+            >
+              <DevEnvironment />
+            </ErrorBoundary>
           </motion.div>
         ) : activeTab === 'testing' ? (
           <motion.div key="testing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
@@ -285,6 +338,10 @@ export function ChatView() {
         ) : activeTab === 'eclipse' ? (
           <motion.div key="eclipse" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
             <EclipseDashboard />
+          </motion.div>
+        ) : activeTab === 'observability' ? (
+          <motion.div key="observability" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
+            <ObservabilityDashboard />
           </motion.div>
         ) : activeTab === 'chat' ? (
           <motion.div
@@ -295,9 +352,16 @@ export function ChatView() {
             transition={{ duration: 0.15 }}
             className="flex-1 min-h-0"
           >
-            <ScrollArea className="h-full">
-              <div className="mx-auto max-w-3xl space-y-4 p-6">
-                {messages.length === 0 && (
+            <ErrorBoundary
+              fallback={(props) => (
+                <div className="flex h-full items-center justify-center p-8">
+                  <MinimalErrorFallback {...props} />
+                </div>
+              )}
+            >
+              <ScrollArea className="h-full">
+                <div className="mx-auto max-w-3xl space-y-4 p-6">
+                  {messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
                     <div className="relative mb-6">
                       <div className="absolute inset-0 rounded-3xl bg-primary/5 blur-2xl" />
@@ -384,9 +448,10 @@ export function ChatView() {
                   </AnimatePresence>
                 )}
 
-                <div ref={bottomRef} />
-              </div>
-            </ScrollArea>
+                  <div ref={bottomRef} />
+                </div>
+              </ScrollArea>
+            </ErrorBoundary>
           </motion.div>
         ) : showProjectDashboard ? (
           <motion.div
@@ -443,14 +508,21 @@ export function ChatView() {
 
       <div className="border-t border-border p-4">
         <div className="mx-auto max-w-3xl space-y-2">
-          {input.length > 500 && (
-            <div className="flex justify-end px-1">
-              <span className={cn(
-                'text-[10px] tabular-nums',
-                input.length > 4000 ? 'text-destructive' : 'text-muted'
-              )}>
-                {input.length.toLocaleString()} characters
-              </span>
+          {(input.length > 500 || isVoiceListening) && (
+            <div className="flex items-center justify-between px-1">
+              {isVoiceListening ? (
+                <VoiceInputIndicator isListening={isVoiceListening} />
+              ) : (
+                <span />
+              )}
+              {input.length > 500 && (
+                <span className={cn(
+                  'text-[10px] tabular-nums',
+                  input.length > 4000 ? 'text-destructive' : 'text-muted'
+                )}>
+                  {input.length.toLocaleString()} characters
+                </span>
+              )}
             </div>
           )}
           <div className="flex items-end gap-2">
@@ -521,16 +593,18 @@ export function ChatView() {
 
             <div className="relative flex-1">
               <label className="sr-only" htmlFor="chat-input">Message input</label>
-              <textarea
+              <SpellCheckInput
                 id="chat-input"
-                ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onInput={handleTextareaInput}
+                onChange={setInput}
                 onKeyDown={handleKeyDown}
                 placeholder={mode === 'project' ? 'Describe a feature or task for this project...' : 'Describe your task...'}
                 rows={1}
-                className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-shadow"
+                autoResize
+                maxHeight={200}
+                minHeight={44}
+                showInlineErrors={true}
+                className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-shadow [&_textarea]:bg-transparent [&_textarea]:border-0 [&_textarea]:p-0 [&_textarea]:focus:ring-0 [&_textarea]:focus:ring-offset-0"
               />
             </div>
 
@@ -543,6 +617,14 @@ export function ChatView() {
             >
               <CircleHelp className="h-4 w-4" />
             </Button>
+
+            <VoiceInputButton
+              onTranscript={handleVoiceTranscript}
+              onListeningChange={handleVoiceListeningChange}
+              disabled={isRunning}
+              showSettings={false}
+              appendMode={true}
+            />
 
             {isRunning ? (
               <Button

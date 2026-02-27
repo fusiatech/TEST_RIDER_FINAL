@@ -1,9 +1,12 @@
 import * as pty from 'node-pty'
 import { writeFileSync, unlinkSync } from 'node:fs'
-import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { CLIProvider } from '@/lib/types'
 import { getCLICommandFromFile } from '@/lib/cli-registry'
+import { getTempFile } from '@/lib/paths'
+import { createLogger } from '@/server/logger'
+
+const logger = createLogger('cli-runner')
 
 /** Exit codes that should NOT trigger a retry (e.g. timeout kills). */
 const NON_RETRYABLE_EXIT_CODES = new Set([137, 143])
@@ -30,6 +33,13 @@ export interface CLIRunnerOptions {
   maxRetries?: number
   /** Delay in milliseconds before each retry attempt (default 2000) */
   retryDelayMs?: number
+  /** Optional additional environment variables to pass to the CLI process */
+  env?: {
+    OPENAI_API_KEY?: string
+    GOOGLE_API_KEY?: string
+    ANTHROPIC_API_KEY?: string
+    GITHUB_TOKEN?: string
+  }
 }
 
 /**
@@ -56,6 +66,7 @@ function spawnSingleAttempt(
     onOutput,
     onExit,
     customTemplate,
+    env: customEnv,
   } = options
 
   let killed = false
@@ -71,6 +82,13 @@ function spawnSingleAttempt(
     if (value !== undefined) {
       env[key] = value
     }
+  }
+
+  if (customEnv) {
+    if (customEnv.OPENAI_API_KEY) env.OPENAI_API_KEY = customEnv.OPENAI_API_KEY
+    if (customEnv.GOOGLE_API_KEY) env.GOOGLE_API_KEY = customEnv.GOOGLE_API_KEY
+    if (customEnv.ANTHROPIC_API_KEY) env.ANTHROPIC_API_KEY = customEnv.ANTHROPIC_API_KEY
+    if (customEnv.GITHUB_TOKEN) env.GITHUB_TOKEN = customEnv.GITHUB_TOKEN
   }
 
   let proc: pty.IPty
@@ -92,8 +110,8 @@ function spawnSingleAttempt(
   const dataDisposable = proc.onData((data: string) => {
     try {
       onOutput(data)
-    } catch {
-      // Swallow callback errors to protect the pty event loop
+    } catch (err) {
+      logger.warn('onOutput callback error', { error: err instanceof Error ? err.message : String(err) })
     }
   })
 
@@ -104,8 +122,8 @@ function spawnSingleAttempt(
     exitDisposable.dispose()
     try {
       onExit(exitCode)
-    } catch {
-      // Swallow callback errors
+    } catch (err) {
+      logger.warn('onExit callback error', { error: err instanceof Error ? err.message : String(err), exitCode })
     }
   })
 
@@ -117,8 +135,8 @@ function spawnSingleAttempt(
           `\n[cli-runner] Process timed out after ${maxRuntimeMs}ms — killing.\n`,
         )
         proc.kill()
-      } catch {
-        // Process may have already exited
+      } catch (err) {
+        logger.debug('Process kill after timeout failed (may have already exited)', { error: err instanceof Error ? err.message : String(err) })
       }
     }
   }, maxRuntimeMs)
@@ -130,8 +148,8 @@ function spawnSingleAttempt(
         clearTimeout(timeoutId)
         try {
           proc.kill()
-        } catch {
-          // Process may have already exited
+        } catch (err) {
+          logger.debug('Process kill failed (may have already exited)', { error: err instanceof Error ? err.message : String(err) })
         }
       }
     },
@@ -161,7 +179,7 @@ export function spawnCLI(options: CLIRunnerOptions): CLIRunnerHandle {
     retryDelayMs = 2000,
   } = options
 
-  const promptFile = join('/tmp', `swarm-prompt-${randomUUID()}.txt`)
+  const promptFile = getTempFile(`swarm-prompt-${randomUUID()}.txt`)
   writeFileSync(promptFile, prompt, 'utf-8')
 
   let attempt = 0
@@ -199,11 +217,11 @@ export function spawnCLI(options: CLIRunnerOptions): CLIRunnerHandle {
             return
           }
 
-          try { unlinkSync(promptFile) } catch { /* already removed */ }
+          try { unlinkSync(promptFile) } catch (err) { logger.debug('Prompt file cleanup failed', { error: err instanceof Error ? err.message : String(err), promptFile }) }
           try {
             onExit(code)
-          } catch {
-            // Swallow callback errors
+          } catch (err) {
+            logger.warn('onExit callback error in retry handler', { error: err instanceof Error ? err.message : String(err), exitCode: code })
           }
         },
       },
@@ -222,7 +240,7 @@ export function spawnCLI(options: CLIRunnerOptions): CLIRunnerHandle {
           clearTimeout(retryTimer)
           retryTimer = null
         }
-        try { unlinkSync(promptFile) } catch { /* already removed */ }
+        try { unlinkSync(promptFile) } catch (err) { logger.debug('Prompt file cleanup failed on kill', { error: err instanceof Error ? err.message : String(err), promptFile }) }
         if (currentHandle) {
           currentHandle.kill()
           currentHandle = null

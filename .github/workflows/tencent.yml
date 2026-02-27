@@ -1,79 +1,137 @@
-# This workflow will build a docker container, publish and deploy it to Tencent Kubernetes Engine (TKE) when there is a push to the "main" branch.
-#
-# To configure this workflow:
-#
-# 1. Ensure that your repository contains the necessary configuration for your Tencent Kubernetes Engine cluster,
-#    including deployment.yml, kustomization.yml, service.yml, etc.
-#
-# 2. Set up secrets in your workspace:
-#    - TENCENT_CLOUD_SECRET_ID with Tencent Cloud secret id
-#    - TENCENT_CLOUD_SECRET_KEY with Tencent Cloud secret key
-#    - TENCENT_CLOUD_ACCOUNT_ID with Tencent Cloud account id
-#    - TKE_REGISTRY_PASSWORD with TKE registry password
-#
-# 3. Change the values for the TKE_IMAGE_URL, TKE_REGION, TKE_CLUSTER_ID and DEPLOYMENT_NAME environment variables (below).
-
 name: Tencent Kubernetes Engine
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+  workflow_dispatch:
 
-# Environment variables available to all jobs and steps in this workflow
 env:
-  TKE_IMAGE_URL: ccr.ccs.tencentyun.com/demo/mywebapp
+  TKE_IMAGE_URL: ccr.ccs.tencentyun.com/swarm-ui/app
   TKE_REGION: ap-guangzhou
-  TKE_CLUSTER_ID: cls-mywebapp
-  DEPLOYMENT_NAME: tke-test
+  TKE_CLUSTER_ID: cls-swarm-ui
+  DEPLOYMENT_NAME: swarm-ui
+  NAMESPACE: default
 
 permissions:
   contents: read
 
 jobs:
-  setup-build-publish-deploy:
-    name: Setup, Build, Publish, and Deploy
+  build-and-deploy:
+    name: Build and Deploy to TKE
     runs-on: ubuntu-latest
     environment: production
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-    # Build
-    - name: Build Docker image
-      run: |
-        docker build -t ${TKE_IMAGE_URL}:${GITHUB_SHA} .
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Login TKE Registry
-      run: |
-        docker login -u ${{ secrets.TENCENT_CLOUD_ACCOUNT_ID }} -p '${{ secrets.TKE_REGISTRY_PASSWORD }}' ${TKE_IMAGE_URL}
+      - name: Run linting
+        run: npm run lint
 
-    # Push the Docker image to TKE Registry
-    - name: Publish
-      run: |
-        docker push ${TKE_IMAGE_URL}:${GITHUB_SHA}
+      - name: Run type checking
+        run: npm run typecheck
 
-    - name: Set up Kustomize
-      run: |
-        curl -o kustomize --location https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
-        chmod u+x ./kustomize
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    - name: Set up ~/.kube/config for connecting TKE cluster
-      uses: TencentCloud/tke-cluster-credential-action@v1
-      with:
-        secret_id: ${{ secrets.TENCENT_CLOUD_SECRET_ID }}
-        secret_key: ${{ secrets.TENCENT_CLOUD_SECRET_KEY }}
-        tke_region: ${{ env.TKE_REGION }}
-        cluster_id: ${{ env.TKE_CLUSTER_ID }}
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.TKE_IMAGE_URL }}:${{ github.sha }} \
+            --tag ${{ env.TKE_IMAGE_URL }}:latest \
+            --build-arg NODE_ENV=production \
+            .
 
-    - name: Switch to TKE context
-      run: |
-        kubectl config use-context ${TKE_CLUSTER_ID}-context-default
+      - name: Login to TKE Registry
+        run: |
+          docker login \
+            -u ${{ secrets.TENCENT_CLOUD_ACCOUNT_ID }} \
+            -p '${{ secrets.TKE_REGISTRY_PASSWORD }}' \
+            ccr.ccs.tencentyun.com
 
-    # Deploy the Docker image to the TKE cluster
-    - name: Deploy
-      run: |
-        ./kustomize edit set image ${TKE_IMAGE_URL}:${GITHUB_SHA}
-        ./kustomize build . | kubectl apply -f -
-        kubectl rollout status deployment/${DEPLOYMENT_NAME}
-        kubectl get services -o wide
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.TKE_IMAGE_URL }}:${{ github.sha }}
+          docker push ${{ env.TKE_IMAGE_URL }}:latest
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Set up Kustomize
+        run: |
+          curl -sLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.3.0/kustomize_v5.3.0_linux_amd64.tar.gz
+          tar xzf kustomize.tar.gz
+          chmod +x kustomize
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Configure TKE cluster credentials
+        uses: TencentCloud/tke-cluster-credential-action@v1
+        with:
+          secret_id: ${{ secrets.TENCENT_CLOUD_SECRET_ID }}
+          secret_key: ${{ secrets.TENCENT_CLOUD_SECRET_KEY }}
+          tke_region: ${{ env.TKE_REGION }}
+          cluster_id: ${{ env.TKE_CLUSTER_ID }}
+
+      - name: Switch to TKE context
+        run: |
+          kubectl config use-context ${{ env.TKE_CLUSTER_ID }}-context-default
+
+      - name: Deploy to TKE
+        run: |
+          # Update image in kustomization if it exists
+          if [ -f kustomization.yaml ]; then
+            kustomize edit set image ${{ env.TKE_IMAGE_URL }}:${{ github.sha }}
+            kustomize build . | kubectl apply -f -
+          else
+            # Direct deployment update
+            kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+              ${{ env.DEPLOYMENT_NAME }}=${{ env.TKE_IMAGE_URL }}:${{ github.sha }} \
+              -n ${{ env.NAMESPACE }} || \
+            kubectl create deployment ${{ env.DEPLOYMENT_NAME }} \
+              --image=${{ env.TKE_IMAGE_URL }}:${{ github.sha }} \
+              -n ${{ env.NAMESPACE }}
+          fi
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          kubectl get deployment ${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          kubectl get pods -l app=${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+          kubectl get services -n ${{ env.NAMESPACE }}
+
+      - name: Health check
+        run: |
+          # Get service endpoint
+          SERVICE_IP=$(kubectl get svc ${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          
+          if [ -n "$SERVICE_IP" ]; then
+            echo "Checking health at http://$SERVICE_IP:3000/api/health"
+            for i in {1..5}; do
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://$SERVICE_IP:3000/api/health" || echo "000")
+              if [ "$RESPONSE" = "200" ]; then
+                echo "Health check passed!"
+                exit 0
+              fi
+              echo "Attempt $i: Got HTTP $RESPONSE, retrying in 10s..."
+              sleep 10
+            done
+            echo "::warning::Health check did not pass, but deployment completed"
+          else
+            echo "::notice::No LoadBalancer IP available yet, skipping health check"
+          fi

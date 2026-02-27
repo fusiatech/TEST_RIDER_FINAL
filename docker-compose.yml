@@ -1,0 +1,220 @@
+version: '3.8'
+
+services:
+  swarm-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: swarm-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - GITHUB_ID=${GITHUB_ID}
+      - GITHUB_SECRET=${GITHUB_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318/v1/traces}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-swarm-ui}
+    depends_on:
+      - jaeger
+    volumes:
+      # Persist database file
+      - ./db.json:/app/db.json
+      # Persist application data
+      - swarm-data:/app/data
+      # Mount for CLI tools access (optional, for host CLI integration)
+      # - /usr/local/bin/gh:/usr/local/bin/gh:ro
+      # Log volume for Promtail collection
+      - swarm-logs:/var/log/swarm-ui
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Development service with hot reload
+  swarm-ui-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: swarm-ui-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - swarm-data:/app/data
+    command: npm run dev
+    profiles:
+      - dev
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: swarm-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: swarm-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/swarm-ui.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Automated backup service
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: swarm-backup
+    volumes:
+      - ./db.json:/app/db.json:ro
+      - ./backups:/app/backups
+      - ./scripts:/app/scripts:ro
+    environment:
+      - BACKUP_DIR=/app/backups
+      - DATA_FILE=/app/db.json
+      - BACKUP_KEEP_COUNT=${BACKUP_KEEP_COUNT:-7}
+    command: >
+      sh -c "
+        echo 'SwarmUI Backup Service Started';
+        while true; do
+          echo '[$(date)] Running scheduled backup...';
+          npx tsx /app/scripts/backup.ts;
+          echo '[$(date)] Backup complete. Sleeping for 24 hours...';
+          sleep 86400;
+        done
+      "
+    restart: unless-stopped
+    profiles:
+      - backup
+
+  # On-demand backup runner (for manual backups)
+  backup-now:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps
+    container_name: swarm-backup-now
+    volumes:
+      - ./db.json:/app/db.json:ro
+      - ./backups:/app/backups
+      - ./scripts:/app/scripts:ro
+    environment:
+      - BACKUP_DIR=/app/backups
+      - DATA_FILE=/app/db.json
+      - BACKUP_KEEP_COUNT=${BACKUP_KEEP_COUNT:-7}
+    command: npx tsx /app/scripts/backup.ts
+    profiles:
+      - backup-now
+
+  # Loki for log aggregation (GAP-010)
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: swarm-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Promtail for log collection (GAP-010)
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: swarm-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - ./monitoring/promtail:/etc/promtail:ro
+      - swarm-logs:/var/log/swarm-ui:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+  # Tempo for distributed tracing (GAP-011)
+  tempo:
+    image: grafana/tempo:2.3.0
+    container_name: swarm-tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./monitoring/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # tempo query API
+      - "14317:4317"  # otlp grpc (remapped to avoid Jaeger conflict)
+      - "14318:4318"  # otlp http (remapped to avoid Jaeger conflict)
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  swarm-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  tempo-data:
+    driver: local
+  swarm-logs:
+    driver: local

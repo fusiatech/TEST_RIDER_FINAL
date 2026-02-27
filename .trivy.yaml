@@ -1,0 +1,23 @@
+severity:
+  - CRITICAL
+  - HIGH
+
+ignore-unfixed: true
+
+security-checks:
+  - vuln
+  - secret
+  - config
+
+vulnerability:
+  type:
+    - os
+    - library
+
+timeout: 10m
+
+db:
+  skip-update: false
+
+cache:
+  clear: false

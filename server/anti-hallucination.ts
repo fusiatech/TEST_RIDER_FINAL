@@ -1,7 +1,19 @@
 import type { AgentInstance, SwarmResult } from '@/lib/types'
-import { computeConfidence, diffOutputs, extractSources } from '@/server/confidence'
+import {
+  computeConfidence,
+  computeConfidenceWithOptions,
+  diffOutputs,
+  extractSources,
+  type ConfidenceOptions,
+} from '@/server/confidence'
 import { runSecurityChecks } from '@/server/security-checks'
 import type { SecurityResult } from '@/server/security-checks'
+import { validateOutputsSemantically } from '@/server/semantic-validator'
+import {
+  factCheckOutput,
+  computeFactCheckPenalty,
+  type FactCheckResult,
+} from '@/server/fact-checker'
 
 /* ── Types ────────────────────────────────────────────────────────── */
 
@@ -19,6 +31,16 @@ export interface StageAnalysis {
   passRate: number
   bestOutput: string
   needsRerun: boolean
+  semanticSimilarity?: number
+  confidenceMethod?: 'jaccard' | 'semantic' | 'hybrid'
+  factCheckResult?: FactCheckResult
+  factCheckScore?: number
+}
+
+export interface StageAnalysisOptions extends ConfidenceOptions {
+  threshold?: number
+  enableFactChecking?: boolean
+  projectPath?: string
 }
 
 export interface SecurityValidation {
@@ -129,6 +151,107 @@ export function analyzeStageOutputs(
     passRate,
     bestOutput,
     needsRerun,
+    confidenceMethod: 'jaccard',
+  }
+}
+
+/**
+ * Analyse a set of agent outputs with optional semantic validation.
+ *
+ * When semantic validation is enabled and an API key is provided,
+ * uses a hybrid approach combining Jaccard and semantic similarity.
+ *
+ * When fact checking is enabled, verifies file paths and code references
+ * mentioned in the output and applies a penalty for unverified facts.
+ */
+export async function analyzeStageOutputsWithOptions(
+  outputs: AgentOutput[],
+  options: StageAnalysisOptions = {},
+): Promise<StageAnalysis> {
+  const {
+    threshold = 80,
+    useSemanticValidation,
+    openaiApiKey,
+    enableFactChecking,
+    projectPath,
+  } = options
+  const texts = outputs.map((o) => o.output)
+
+  const confidenceResult = await computeConfidenceWithOptions(texts, {
+    useSemanticValidation,
+    openaiApiKey,
+  })
+
+  const agreements = diffOutputs(texts)
+
+  const mergedSources = new Set<string>()
+  for (const o of outputs) {
+    for (const src of extractSources(o.output)) {
+      mergedSources.add(src)
+    }
+  }
+
+  const passed = outputs.filter((o) => o.exitCode === 0).length
+  const allPassed = outputs.length > 0 && passed === outputs.length
+  const passRate = outputs.length > 0 ? (passed / outputs.length) * 100 : 0
+
+  const bestOutput = selectBestOutput(outputs)
+
+  let factCheckResult: FactCheckResult | undefined
+  let factCheckScore: number | undefined
+  let adjustedConfidence = confidenceResult.score
+
+  if (enableFactChecking && projectPath && bestOutput.trim().length > 20) {
+    try {
+      factCheckResult = await factCheckOutput(bestOutput, projectPath)
+      factCheckScore = factCheckResult.score
+
+      const penalty = computeFactCheckPenalty(factCheckResult)
+      adjustedConfidence = Math.max(0, confidenceResult.score - penalty)
+    } catch {
+      // Fact checking failed, continue without it
+    }
+  }
+
+  const needsRerun = adjustedConfidence < threshold
+
+  return {
+    confidence: adjustedConfidence,
+    agreements,
+    sources: [...mergedSources],
+    allPassed,
+    passRate,
+    bestOutput,
+    needsRerun,
+    semanticSimilarity: confidenceResult.semanticScore,
+    confidenceMethod: confidenceResult.method,
+    factCheckResult,
+    factCheckScore,
+  }
+}
+
+/**
+ * Perform semantic-only validation on outputs.
+ * Returns semantic similarity score and consensus status.
+ */
+export async function validateStageSemantics(
+  outputs: AgentOutput[],
+  apiKey: string,
+  consensusThreshold: number = 0.8,
+): Promise<{ similarity: number; isConsensus: boolean }> {
+  const texts = outputs.map((o) => o.output)
+
+  try {
+    const result = await validateOutputsSemantically(texts, apiKey, consensusThreshold)
+    return {
+      similarity: result.similarity,
+      isConsensus: result.isConsensus,
+    }
+  } catch {
+    return {
+      similarity: 0,
+      isConsensus: false,
+    }
   }
 }
 

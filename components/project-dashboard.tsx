@@ -1,16 +1,46 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, useRef } from 'react'
 import { useSwarmStore } from '@/lib/store'
-import type { Ticket, TicketComplexity, TicketStatus, AgentRole, Project } from '@/lib/types'
+import type { Ticket, TicketComplexity, AgentRole, Project, Epic } from '@/lib/types'
+import { TicketStatus } from '@/lib/types'
 import { ROLE_COLORS, ROLE_LABELS } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TicketDetail } from '@/components/ticket-detail'
+import { EpicManager } from '@/components/epic-manager'
+import { DependencyGraph } from '@/components/dependency-graph'
+import { isTicketBlocked } from '@/lib/dependency-utils'
+import { Tooltip, InfoTooltip, TERM_DEFINITIONS } from '@/components/ui/tooltip'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
+import { CreateTicketDialog } from '@/components/create-ticket-dialog'
+import { WorkflowHelpButton } from '@/components/workflow-help'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import {
   Search,
   ClipboardList,
@@ -26,7 +56,169 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Layers,
+  GitBranch,
+  Link2,
+  Trash2,
+  CheckSquare,
+  Square,
+  Filter,
+  XCircle,
+  GripVertical,
+  Plus,
+  Loader2,
+  Wand2,
+  Figma,
 } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
+import { PRDEditor } from '@/components/prd-editor'
+import { FigmaPanel } from '@/components/figma-panel'
+import { PRDGeneratorDialog } from '@/components/prd-generator'
+import type { PRDTemplateType } from '@/lib/prd-templates'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+type DashboardTab = 'board' | 'epics' | 'dependencies' | 'prd' | 'figma'
+
+function EpicManagerWrapper({ project }: { project: Project }) {
+  const updateProject = useSwarmStore((s) => s.updateProject)
+
+  const handleCreateEpic = useCallback(async (
+    epicData: Omit<Epic, 'id' | 'projectId' | 'progress' | 'createdAt' | 'updatedAt'>
+  ) => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/epics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(epicData),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to create epic')
+      }
+      const newEpic = await res.json()
+      updateProject(project.id, {
+        epics: [...project.epics, newEpic],
+      })
+      toast.success('Epic created')
+    } catch (err) {
+      toast.error('Failed to create epic', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [project, updateProject])
+
+  const handleUpdateEpic = useCallback(async (epicId: string, update: Partial<Epic>) => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/epics`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epicId, ...update }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to update epic')
+      }
+      const updatedEpic = await res.json()
+      updateProject(project.id, {
+        epics: project.epics.map((e) => (e.id === epicId ? updatedEpic : e)),
+      })
+      toast.success('Epic updated')
+    } catch (err) {
+      toast.error('Failed to update epic', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [project, updateProject])
+
+  const handleDeleteEpic = useCallback(async (epicId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/epics`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epicId }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to delete epic')
+      }
+      updateProject(project.id, {
+        epics: project.epics.filter((e) => e.id !== epicId),
+        tickets: project.tickets.map((t) =>
+          t.epicId === epicId ? { ...t, epicId: undefined } : t
+        ),
+      })
+      toast.success('Epic deleted')
+    } catch (err) {
+      toast.error('Failed to delete epic', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [project, updateProject])
+
+  const handleAssignTicket = useCallback(async (ticketId: string, epicId: string | undefined) => {
+    try {
+      const ticket = project.tickets.find((t) => t.id === ticketId)
+      if (!ticket) return
+
+      const oldEpicId = ticket.epicId
+      const updatedTickets = project.tickets.map((t) =>
+        t.id === ticketId ? { ...t, epicId, updatedAt: Date.now() } : t
+      )
+
+      const updatedEpics = project.epics.map((e) => {
+        if (e.id === oldEpicId) {
+          return { ...e, ticketIds: e.ticketIds.filter((id) => id !== ticketId) }
+        }
+        if (e.id === epicId) {
+          return { ...e, ticketIds: [...e.ticketIds, ticketId] }
+        }
+        return e
+      })
+
+      if (epicId) {
+        const res = await fetch(`/api/projects/${project.id}/epics`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            epicId,
+            ticketIds: updatedEpics.find((e) => e.id === epicId)?.ticketIds,
+          }),
+        })
+        if (!res.ok) {
+          throw new Error('Failed to assign ticket')
+        }
+      }
+
+      updateProject(project.id, {
+        tickets: updatedTickets,
+        epics: updatedEpics,
+      })
+    } catch (err) {
+      toast.error('Failed to assign ticket', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [project, updateProject])
+
+  return (
+    <EpicManager
+      projectId={project.id}
+      epics={project.epics}
+      tickets={project.tickets}
+      onCreateEpic={handleCreateEpic}
+      onUpdateEpic={handleUpdateEpic}
+      onDeleteEpic={handleDeleteEpic}
+      onAssignTicket={handleAssignTicket}
+    />
+  )
+}
 
 const ROLE_ICONS: Record<AgentRole, typeof Search> = {
   researcher: Search,
@@ -94,7 +286,9 @@ function PRDSection({ project }: { project: Project }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">Product Requirements Document</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              <InfoTooltip term="PRD" description={TERM_DEFINITIONS.PRD} /> - Product Requirements Document
+            </CardTitle>
             <Badge
               variant="outline"
               className="text-[10px] px-1.5"
@@ -151,33 +345,77 @@ function PRDSection({ project }: { project: Project }) {
   )
 }
 
-function TicketCard({
+function TicketCardContent({
   ticket,
+  allTickets,
   onClick,
+  isSelected,
+  onSelectToggle,
+  showCheckbox,
+  isDragging,
+  showDragHandle,
 }: {
   ticket: Ticket
-  onClick: () => void
+  allTickets: Ticket[]
+  onClick?: () => void
+  isSelected?: boolean
+  onSelectToggle?: (ticketId: string) => void
+  showCheckbox?: boolean
+  isDragging?: boolean
+  showDragHandle?: boolean
 }) {
   const approveTicket = useSwarmStore((s) => s.approveTicket)
   const rejectTicket = useSwarmStore((s) => s.rejectTicket)
   const RoleIcon = ROLE_ICONS[ticket.assignedRole]
   const isReview = ticket.status === 'review'
+  const blocked = isTicketBlocked(ticket, allTickets)
+  const dependencyCount = (ticket.dependencies?.length || 0) + (ticket.blockedBy?.length || 0)
+  const blockedByCount = ticket.blockedBy?.filter((depId) => {
+    const dep = allTickets.find((t) => t.id === depId)
+    return dep && dep.status !== 'done' && dep.status !== 'approved'
+  }).length || 0
 
   return (
     <Card
-      className="border-border bg-card/80 cursor-pointer hover:border-primary/30 transition-colors"
+      className={`border-border bg-card/80 cursor-pointer hover:border-primary/30 transition-all ${
+        blocked ? 'border-red-500/30' : ''
+      } ${isSelected ? 'ring-2 ring-primary/50' : ''} ${
+        isDragging ? 'opacity-50 shadow-lg scale-105 ring-2 ring-primary' : ''
+      }`}
       onClick={onClick}
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium text-foreground line-clamp-1">{ticket.title}</span>
-          <Badge
-            variant="outline"
-            className="shrink-0 text-[10px] px-1.5"
-            style={{ color: COMPLEXITY_COLORS[ticket.complexity], borderColor: COMPLEXITY_COLORS[ticket.complexity] }}
-          >
-            {ticket.complexity}
-          </Badge>
+          {showDragHandle && (
+            <div className="shrink-0 mt-0.5 cursor-grab active:cursor-grabbing text-muted hover:text-foreground">
+              <GripVertical className="h-4 w-4" />
+            </div>
+          )}
+          {showCheckbox && (
+            <button
+              className="shrink-0 mt-0.5"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelectToggle?.(ticket.id)
+              }}
+            >
+              {isSelected ? (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              ) : (
+                <Square className="h-4 w-4 text-muted hover:text-foreground" />
+              )}
+            </button>
+          )}
+          <span className="text-sm font-medium text-foreground line-clamp-1 flex-1">{ticket.title}</span>
+          <Tooltip content={TERM_DEFINITIONS.Complexity}>
+            <Badge
+              variant="outline"
+              className="shrink-0 text-[10px] px-1.5"
+              style={{ color: COMPLEXITY_COLORS[ticket.complexity], borderColor: COMPLEXITY_COLORS[ticket.complexity] }}
+            >
+              {ticket.complexity}
+            </Badge>
+          </Tooltip>
         </div>
         {ticket.description && (
           <p className="text-xs text-muted line-clamp-2">{ticket.description}</p>
@@ -185,6 +423,24 @@ function TicketCard({
         <div className="flex items-center gap-2">
           <RoleIcon className="h-3.5 w-3.5" style={{ color: ROLE_COLORS[ticket.assignedRole] }} />
           <span className="text-xs text-muted">{ROLE_LABELS[ticket.assignedRole]}</span>
+          {dependencyCount > 0 && (
+            <Tooltip content={`${dependencyCount} dependencies${blockedByCount > 0 ? `, ${blockedByCount} blocking` : ''}`}>
+              <span className="flex items-center gap-0.5">
+                <Link2 className={`h-3 w-3 ${blocked ? 'text-red-500' : 'text-muted'}`} />
+                <span className={`text-[10px] ${blocked ? 'text-red-500' : 'text-muted'}`}>
+                  {dependencyCount}
+                </span>
+              </span>
+            </Tooltip>
+          )}
+          {blocked && (
+            <Tooltip content={TERM_DEFINITIONS.Blocked}>
+              <Badge variant="destructive" className="text-[10px] px-1 gap-0.5">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                Blocked
+              </Badge>
+            </Tooltip>
+          )}
           <Badge variant="secondary" className="ml-auto text-[10px]">
             {ticket.status.replace('_', ' ')}
           </Badge>
@@ -222,20 +478,357 @@ function TicketCard({
   )
 }
 
+function DraggableTicketCard({
+  ticket,
+  allTickets,
+  onClick,
+  isSelected,
+  onSelectToggle,
+  showCheckbox,
+}: {
+  ticket: Ticket
+  allTickets: Ticket[]
+  onClick: () => void
+  isSelected?: boolean
+  onSelectToggle?: (ticketId: string) => void
+  showCheckbox?: boolean
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: ticket.id,
+    data: { ticket },
+  })
+
+  const style = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+        zIndex: isDragging ? 50 : undefined,
+      }
+    : undefined
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      <TicketCardContent
+        ticket={ticket}
+        allTickets={allTickets}
+        onClick={onClick}
+        isSelected={isSelected}
+        onSelectToggle={onSelectToggle}
+        showCheckbox={showCheckbox}
+        isDragging={isDragging}
+        showDragHandle={true}
+      />
+    </div>
+  )
+}
+
+function DroppableColumn({
+  status,
+  label,
+  color,
+  tickets,
+  allTickets,
+  isOver,
+  onTicketClick,
+  selectedTicketId,
+  selectedTicketIds,
+  handleSelectToggle,
+  showCheckboxes,
+  isCollapsed,
+  onToggleCollapse,
+}: {
+  status: TicketStatus
+  label: string
+  color: string
+  tickets: Ticket[]
+  allTickets: Ticket[]
+  isOver: boolean
+  onTicketClick: (ticketId: string) => void
+  selectedTicketId: string | null
+  selectedTicketIds: Set<string>
+  handleSelectToggle: (ticketId: string) => void
+  showCheckboxes: boolean
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
+}) {
+  const { setNodeRef } = useDroppable({
+    id: status,
+    data: { status },
+  })
+
+  const isRejected = status === 'rejected'
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          <h4 className="text-sm font-medium text-foreground">{label}</h4>
+        </div>
+        <div className="flex items-center gap-1">
+          <Badge variant="secondary" className="text-[10px]">{tickets.length}</Badge>
+          {isRejected && tickets.length > 0 && onToggleCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5"
+              onClick={onToggleCollapse}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+      {!(isRejected && isCollapsed) && (
+        <div
+          ref={setNodeRef}
+          className={`space-y-2 min-h-[100px] rounded-lg p-2 transition-all ${
+            isOver
+              ? 'bg-primary/10 border-2 border-dashed border-primary'
+              : 'border-2 border-transparent'
+          }`}
+        >
+          {tickets.map((ticket) => (
+            <DraggableTicketCard
+              key={ticket.id}
+              ticket={ticket}
+              allTickets={allTickets}
+              onClick={() => onTicketClick(ticket.id)}
+              isSelected={selectedTicketIds.has(ticket.id)}
+              onSelectToggle={handleSelectToggle}
+              showCheckbox={showCheckboxes}
+            />
+          ))}
+          {tickets.length === 0 && (
+            <div className={`flex h-20 items-center justify-center rounded-lg border border-dashed ${
+              isOver ? 'border-primary bg-primary/5' : 'border-border'
+            }`}>
+              <span className="text-xs text-muted">
+                {isOver ? 'Drop here' : 'No tickets'}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ProjectDashboard() {
   const tickets = useSwarmStore((s) => s.tickets)
   const projects = useSwarmStore((s) => s.projects)
   const currentProjectId = useSwarmStore((s) => s.currentProjectId)
+  const updateProject = useSwarmStore((s) => s.updateProject)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<DashboardTab>('board')
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set())
+  const [showCheckboxes, setShowCheckboxes] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [epicFilter, setEpicFilter] = useState<string>('all')
+
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const previousTicketsRef = useRef<Ticket[]>([])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  )
 
   const currentProject = projects.find((p) => p.id === currentProjectId)
 
-  const allTickets = useMemo(() => {
+  const baseTickets = useMemo(() => {
     if (currentProject && currentProject.tickets.length > 0) {
       return currentProject.tickets
     }
     return tickets
   }, [currentProject, tickets])
+
+  const allTickets = useMemo(() => {
+    let filtered = baseTickets
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter((t) =>
+        t.title.toLowerCase().includes(query) ||
+        t.description?.toLowerCase().includes(query)
+      )
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((t) => t.status === statusFilter)
+    }
+
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter((t) => t.assignedRole === roleFilter)
+    }
+
+    if (epicFilter !== 'all') {
+      if (epicFilter === 'none') {
+        filtered = filtered.filter((t) => !t.epicId)
+      } else {
+        filtered = filtered.filter((t) => t.epicId === epicFilter)
+      }
+    }
+
+    return filtered
+  }, [baseTickets, searchQuery, statusFilter, roleFilter, epicFilter])
+
+  const hasActiveFilters = searchQuery.trim() || statusFilter !== 'all' || roleFilter !== 'all' || epicFilter !== 'all'
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery('')
+    setStatusFilter('all')
+    setRoleFilter('all')
+    setEpicFilter('all')
+  }, [])
+
+  const handleTicketCreated = useCallback(async () => {
+    if (!currentProjectId) return
+    try {
+      const res = await fetch(`/api/projects/${currentProjectId}`)
+      if (res.ok) {
+        const project = await res.json()
+        updateProject(currentProjectId, { tickets: project.tickets, epics: project.epics })
+      }
+    } catch {
+      // Silently fail - the ticket was created, just couldn't refresh
+    }
+  }, [currentProjectId, updateProject])
+
+  const handleSelectToggle = useCallback((ticketId: string) => {
+    setSelectedTicketIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId)
+      } else {
+        newSet.add(ticketId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedTicketIds.size === allTickets.length) {
+      setSelectedTicketIds(new Set())
+    } else {
+      setSelectedTicketIds(new Set(allTickets.map((t) => t.id)))
+    }
+  }, [allTickets, selectedTicketIds.size])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTicketIds(new Set())
+    setShowCheckboxes(false)
+  }, [])
+
+  const handleBulkStatusChange = useCallback(async (newStatus: TicketStatus) => {
+    if (!currentProject || selectedTicketIds.size === 0) return
+
+    const updatedTickets = currentProject.tickets.map((t) =>
+      selectedTicketIds.has(t.id)
+        ? { ...t, status: newStatus, updatedAt: Date.now() }
+        : t
+    )
+
+    updateProject(currentProject.id, { tickets: updatedTickets })
+    toast.success(`Updated ${selectedTicketIds.size} ticket(s) to ${newStatus.replace('_', ' ')}`)
+    handleClearSelection()
+  }, [currentProject, selectedTicketIds, updateProject, handleClearSelection])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!currentProject || selectedTicketIds.size === 0) return
+
+    const updatedTickets = currentProject.tickets.filter((t) => !selectedTicketIds.has(t.id))
+    const updatedEpics = currentProject.epics.map((e) => ({
+      ...e,
+      ticketIds: e.ticketIds.filter((id) => !selectedTicketIds.has(id)),
+    }))
+
+    updateProject(currentProject.id, { tickets: updatedTickets, epics: updatedEpics })
+    toast.success(`Deleted ${selectedTicketIds.size} ticket(s)`)
+    handleClearSelection()
+    setShowDeleteConfirm(false)
+  }, [currentProject, selectedTicketIds, updateProject, handleClearSelection])
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }, [])
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event
+    setOverId(over ? (over.id as string) : null)
+  }, [])
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+
+    if (!over || !currentProject) return
+
+    const ticketId = active.id as string
+    const newStatus = over.id as TicketStatus
+
+    const ticket = currentProject.tickets.find((t) => t.id === ticketId)
+    if (!ticket) return
+
+    if (ticket.status === newStatus) return
+
+    previousTicketsRef.current = currentProject.tickets
+
+    const updatedTickets = currentProject.tickets.map((t) =>
+      t.id === ticketId ? { ...t, status: newStatus, updatedAt: Date.now() } : t
+    )
+    updateProject(currentProject.id, { tickets: updatedTickets })
+
+    try {
+      const res = await fetch(`/api/projects/${currentProject.id}/tickets`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId, status: newStatus }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to update ticket')
+      }
+
+      toast.success(`Moved "${ticket.title}" to ${newStatus.replace('_', ' ')}`)
+    } catch (err) {
+      updateProject(currentProject.id, { tickets: previousTicketsRef.current })
+      toast.error('Failed to update ticket status', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [currentProject, updateProject])
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null)
+    setOverId(null)
+  }, [])
+
+  const activeTicket = useMemo(() => {
+    if (!activeId) return null
+    return allTickets.find((t) => t.id === activeId) || null
+  }, [activeId, allTickets])
+
+  const blockedCount = useMemo(() => {
+    return allTickets.filter((t) => isTicketBlocked(t, allTickets)).length
+  }, [allTickets])
 
   const donutData = useMemo(() => computeDonutData(allTickets), [allTickets])
   const totalTickets = allTickets.length
@@ -252,30 +845,128 @@ export function ProjectDashboard() {
   const selectedTicket = allTickets.find((t) => t.id === selectedTicketId)
 
   const [rejectedExpanded, setRejectedExpanded] = useState(false)
+  const [isGeneratingTickets, setIsGeneratingTickets] = useState(false)
+  const [showGenerateTicketsDialog, setShowGenerateTicketsDialog] = useState(false)
+  const [showPRDGenerator, setShowPRDGenerator] = useState(false)
+  const [ticketPreview, setTicketPreview] = useState<{
+    tickets: Array<{ title: string; level: string; complexity: string }>
+    hierarchy: { epics: number; stories: number; tasks: number; orphans: number }
+    effort: { totalDays: { min: number; max: number } }
+  } | null>(null)
 
   const setMode = useSwarmStore((s) => s.setMode)
 
+  const handlePRDChange = useCallback((prd: string, status: 'draft' | 'approved' | 'rejected') => {
+    if (currentProject) {
+      updateProject(currentProject.id, { prd, prdStatus: status })
+    }
+  }, [currentProject, updateProject])
+
+  const handlePRDGenerated = useCallback(async (prd: string, _type: PRDTemplateType) => {
+    if (!currentProject) return
+    
+    try {
+      const res = await fetch(`/api/projects/${currentProject.id}/prd`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prd, status: 'draft' }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to save PRD')
+      }
+
+      updateProject(currentProject.id, { prd, prdStatus: 'draft' })
+      setShowPRDGenerator(false)
+      toast.success('PRD created successfully')
+    } catch (err) {
+      toast.error('Failed to save PRD', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    }
+  }, [currentProject, updateProject])
+
+  const handleGenerateTicketsPreview = useCallback(async () => {
+    if (!currentProject) return
+    
+    setIsGeneratingTickets(true)
+    try {
+      const res = await fetch(`/api/projects/${currentProject.id}/generate-tickets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: true }),
+      })
+      
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to generate tickets preview')
+      }
+      
+      const data = await res.json()
+      setTicketPreview(data)
+      setShowGenerateTicketsDialog(true)
+    } catch (err) {
+      toast.error('Failed to generate tickets', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    } finally {
+      setIsGeneratingTickets(false)
+    }
+  }, [currentProject])
+
+  const handleConfirmGenerateTickets = useCallback(async () => {
+    if (!currentProject) return
+    
+    setIsGeneratingTickets(true)
+    try {
+      const res = await fetch(`/api/projects/${currentProject.id}/generate-tickets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preview: false }),
+      })
+      
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to generate tickets')
+      }
+      
+      const data = await res.json()
+      
+      const projectRes = await fetch(`/api/projects/${currentProject.id}`)
+      if (projectRes.ok) {
+        const project = await projectRes.json()
+        updateProject(currentProject.id, { tickets: project.tickets, epics: project.epics })
+      }
+      
+      setShowGenerateTicketsDialog(false)
+      setTicketPreview(null)
+      toast.success(`Generated ${data.created} tickets`, {
+        description: `${data.hierarchy.epics} epics, ${data.hierarchy.stories} stories, ${data.hierarchy.tasks} tasks`,
+      })
+    } catch (err) {
+      toast.error('Failed to generate tickets', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      })
+    } finally {
+      setIsGeneratingTickets(false)
+    }
+  }, [currentProject, updateProject])
+
   if (allTickets.length === 0 && !currentProject?.prd) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center py-20 text-center animate-fade-in">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 rounded-3xl bg-primary/5 blur-2xl" />
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10">
-            <ClipboardList className="h-10 w-10 text-primary" />
-          </div>
-        </div>
-        <h3 className="text-lg font-semibold text-foreground">No project tickets yet</h3>
-        <p className="mt-2 max-w-sm text-sm text-muted">
-          Describe a project to automatically decompose it into tickets and track progress on this dashboard.
-        </p>
-        <Button
-          variant="outline"
-          className="mt-4 gap-2"
-          onClick={() => setMode('project')}
-        >
-          <Sparkles className="h-4 w-4" />
-          Create Project
-        </Button>
+      <div className="flex flex-1 items-center justify-center p-6">
+        <EmptyState
+          icon={<ClipboardList />}
+          title="No project tickets yet"
+          description="Describe a project to automatically decompose it into tickets and track progress on this dashboard."
+          variant="large"
+          action={{
+            label: 'Create Project',
+            onClick: () => setMode('project'),
+            icon: <Plus className="h-4 w-4" />,
+          }}
+        />
       </div>
     )
   }
@@ -284,6 +975,450 @@ export function ProjectDashboard() {
     <div className="space-y-6 p-6">
       {/* PRD Section */}
       {currentProject && <PRDSection project={currentProject} />}
+
+      {/* Tab Navigation */}
+      <div className="flex items-center justify-between border-b border-border pb-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={activeTab === 'board' ? 'default' : 'ghost'}
+            size="sm"
+            className="gap-2"
+            onClick={() => setActiveTab('board')}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Board
+          </Button>
+          <Tooltip content={TERM_DEFINITIONS.Epic} side="bottom">
+            <Button
+              variant={activeTab === 'epics' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setActiveTab('epics')}
+            >
+              <Layers className="h-4 w-4" />
+              Epics
+              {currentProject?.epics && currentProject.epics.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] ml-1">
+                  {currentProject.epics.length}
+                </Badge>
+              )}
+            </Button>
+          </Tooltip>
+          <Tooltip content="View ticket dependencies and blocked items" side="bottom">
+            <Button
+              variant={activeTab === 'dependencies' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setActiveTab('dependencies')}
+            >
+              <GitBranch className="h-4 w-4" />
+              Dependencies
+            {blockedCount > 0 && (
+              <Badge variant="destructive" className="text-[10px] ml-1">
+                {blockedCount} blocked
+              </Badge>
+            )}
+          </Button>
+          </Tooltip>
+          <Tooltip content="Edit Product Requirements Document" side="bottom">
+            <Button
+              variant={activeTab === 'prd' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setActiveTab('prd')}
+            >
+              <FileText className="h-4 w-4" />
+              PRD
+              {currentProject?.prd && (
+                <Badge variant="secondary" className="text-[10px] ml-1">
+                  {currentProject.prdStatus || 'draft'}
+                </Badge>
+              )}
+            </Button>
+          </Tooltip>
+          <Tooltip content="Browse and import Figma designs" side="bottom">
+            <Button
+              variant={activeTab === 'figma' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-2"
+              onClick={() => setActiveTab('figma')}
+            >
+              <Figma className="h-4 w-4" />
+              Figma
+            </Button>
+          </Tooltip>
+        </div>
+        <div className="flex items-center gap-2">
+          {!currentProject?.prd && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowPRDGenerator(true)}
+            >
+              <FileText className="h-4 w-4" />
+              Create PRD
+            </Button>
+          )}
+          {currentProject?.prd && currentProject.prdStatus === 'approved' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleGenerateTicketsPreview}
+              disabled={isGeneratingTickets}
+            >
+              {isGeneratingTickets ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              Generate Tickets from PRD
+            </Button>
+          )}
+          <WorkflowHelpButton />
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'epics' && currentProject && (
+        <EpicManagerWrapper project={currentProject} />
+      )}
+      {activeTab === 'dependencies' && (
+        <DependencyGraph
+          tickets={allTickets}
+          onTicketClick={(ticket) => setSelectedTicketId(ticket.id)}
+        />
+      )}
+      {activeTab === 'prd' && currentProject && (
+        <PRDEditor
+          projectId={currentProject.id}
+          initialPRD={currentProject.prd || ''}
+          initialStatus={currentProject.prdStatus || 'draft'}
+          projectName={currentProject.name}
+          projectDescription={currentProject.description}
+          onPRDChange={handlePRDChange}
+        />
+      )}
+      {activeTab === 'figma' && (
+        <div className="h-[600px] border border-border rounded-lg overflow-hidden">
+          <FigmaPanel
+            projectId={currentProject?.id}
+          />
+        </div>
+      )}
+
+      {/* Generate Tickets Dialog */}
+      <Dialog open={showGenerateTicketsDialog} onOpenChange={setShowGenerateTicketsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-primary" />
+              Generate Tickets from PRD
+            </DialogTitle>
+            <DialogDescription>
+              Review the tickets that will be generated from your PRD before creating them.
+            </DialogDescription>
+          </DialogHeader>
+          {ticketPreview && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-4 gap-4">
+                <Card className="border-border">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">{ticketPreview.hierarchy.epics}</div>
+                    <div className="text-xs text-muted">Epics</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">{ticketPreview.hierarchy.stories}</div>
+                    <div className="text-xs text-muted">Stories</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">{ticketPreview.hierarchy.tasks}</div>
+                    <div className="text-xs text-muted">Tasks</div>
+                  </CardContent>
+                </Card>
+                <Card className="border-border">
+                  <CardContent className="p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">
+                      {ticketPreview.effort.totalDays.min}-{ticketPreview.effort.totalDays.max}
+                    </div>
+                    <div className="text-xs text-muted">Est. Days</div>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto space-y-2 rounded-md border border-border p-3">
+                {ticketPreview.tickets.map((ticket, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">
+                        {ticket.level}
+                      </Badge>
+                      <span className="text-sm text-foreground">{ticket.title}</span>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px]"
+                      style={{
+                        color: ticket.complexity === 'S' ? '#22c55e' :
+                               ticket.complexity === 'M' ? '#3b82f6' :
+                               ticket.complexity === 'L' ? '#f59e0b' : '#ef4444',
+                      }}
+                    >
+                      {ticket.complexity}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              {ticketPreview.hierarchy.orphans > 0 && (
+                <div className="flex items-center gap-2 p-2 rounded-md bg-yellow-500/10 text-yellow-500">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm">
+                    {ticketPreview.hierarchy.orphans} ticket(s) have missing parent references
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowGenerateTicketsDialog(false)
+                setTicketPreview(null)
+              }}
+              disabled={isGeneratingTickets}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmGenerateTickets} disabled={isGeneratingTickets}>
+              {isGeneratingTickets ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create {ticketPreview?.tickets.length || 0} Tickets
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* PRD Generator Dialog */}
+      {currentProject && (
+        <PRDGeneratorDialog
+          open={showPRDGenerator}
+          onOpenChange={setShowPRDGenerator}
+          projectId={currentProject.id}
+          onPRDGenerated={handlePRDGenerated}
+        />
+      )}
+      
+      {activeTab === 'board' && (
+        <>
+      {/* Search/Filter Bar and Create Ticket */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-1">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+              <Input
+                placeholder="Search tickets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="researcher">Researcher</SelectItem>
+                  <SelectItem value="planner">Planner</SelectItem>
+                  <SelectItem value="coder">Coder</SelectItem>
+                  <SelectItem value="validator">Validator</SelectItem>
+                  <SelectItem value="security">Security</SelectItem>
+                  <SelectItem value="synthesizer">Synthesizer</SelectItem>
+                </SelectContent>
+              </Select>
+              {currentProject?.epics && currentProject.epics.length > 0 && (
+                <Select value={epicFilter} onValueChange={setEpicFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Epic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Epics</SelectItem>
+                    <SelectItem value="none">No Epic</SelectItem>
+                    {currentProject.epics.map((epic) => (
+                      <SelectItem key={epic.id} value={epic.id}>
+                        {epic.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1 text-muted hover:text-foreground"
+                  onClick={clearAllFilters}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+          {currentProject && (
+            <CreateTicketDialog
+              projectId={currentProject.id}
+              epics={currentProject.epics || []}
+              allTickets={currentProject.tickets || []}
+              onTicketCreated={handleTicketCreated}
+            />
+          )}
+        </div>
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <span>Showing {allTickets.length} of {baseTickets.length} tickets</span>
+          </div>
+        )}
+      </div>
+
+      {/* Multi-Select Toolbar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showCheckboxes ? 'secondary' : 'outline'}
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              setShowCheckboxes(!showCheckboxes)
+              if (showCheckboxes) {
+                handleClearSelection()
+              }
+            }}
+          >
+            <CheckSquare className="h-4 w-4" />
+            {showCheckboxes ? 'Exit Selection' : 'Select'}
+          </Button>
+          {showCheckboxes && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSelectAll}
+              >
+                {selectedTicketIds.size === allTickets.length ? 'Deselect All' : 'Select All'}
+              </Button>
+              {selectedTicketIds.size > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedTicketIds.size} selected
+                </Badge>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Bulk Actions */}
+        {selectedTicketIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              className="h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground"
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkStatusChange(e.target.value as TicketStatus)
+                  e.target.value = ''
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>Change Status...</option>
+              <option value="backlog">Backlog</option>
+              <option value="in_progress">In Progress</option>
+              <option value="review">Review</option>
+              <option value="done">Done</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="gap-1"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete ({selectedTicketIds.size})
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearSelection}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2 text-red-500">
+                <AlertTriangle className="h-5 w-5" />
+                Confirm Delete
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted">
+                Are you sure you want to delete {selectedTicketIds.size} ticket(s)? This action cannot be undone.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                >
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Stats Row (TASK 6) */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -312,7 +1447,11 @@ export function ProjectDashboard() {
           <CardContent className="flex flex-col items-center justify-center p-4 text-center">
             <Clock className="mb-1 h-5 w-5 text-blue-500" />
             <span className="text-2xl font-bold text-foreground">{avgConfidence}%</span>
-            <span className="text-xs text-muted">Avg Confidence</span>
+            <Tooltip content={TERM_DEFINITIONS.Confidence}>
+              <span className="text-xs text-muted border-b border-dotted border-muted-foreground/50 cursor-help">
+                Avg Confidence
+              </span>
+            </Tooltip>
           </CardContent>
         </Card>
       </div>
@@ -400,72 +1539,92 @@ export function ProjectDashboard() {
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        {BOARD_COLUMNS.map((col) => {
-          const colTickets = allTickets.filter((t) => t.status === col.status)
-          const isRejected = col.status === 'rejected'
-          const isCollapsed = isRejected && !rejectedExpanded
+      {/* Kanban Board with Drag and Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          {BOARD_COLUMNS.map((col) => {
+            const colTickets = allTickets.filter((t) => t.status === col.status)
+            const isRejected = col.status === 'rejected'
+            const isCollapsed = isRejected && !rejectedExpanded
 
-          return (
-            <div key={col.status}>
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: col.color }}
-                  />
-                  <h4 className="text-sm font-medium text-foreground">{col.label}</h4>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-[10px]">{colTickets.length}</Badge>
-                  {isRejected && colTickets.length > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5"
-                      onClick={() => setRejectedExpanded(!rejectedExpanded)}
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-3 w-3" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {!(isRejected && isCollapsed) && (
-                <div className="space-y-2 min-h-[100px]">
-                  {colTickets.map((ticket) => (
-                    <TicketCard
-                      key={ticket.id}
-                      ticket={ticket}
-                      onClick={() =>
-                        setSelectedTicketId(
-                          selectedTicketId === ticket.id ? null : ticket.id
-                        )
-                      }
-                    />
-                  ))}
-                  {colTickets.length === 0 && (
-                    <div className="flex h-20 items-center justify-center rounded-lg border border-dashed border-border">
-                      <span className="text-xs text-muted">No tickets</span>
-                    </div>
-                  )}
-                </div>
-              )}
+            return (
+              <DroppableColumn
+                key={col.status}
+                status={col.status}
+                label={col.label}
+                color={col.color}
+                tickets={colTickets}
+                allTickets={allTickets}
+                isOver={overId === col.status}
+                onTicketClick={(ticketId) =>
+                  setSelectedTicketId(selectedTicketId === ticketId ? null : ticketId)
+                }
+                selectedTicketId={selectedTicketId}
+                selectedTicketIds={selectedTicketIds}
+                handleSelectToggle={handleSelectToggle}
+                showCheckboxes={showCheckboxes}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={isRejected ? () => setRejectedExpanded(!rejectedExpanded) : undefined}
+              />
+            )
+          })}
+        </div>
+
+        {/* Drag Overlay */}
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}>
+          {activeTicket && (
+            <div className="w-[250px]">
+              <TicketCardContent
+                ticket={activeTicket}
+                allTickets={allTickets}
+                isDragging={false}
+                showDragHandle={true}
+              />
             </div>
-          )
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Ticket Detail */}
       {selectedTicket && (
         <TicketDetail
           ticket={selectedTicket}
           onClose={() => setSelectedTicketId(null)}
+          onUpdate={async (ticketId, updates) => {
+            if (!currentProject) return
+            try {
+              const res = await fetch(`/api/projects/${currentProject.id}/tickets`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticketId, ...updates }),
+              })
+              if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.error || 'Failed to update ticket')
+              }
+              const updatedTicket = await res.json()
+              updateProject(currentProject.id, {
+                tickets: currentProject.tickets.map((t) =>
+                  t.id === ticketId ? { ...t, ...updatedTicket } : t
+                ),
+              })
+            } catch (err) {
+              throw err
+            }
+          }}
         />
+      )}
+      </>
       )}
     </div>
   )

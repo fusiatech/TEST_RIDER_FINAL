@@ -136,6 +136,7 @@ function JobRow({ job }: { job: SwarmJob }) {
             size="icon"
             className="h-7 w-7 text-muted hover:text-red-400"
             onClick={() => cancelJob(job.id)}
+            aria-label="Cancel job"
             title="Cancel job"
           >
             <XCircle className="h-3.5 w-3.5" />
@@ -147,6 +148,7 @@ function JobRow({ job }: { job: SwarmJob }) {
             size="icon"
             className="h-7 w-7 text-muted hover:text-yellow-400"
             onClick={() => retryJob(job.id)}
+            aria-label="Retry job"
             title="Retry job"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -162,6 +164,7 @@ function JobRow({ job }: { job: SwarmJob }) {
                 sendMessage(`Show me the result of: ${job.prompt.slice(0, 100)}`)
               }
             }}
+            aria-label="View result"
             title="View result"
           >
             <Eye className="h-3.5 w-3.5" />
@@ -200,7 +203,7 @@ export function JobQueue({ onClose }: { onClose: () => void }) {
             <Badge variant="secondary" className="text-[10px]">{jobs.length}</Badge>
           )}
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Close job queue panel">
           <X className="h-4 w-4" />
         </Button>
       </div>
