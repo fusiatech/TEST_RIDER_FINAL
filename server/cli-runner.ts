@@ -39,6 +39,7 @@ export interface CLIRunnerOptions {
     GOOGLE_API_KEY?: string
     ANTHROPIC_API_KEY?: string
     GITHUB_TOKEN?: string
+    CURSOR_API_KEY?: string
   }
 }
 
@@ -89,6 +90,7 @@ function spawnSingleAttempt(
     if (customEnv.GOOGLE_API_KEY) env.GOOGLE_API_KEY = customEnv.GOOGLE_API_KEY
     if (customEnv.ANTHROPIC_API_KEY) env.ANTHROPIC_API_KEY = customEnv.ANTHROPIC_API_KEY
     if (customEnv.GITHUB_TOKEN) env.GITHUB_TOKEN = customEnv.GITHUB_TOKEN
+    if (customEnv.CURSOR_API_KEY) env.CURSOR_API_KEY = customEnv.CURSOR_API_KEY
   }
 
   let proc: pty.IPty

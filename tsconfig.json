@@ -32,9 +32,12 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
+    ".tmp/.next-dev/types/**/*.ts",
+    "/tmp/.next-swarm-4100/types/**/*.ts",
+    "/tmp/.next-swarm-build/types/**/*.ts",
     "/tmp/.next-swarm/types/**/*.ts",
     "next-env.d.ts",
-    "/tmp/.next-swarm-build/types/**/*.ts"
+    "/tmp/.next-swarm-45123/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

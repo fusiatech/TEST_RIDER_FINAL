@@ -62,7 +62,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   return (
     <div className="group relative my-3 overflow-hidden rounded-lg border border-zinc-800 bg-[#0d0d0d]">
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-4 py-2">
-        <span className="text-xs font-medium text-zinc-400">
+        <span className="text-xs font-medium text-muted">
           {language ?? 'text'}
         </span>
         <div className="flex items-center gap-1">
@@ -70,7 +70,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
             variant="ghost"
             size="sm"
             onClick={handleInsertToVSCode}
-            className="h-7 gap-1.5 px-2 text-xs text-zinc-400 hover:text-zinc-200"
+            className="h-7 gap-1.5 px-2 text-xs text-muted hover:text-foreground"
           >
             <FileCode className="h-3.5 w-3.5" />
             Insert
@@ -79,7 +79,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
             variant="ghost"
             size="sm"
             onClick={handleCopy}
-            className="h-7 gap-1.5 px-2 text-xs text-zinc-400 hover:text-zinc-200"
+            className="h-7 gap-1.5 px-2 text-xs text-muted hover:text-foreground"
           >
             {copied ? (
               <Check className="h-3.5 w-3.5 text-green-400" />
@@ -106,7 +106,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
-          <pre className="text-sm font-mono leading-relaxed text-zinc-300">
+          <pre className="text-sm font-mono leading-relaxed text-muted">
             <code>{code}</code>
           </pre>
         )}

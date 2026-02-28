@@ -304,7 +304,7 @@ function LiveLogFeed({ agents }: { agents: AgentInstance[] }) {
               ) : (
                 logs.map((entry) => (
                   <div key={entry.id} className="flex gap-2">
-                    <span className="shrink-0 text-zinc-600">
+                    <span className="shrink-0 text-muted">
                       {formatTime(entry.timestamp)}
                     </span>
                     <span
@@ -313,7 +313,7 @@ function LiveLogFeed({ agents }: { agents: AgentInstance[] }) {
                     >
                       [{entry.agentName}]
                     </span>
-                    <span className="text-zinc-300 break-all">{entry.text}</span>
+                    <span className="text-muted break-all">{entry.text}</span>
                   </div>
                 ))
               )}

@@ -68,6 +68,14 @@ export async function auditJobStart(jobId: string, prompt: string, mode: string)
   await createAuditEntry('job_start', 'job', jobId, { prompt: prompt.slice(0, 200), mode })
 }
 
+export async function auditJobPause(jobId: string, reason?: string): Promise<void> {
+  await createAuditEntry('job_pause', 'job', jobId, reason ? { reason } : undefined)
+}
+
+export async function auditJobResume(jobId: string): Promise<void> {
+  await createAuditEntry('job_resume', 'job', jobId)
+}
+
 export async function auditJobCancel(jobId: string): Promise<void> {
   await createAuditEntry('job_cancel', 'job', jobId)
 }
@@ -124,6 +132,14 @@ export async function auditUserLogin(userId: string, email: string, provider: st
   await createAuditEntry('user_login', 'user', userId, { email, provider })
 }
 
+export async function auditUserRegister(userId: string, email: string): Promise<void> {
+  await createAuditEntry('user_register', 'user', userId, { email })
+}
+
 export async function auditUserLogout(userId: string, email: string): Promise<void> {
   await createAuditEntry('user_logout', 'user', userId, { email })
+}
+
+export async function auditEmergencyStop(reason?: string): Promise<void> {
+  await createAuditEntry('emergency_stop', 'system', 'global', reason ? { reason } : undefined)
 }

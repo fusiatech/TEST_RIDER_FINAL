@@ -1,0 +1,81 @@
+[2026-02-27T23:23:31.375Z] [run:1] [dev-local] Starting SwarmUI at http://127.0.0.1:59626 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-27T23:23:38.281Z] [run:1]  ○ Compiling /instrumentation ...
+[2026-02-27T23:23:38.426Z] [run:1:stderr] <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\0.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\0.pack.gz'
+[2026-02-27T23:23:38.432Z] [run:1]  ✓ Compiled /instrumentation in 1162ms (290 modules)
+[2026-02-27T23:23:38.826Z] [run:1] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-27T23:23:38.826Z] [run:1] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-27T23:23:38.847Z] [run:1] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-27T23:23:38.848Z] [run:1] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-27T23:23:38.849Z] [run:1] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-27T23:23:38.852Z] [run:1] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:59626
+[2026-02-27T23:23:38.852Z] [run:1] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-27T23:23:38.853Z] [run:1] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-27T23:23:38.853Z] [run:1] [36mINFO [0m [server] Mode: development
+[2026-02-27T23:23:38.855Z] [run:1] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-27T23:23:39.766Z] [run:1]  ✓ Compiled /middleware in 248ms (160 modules)
+[2026-02-27T23:23:39.880Z] [run:1] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:39.879Z","requestId":"e00ebb73-e02e-4f76-9f32-774466e1029b","method":"GET","path":"/api/health/live","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:40.392Z] [run:1]  ○ Compiling /api/health/live ...
+[2026-02-27T23:23:40.753Z] [run:1:stderr] <w> [webpack.cache.PackFileCacheStrategy] Restoring pack failed from C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development.pack.gz: Error: incorrect header check
+[2026-02-27T23:23:42.138Z] [run:1]  ✓ Compiled /api/health/live in 2.2s (612 modules)
+[2026-02-27T23:23:42.366Z] [run:1]  GET /api/health/live 200 in 2477ms
+[2026-02-27T23:23:42.379Z] [run:1] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:42.378Z","requestId":"893b7ff5-85fd-4b7d-8085-1f0c090b6233","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:42.541Z] [run:1:stderr] <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\0.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\0.pack.gz'
+[2026-02-27T23:23:42.895Z] [run:1]  ○ Compiling /api/health/ready ...
+[2026-02-27T23:23:45.190Z] [run:1]  ✓ Compiled /api/health/ready in 2.8s (1095 modules)
+[2026-02-27T23:23:45.586Z] [run:1]  GET /api/health/ready 200 in 3201ms
+[2026-02-27T23:23:45.590Z] [run:1] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:23:45.596Z] [run:1] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-27T23:23:45.604Z] [run:1] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:45.603Z","requestId":"b50546e1-c210-4b69-a44a-2caffda70723","method":"GET","path":"/api/ws","durationMs":0}}
+[2026-02-27T23:23:46.041Z] [run:2] [dev-local] Starting SwarmUI at http://127.0.0.1:59783 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-27T23:23:52.675Z] [run:2]  ○ Compiling /instrumentation ...
+[2026-02-27T23:23:54.260Z] [run:2]  ✓ Compiled /instrumentation in 2.7s (290 modules)
+[2026-02-27T23:23:54.620Z] [run:2] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-27T23:23:54.620Z] [run:2] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-27T23:23:54.641Z] [run:2] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-27T23:23:54.641Z] [run:2] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-27T23:23:54.642Z] [run:2] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-27T23:23:54.645Z] [run:2] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:59783
+[2026-02-27T23:23:54.645Z] [run:2] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-27T23:23:54.646Z] [run:2] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-27T23:23:54.646Z] [run:2] [36mINFO [0m [server] Mode: development
+[2026-02-27T23:23:54.647Z] [run:2] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-27T23:23:55.269Z] [run:2]  ✓ Compiled /middleware in 166ms (160 modules)
+[2026-02-27T23:23:55.391Z] [run:2] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:55.391Z","requestId":"ca5e1258-936e-4c22-9fd1-40ac9ee22844","method":"GET","path":"/api/health/live","durationMs":2,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:56.058Z] [run:2]  ○ Compiling /api/health/live ...
+[2026-02-27T23:23:58.042Z] [run:2]  ✓ Compiled /api/health/live in 2.5s (612 modules)
+[2026-02-27T23:23:58.280Z] [run:2]  GET /api/health/live 200 in 2884ms
+[2026-02-27T23:23:58.306Z] [run:2] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:58.306Z","requestId":"f23c19a5-d9dd-4492-9f7a-a2250a96f142","method":"GET","path":"/api/health/ready","durationMs":2,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:58.833Z] [run:2]  ○ Compiling /api/health/ready ...
+[2026-02-27T23:24:01.172Z] [run:2]  ✓ Compiled /api/health/ready in 2.8s (1095 modules)
+[2026-02-27T23:24:01.565Z] [run:2]  GET /api/health/ready 200 in 3254ms
+[2026-02-27T23:24:01.567Z] [run:2] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:24:01.571Z] [run:2] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-27T23:24:01.581Z] [run:2] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:01.581Z","requestId":"770bcbd8-545c-4d50-8c6c-092ee017db12","method":"GET","path":"/api/ws","durationMs":1}}
+[2026-02-27T23:24:02.016Z] [run:3] [dev-local] Starting SwarmUI at http://127.0.0.1:4102 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-27T23:24:08.497Z] [run:3]  ○ Compiling /instrumentation ...
+[2026-02-27T23:24:08.533Z] [run:3]  ✓ Compiled /instrumentation in 1017ms (290 modules)
+[2026-02-27T23:24:08.878Z] [run:3] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-27T23:24:08.878Z] [run:3] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-27T23:24:08.896Z] [run:3] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-27T23:24:08.897Z] [run:3] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-27T23:24:08.898Z] [run:3] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-27T23:24:08.900Z] [run:3] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:4102
+[2026-02-27T23:24:08.901Z] [run:3] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-27T23:24:08.901Z] [run:3] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-27T23:24:08.902Z] [run:3] [36mINFO [0m [server] Mode: development
+[2026-02-27T23:24:08.903Z] [run:3] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-27T23:24:09.209Z] [run:3]  ✓ Compiled /middleware in 152ms (160 modules)
+[2026-02-27T23:24:09.325Z] [run:3] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:09.324Z","requestId":"79e83b52-b921-4585-98f8-a28ff8b98e3b","method":"GET","path":"/api/health/live","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:24:09.807Z] [run:3]  ✓ Compiled /api/health/live in 471ms (612 modules)
+[2026-02-27T23:24:10.031Z] [run:3]  GET /api/health/live 200 in 701ms
+[2026-02-27T23:24:10.045Z] [run:3] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:10.044Z","requestId":"465a71f1-6d74-4f62-a9d4-db32f154fe68","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:24:10.564Z] [run:3]  ○ Compiling /api/health/ready ...
+[2026-02-27T23:24:10.866Z] [run:3]  ✓ Compiled /api/health/ready in 807ms (1095 modules)
+[2026-02-27T23:24:11.236Z] [run:3]  GET /api/health/ready 503 in 1189ms
+[2026-02-27T23:24:12.257Z] [run:3] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:12.256Z","requestId":"5bc9d1fb-88b3-4562-8e9d-34a9235f77c8","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:24:12.305Z] [run:3]  GET /api/health/live 200 in 46ms
+[2026-02-27T23:24:12.315Z] [run:3] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:12.314Z","requestId":"d61310ac-d7a5-44b0-a197-abf2bbee06b2","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:24:12.354Z] [run:3]  GET /api/health/ready 200 in 37ms
+[2026-02-27T23:24:12.355Z] [run:3] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:24:12.360Z] [run:3] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-27T23:24:12.370Z] [run:3] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:24:12.370Z","requestId":"6c41e4d6-06f5-4d62-936c-24586a8942e2","method":"GET","path":"/api/ws","durationMs":0}}

@@ -30,7 +30,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission> = {
     canCreateProjects: true,
     canDeleteProjects: false,
     canManageUsers: false,
-    canConfigureSettings: false,
+    canConfigureSettings: true,
     canRunSwarms: true,
     canApproveTickets: true,
     canManageBackups: false,
@@ -133,6 +133,19 @@ export const ROLE_LABELS: Record<AgentRole, string> = {
 
 export const CLIProvider = z.enum(['cursor', 'gemini', 'claude', 'copilot', 'codex', 'rovo', 'custom'])
 export type CLIProvider = z.infer<typeof CLIProvider>
+export const AgentSelectionModeSchema = z.enum(['auto', 'manual'])
+export type AgentSelectionMode = z.infer<typeof AgentSelectionModeSchema>
+
+export const ProviderPolicySchema = z.object({
+  provider: CLIProvider,
+  timeoutMs: z.number().min(1000).max(10 * 60 * 1000).default(120000),
+  retryCount: z.number().min(0).max(10).default(2),
+  retryDelayMs: z.number().min(0).max(60 * 1000).default(2000),
+  circuitBreakerEnabled: z.boolean().default(true),
+  circuitFailureThreshold: z.number().min(1).max(100).default(5),
+  circuitResetTimeoutMs: z.number().min(1000).max(10 * 60 * 1000).default(30000),
+})
+export type ProviderPolicy = z.infer<typeof ProviderPolicySchema>
 
 /* ── CLI Definition (pluggable registry) ───────────────────────── */
 
@@ -183,6 +196,26 @@ export const AttachmentSchema = z.object({
 })
 export type Attachment = z.infer<typeof AttachmentSchema>
 
+export const ChatIntentSchema = z.enum([
+  'auto',
+  'plan',
+  'one_line_fix',
+  'code_implementation',
+  'code_review',
+  'explain',
+  'debug',
+])
+export type ChatIntent = z.infer<typeof ChatIntentSchema>
+
+export const RunLogEntrySchema = z.object({
+  timestamp: z.number(),
+  level: z.enum(['info', 'warn', 'error']),
+  source: z.enum(['agent', 'system', 'orchestrator']),
+  agentId: z.string().optional(),
+  text: z.string(),
+})
+export type RunLogEntry = z.infer<typeof RunLogEntrySchema>
+
 /** Enqueue attachment: optional content for text, dataUrl for binary. Max 10, 5MB total. */
 export const EnqueueAttachmentSchema = z.object({
   name: z.string(),
@@ -216,6 +249,8 @@ export const ChatMessageSchema = z.object({
   confidence: z.number().min(0).max(100).optional(),
   sources: z.array(z.string()).optional(),
   attachments: z.array(AttachmentSchema).optional(),
+  logs: z.array(RunLogEntrySchema).optional(),
+  outputQualityPassed: z.boolean().optional(),
 })
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 
@@ -226,7 +261,8 @@ export const SessionSchema = z.object({
   title: z.string(),
   createdAt: z.number(),
   updatedAt: z.number(),
-  messages: z.array(ChatMessageSchema)
+  messages: z.array(ChatMessageSchema),
+  chatIntent: ChatIntentSchema.optional(),
 })
 export type Session = z.infer<typeof SessionSchema>
 
@@ -289,6 +325,13 @@ export const ApiKeysSchema = z.object({
   google: z.string().optional(),
   github: z.string().optional(),
   huggingface: z.string().optional(),
+  codex: z.string().optional(),
+  gemini: z.string().optional(),
+  claude: z.string().optional(),
+  cursor: z.string().optional(),
+  copilot: z.string().optional(),
+  rovo: z.string().optional(),
+  custom: z.string().optional(),
 })
 export type ApiKeys = z.infer<typeof ApiKeysSchema>
 
@@ -313,6 +356,7 @@ export type FigmaConfig = z.infer<typeof FigmaConfigSchema>
 /* ── Settings ──────────────────────────────────────────────────── */
 
 export const SettingsSchema = z.object({
+  executionRuntime: z.enum(['server_managed', 'local_dev']).optional().default('server_managed'),
   enabledCLIs: z.array(CLIProvider),
   parallelCounts: z.record(AgentRole, z.number().min(0).max(6)),
   worktreeIsolation: z.boolean(),
@@ -323,6 +367,8 @@ export const SettingsSchema = z.object({
   projectPath: z.string().optional(),
   previewUrl: z.string().optional(),
   chatsPerAgent: z.number().min(1).max(20).optional(),
+  autoSave: z.boolean().optional().default(false),
+  autoSaveDelay: z.number().min(500).max(10000).optional().default(1000),
   testingConfig: z.object({
     typescript: z.boolean(),
     eslint: z.boolean(),
@@ -345,6 +391,27 @@ export const SettingsSchema = z.object({
   useSemanticValidation: z.boolean().optional(),
   enableFactChecking: z.boolean().optional(),
   codeValidation: CodeValidationConfigSchema.optional(),
+  providerPolicies: z.array(ProviderPolicySchema).optional(),
+  freeOnlyMode: z.boolean().optional().default(false),
+  subscriptionTier: z.enum(['free', 'pro', 'team']).optional().default('free'),
+  credits: z.object({
+    balance: z.number().min(0).default(0),
+    weeklyCap: z.number().min(0).default(0),
+    autoStop: z.boolean().default(true),
+  }).optional(),
+  providerPriority: z.array(CLIProvider).optional(),
+  providerFailoverPolicy: z.object({
+    enabled: z.boolean().default(true),
+    cooldownMs: z.number().min(1000).max(600_000).default(30_000),
+    maxSwitchesPerRun: z.number().min(1).max(20).default(6),
+  }).optional(),
+  testingMode: z.enum(['auto', 'manual']).optional().default('manual'),
+  onboardingState: z.object({
+    completed: z.boolean().default(false),
+    entryMode: z.enum(['free', 'keys']).optional(),
+    setupLevel: z.enum(['basic', 'advanced']).optional(),
+    completedAt: z.number().optional(),
+  }).optional(),
   sessionReplayConfig: z.object({
     enabled: z.boolean(),
     playbackSpeed: z.number().min(0.25).max(4),
@@ -353,11 +420,13 @@ export const SettingsSchema = z.object({
     showInputHighlights: z.boolean(),
     autoPlay: z.boolean(),
   }).optional(),
+  showMinimap: z.boolean().optional().default(true),
 })
 export type Settings = z.infer<typeof SettingsSchema>
 
 export const DEFAULT_SETTINGS: Settings = {
-  enabledCLIs: ['cursor'],
+  executionRuntime: 'server_managed',
+  enabledCLIs: ['gemini', 'codex', 'claude'],
   parallelCounts: {
     researcher: 1,
     planner: 2,
@@ -368,8 +437,31 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   worktreeIsolation: true,
   maxRuntimeSeconds: 120,
+  autoSave: false,
+  autoSaveDelay: 1000,
   researchDepth: 'medium',
-  autoRerunThreshold: 80
+  autoRerunThreshold: 80,
+  providerPolicies: [],
+  freeOnlyMode: false,
+  subscriptionTier: 'free',
+  credits: {
+    balance: 0,
+    weeklyCap: 0,
+    autoStop: true,
+  },
+  providerPriority: ['gemini', 'codex', 'claude', 'cursor', 'rovo', 'copilot', 'custom'],
+  providerFailoverPolicy: {
+    enabled: true,
+    cooldownMs: 30_000,
+    maxSwitchesPerRun: 6,
+  },
+  testingMode: 'manual',
+  onboardingState: {
+    completed: false,
+    entryMode: 'free',
+    setupLevel: 'basic',
+  },
+  showMinimap: true,
 }
 
 /* ── Swarm Result ──────────────────────────────────────────────── */
@@ -379,7 +471,17 @@ export const SwarmResultSchema = z.object({
   confidence: z.number().min(0).max(100),
   agents: z.array(AgentInstanceSchema),
   sources: z.array(z.string()),
-  validationPassed: z.boolean()
+  validationPassed: z.boolean(),
+  refusal: z.object({
+    reason: z.string(),
+    requiredEvidence: z.array(z.string()),
+    traceId: z.string().optional(),
+  }).optional(),
+  evidenceStatus: z.object({
+    sufficient: z.boolean(),
+    traceId: z.string().optional(),
+    references: z.number().min(0),
+  }).optional(),
 })
 export type SwarmResult = z.infer<typeof SwarmResultSchema>
 
@@ -427,8 +529,38 @@ export const EvidenceLedgerEntrySchema = z.object({
   fileSnapshots: z.array(FileSnapshotSchema).optional(),
   testResults: z.array(LinkedTestResultSchema).optional(),
   screenshots: z.array(ScreenshotSchema).optional(),
+  logRefs: z.array(z.string()).optional(),
+  diffRefs: z.array(z.string()).optional(),
+  testIds: z.array(z.string()).optional(),
+  artifactRefs: z.array(z.string()).optional(),
+  traceId: z.string().optional(),
 })
 export type EvidenceLedgerEntry = z.infer<typeof EvidenceLedgerEntrySchema>
+
+export const EvidenceBundleV2Schema = z.object({
+  evidenceId: z.string(),
+  runId: z.string().optional(),
+  ticketId: z.string().optional(),
+  logRefs: z.array(z.string()).default([]),
+  diffRefs: z.array(z.string()).default([]),
+  testIds: z.array(z.string()).default([]),
+  commitHash: z.string().optional(),
+  artifactRefs: z.array(z.string()).default([]),
+  traceId: z.string().optional(),
+  createdAt: z.number(),
+})
+export type EvidenceBundleV2 = z.infer<typeof EvidenceBundleV2Schema>
+
+export const ArtifactRecordSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  name: z.string(),
+  type: z.enum(['log', 'diff', 'test', 'screenshot', 'report', 'file', 'other']),
+  ref: z.string(),
+  metadata: z.record(z.unknown()).optional(),
+  createdAt: z.number(),
+})
+export type ArtifactRecord = z.infer<typeof ArtifactRecordSchema>
 
 export const FigmaLinkSchema = z.object({
   id: z.string(),
@@ -749,15 +881,20 @@ export type Project = z.infer<typeof ProjectSchema>
 
 /* ── Swarm Job ─────────────────────────────────────────────────── */
 
-export const SwarmJobStatus = z.enum(['queued', 'running', 'completed', 'failed', 'cancelled'])
+export const SwarmJobStatus = z.enum(['queued', 'running', 'paused', 'completed', 'failed', 'cancelled'])
 export type SwarmJobStatus = z.infer<typeof SwarmJobStatus>
 
 export const SwarmJobSchema = z.object({
   id: z.string(),
+  userId: z.string().optional(),
   sessionId: z.string(),
   prompt: z.string(),
   mode: z.enum(['chat', 'swarm', 'project']),
+  intent: ChatIntentSchema.optional(),
+  agentSelectionMode: AgentSelectionModeSchema.optional(),
+  preferredAgent: CLIProvider.optional(),
   idempotencyKey: z.string().optional(),
+  traceModeValidation: z.boolean().optional(),
   status: SwarmJobStatus,
   result: SwarmResultSchema.optional(),
   error: z.string().optional(),
@@ -773,6 +910,30 @@ export const SwarmJobSchema = z.object({
   priority: z.number().optional(),
 })
 export type SwarmJob = z.infer<typeof SwarmJobSchema>
+
+export const RunStatusSchema = z.enum(['queued', 'running', 'paused', 'cancelled', 'failed', 'completed'])
+export type RunStatus = z.infer<typeof RunStatusSchema>
+
+export const RunRecordSchema = z.object({
+  id: z.string(),
+  sessionId: z.string(),
+  prompt: z.string(),
+  mode: z.enum(['chat', 'swarm', 'project']),
+  intent: ChatIntentSchema.optional(),
+  agentSelectionMode: AgentSelectionModeSchema.optional(),
+  preferredAgent: CLIProvider.optional(),
+  status: RunStatusSchema,
+  idempotencyKey: z.string().optional(),
+  traceModeValidation: z.boolean().optional(),
+  progress: z.number().min(0).max(100),
+  currentStage: z.string().optional(),
+  createdAt: z.number(),
+  startedAt: z.number().optional(),
+  completedAt: z.number().optional(),
+  error: z.string().optional(),
+  source: z.enum(['scheduler', 'user']).optional(),
+})
+export type RunRecord = z.infer<typeof RunRecordSchema>
 
 /* ── Scheduled Task ────────────────────────────────────────────── */
 
@@ -882,8 +1043,24 @@ export const WorkspaceSettingsSchema = z.object({
   defaultBranch: z.string().optional(),
   autoSave: z.boolean().optional(),
   theme: z.string().optional(),
+  quota: z.object({
+    maxFileCount: z.number().min(1).max(1_000_000).default(50_000),
+    maxTotalBytes: z.number().min(1024).max(1000 * 1024 * 1024 * 1024).default(2 * 1024 * 1024 * 1024),
+    maxFileSizeBytes: z.number().min(1).max(1024 * 1024 * 1024).default(20 * 1024 * 1024),
+    maxTerminalSessions: z.number().min(1).max(50).default(8),
+    maxConcurrentRuns: z.number().min(1).max(50).default(5),
+  }).optional(),
 })
 export type WorkspaceSettings = z.infer<typeof WorkspaceSettingsSchema>
+
+export const WorkspaceQuotaPolicySchema = z.object({
+  maxFileCount: z.number().min(1).max(1_000_000).default(50_000),
+  maxTotalBytes: z.number().min(1024).max(1000 * 1024 * 1024 * 1024).default(2 * 1024 * 1024 * 1024),
+  maxFileSizeBytes: z.number().min(1).max(1024 * 1024 * 1024).default(20 * 1024 * 1024),
+  maxTerminalSessions: z.number().min(1).max(50).default(8),
+  maxConcurrentRuns: z.number().min(1).max(50).default(5),
+})
+export type WorkspaceQuotaPolicy = z.infer<typeof WorkspaceQuotaPolicySchema>
 
 export const WorkspaceSchema = z.object({
   id: z.string(),
@@ -900,10 +1077,11 @@ export type Workspace = z.infer<typeof WorkspaceSchema>
 /* ── Audit Log (GAP-003) ───────────────────────────────────────── */
 
 export const AuditActionSchema = z.enum([
-  'user_login', 'user_logout',
+  'user_register', 'user_login', 'user_logout',
   'project_create', 'project_update', 'project_delete',
   'ticket_create', 'ticket_update', 'ticket_delete', 'ticket_approve', 'ticket_reject',
-  'job_start', 'job_cancel', 'job_complete', 'job_fail',
+  'job_start', 'job_pause', 'job_resume', 'job_cancel', 'job_complete', 'job_fail',
+  'emergency_stop',
   'settings_update', 'api_key_rotate',
   'extension_install', 'extension_uninstall',
   'file_create', 'file_update', 'file_delete',
@@ -924,6 +1102,22 @@ export const AuditLogEntrySchema = z.object({
   userAgent: z.string().optional(),
 })
 export type AuditLogEntry = z.infer<typeof AuditLogEntrySchema>
+
+export const AuditEventEnvelopeSchema = z.object({
+  eventId: z.string(),
+  timestamp: z.string(),
+  actorId: z.string(),
+  actorEmail: z.string(),
+  action: AuditActionSchema,
+  resourceType: z.string(),
+  resourceId: z.string().optional(),
+  tenantId: z.string().optional(),
+  workspaceId: z.string().optional(),
+  runId: z.string().optional(),
+  traceId: z.string().optional(),
+  details: z.record(z.unknown()).optional(),
+})
+export type AuditEventEnvelope = z.infer<typeof AuditEventEnvelopeSchema>
 
 export const AuditLogFilterSchema = z.object({
   userId: z.string().optional(),
@@ -973,13 +1167,20 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     prompt: z.string(),
     sessionId: z.string(),
     mode: z.enum(['chat', 'swarm', 'project']).optional(),
+    traceModeValidation: z.boolean().optional(),
+    intent: ChatIntentSchema.optional(),
+    agentSelectionMode: AgentSelectionModeSchema.optional(),
+    preferredAgent: CLIProvider.optional(),
     idempotencyKey: z.string().optional(),
     attachments: z.array(EnqueueAttachmentSchema).max(MAX_ATTACHMENTS).optional(),
     priority: z.number().optional(),
   }),
   z.object({ type: z.literal('cancel-swarm'), sessionId: z.string() }),
   z.object({ type: z.literal('cancel-job'), jobId: z.string() }),
+  z.object({ type: z.literal('pause-job'), jobId: z.string() }),
+  z.object({ type: z.literal('resume-job'), jobId: z.string() }),
   z.object({ type: z.literal('cancel-all-queued') }),
+  z.object({ type: z.literal('emergency-stop'), reason: z.string().optional() }),
   z.object({ type: z.literal('agent-output'), agentId: z.string(), data: z.string() }),
   z.object({ type: z.literal('agent-status'), agentId: z.string(), status: AgentStatus, exitCode: z.number().optional() }),
   z.object({ type: z.literal('swarm-result'), result: SwarmResultSchema }),
@@ -993,8 +1194,25 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('task-queued'), taskId: z.string() }),
   z.object({ type: z.literal('task-status'), taskId: z.string(), status: z.string() }),
   z.object({ type: z.literal('job-status'), job: SwarmJobSchema }),
+  z.object({
+    type: z.literal('run.accepted'),
+    runId: z.string(),
+    sessionId: z.string(),
+    idempotencyKey: z.string().optional(),
+    queuedAt: z.number().optional(),
+  }),
   z.object({ type: z.literal('job-started'), jobId: z.string(), position: z.number() }),
   z.object({ type: z.literal('job-queued'), jobId: z.string(), position: z.number() }),
+  z.object({ type: z.literal('run.paused'), runId: z.string(), reason: z.string().optional() }),
+  z.object({ type: z.literal('run.resumed'), runId: z.string() }),
+  z.object({ type: z.literal('run.cancelled'), runId: z.string(), reason: z.string().optional() }),
+  z.object({
+    type: z.literal('run.emergency_stopped'),
+    reason: z.string().optional(),
+    cancelledQueued: z.number().optional(),
+    cancelledRunning: z.number().optional(),
+  }),
+  z.object({ type: z.literal('provider.circuit_opened'), provider: z.string(), reason: z.string() }),
   z.object({ type: z.literal('active-jobs-count'), count: z.number(), queueDepth: z.number() }),
   z.object({ type: z.literal('ping') }),
   z.object({ type: z.literal('pong') }),

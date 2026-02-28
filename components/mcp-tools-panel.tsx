@@ -291,7 +291,7 @@ export function MCPToolsPanel() {
                     className={cn(
                       'w-full h-32 rounded-md border border-border bg-background px-3 py-2',
                       'font-mono text-xs resize-none',
-                      'focus:outline-none focus:ring-2 focus:ring-ring'
+                      'focus:outline-none focus:ring-2 focus:ring-primary'
                     )}
                     placeholder="{}"
                   />

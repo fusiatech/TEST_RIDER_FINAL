@@ -44,7 +44,7 @@ import type {
   Scope,
   EvaluateResult,
   DebugConfig,
-} from '@/server/debug-adapter'
+} from '@/lib/debug-types'
 
 interface ConsoleEntry {
   id: string

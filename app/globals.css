@@ -10,6 +10,9 @@
   --color-muted: #71717a;
   --color-border: #d4d4d8;
   --color-destructive: #dc2626;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #09090b;
+  --color-ring: var(--color-primary);
 
   --color-role-researcher: #60a5fa;
   --color-role-planner: #a78bfa;
@@ -17,6 +20,20 @@
   --color-role-validator: #fbbf24;
   --color-role-security: #f87171;
   --color-role-synthesizer: #e879f9;
+
+  /* Status colors for design token consolidation */
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Neutral grays */
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
 }
 
 .dark {
@@ -29,6 +46,8 @@
   --color-muted: #a1a1aa;
   --color-border: #3f3f46;
   --color-destructive: #ef4444;
+  --color-popover: #18181b;
+  --color-popover-foreground: #fafafa;
 }
 
 body {

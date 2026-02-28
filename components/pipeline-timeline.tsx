@@ -176,7 +176,7 @@ export function PipelineTimeline() {
                 </div>
 
                 {stage.elapsed != null && (
-                  <span className="text-[10px] text-zinc-500 mt-1 block">
+                  <span className="text-[10px] text-muted mt-1 block">
                     {formatTime(stage.elapsed)}
                   </span>
                 )}
@@ -192,7 +192,7 @@ export function PipelineTimeline() {
               </div>
 
               {idx < stages.length - 1 && (
-                <ChevronRight className="h-4 w-4 shrink-0 text-zinc-600 mx-0.5" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted mx-0.5" />
               )}
             </div>
           )

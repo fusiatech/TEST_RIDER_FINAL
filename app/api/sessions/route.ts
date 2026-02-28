@@ -6,16 +6,19 @@ import { withValidation } from '@/lib/validation-middleware'
 import { PaginationSchema } from '@/lib/schemas/common'
 import { auth } from '@/auth'
 import { getApiVersion, addVersionHeaders } from '@/lib/api-version'
+import { isAuthSecretConfigured } from '@/lib/auth-env'
 
 const RATE_LIMIT_CONFIG = ROUTE_RATE_LIMITS['/api/sessions']
 
 async function applyRateLimit(request: NextRequest): Promise<{ response: NextResponse | null; headers: Headers }> {
   let userId: string | null = null
-  try {
-    const session = await auth()
-    userId = session?.user?.id ?? null
-  } catch {
-    // Auth not available
+  if (isAuthSecretConfigured()) {
+    try {
+      const session = await auth()
+      userId = session?.user?.id ?? null
+    } catch {
+      // Auth not available
+    }
   }
 
   const { success, headers, ipResult, userResult } = await checkDualRateLimit(

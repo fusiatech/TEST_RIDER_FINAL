@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSwarmStore } from '@/lib/store'
 import { useGlobalShortcuts, SHORTCUT_LABELS } from '@/hooks/use-keyboard-shortcuts'
 import { ActionCommandPalette } from '@/components/action-command-palette'
@@ -32,18 +33,17 @@ const SHORTCUTS: Shortcut[] = [
 ]
 
 export function KeyboardShortcuts() {
+  const router = useRouter()
   const [helpOpen, setHelpOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   const createSession = useSwarmStore((s) => s.createSession)
-  const toggleSettings = useSwarmStore((s) => s.toggleSettings)
   const toggleSidebar = useSwarmStore((s) => s.toggleSidebar)
   const activeTab = useSwarmStore((s) => s.activeTab)
   const setActiveTab = useSwarmStore((s) => s.setActiveTab)
   const isRunning = useSwarmStore((s) => s.isRunning)
   const cancelSwarm = useSwarmStore((s) => s.cancelSwarm)
-  const settingsOpen = useSwarmStore((s) => s.settingsOpen)
 
   const handleSendMessage = useCallback(() => {
     const textarea = document.querySelector<HTMLTextAreaElement>(
@@ -66,14 +66,10 @@ export function KeyboardShortcuts() {
       setHelpOpen(false)
       return
     }
-    if (settingsOpen) {
-      toggleSettings()
-      return
-    }
     if (isRunning) {
       cancelSwarm()
     }
-  }, [commandPaletteOpen, helpOpen, settingsOpen, isRunning, toggleSettings, cancelSwarm])
+  }, [commandPaletteOpen, helpOpen, isRunning, cancelSwarm])
 
   useGlobalShortcuts({
     onCommandPalette: () => setCommandPaletteOpen(true),
@@ -81,7 +77,7 @@ export function KeyboardShortcuts() {
     onSendMessage: handleSendMessage,
     onEscape: handleEscape,
     onNewChat: createSession,
-    onOpenSettings: toggleSettings,
+    onOpenSettings: () => router.push('/settings'),
     onToggleDashboard: () => setActiveTab(activeTab === 'dashboard' ? 'chat' : 'dashboard'),
     onShowHelp: () => setHelpOpen(true),
   })

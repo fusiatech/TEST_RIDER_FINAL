@@ -1,0 +1,745 @@
+version: 1
+source: chat-blueprint-2026-02-27
+generated_at: 2026-02-27
+requirements:
+  - requirement_id: P0-001
+    phase: 0
+    status: missing
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/projects]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/orchestrator.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: platform-core
+    eta: 2026-03-03
+    risk: medium
+  - requirement_id: P0-002
+    phase: 0
+    status: partial
+    code_paths: [server/security-checks.ts]
+    api_routes: [/api/health]
+    ui_components: [components/audit-log-viewer.tsx]
+    jobs: [audit-rollup]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/GAP_ANALYSIS.md]
+    owner: platform-core
+    eta: 2026-03-03
+    risk: low
+  - requirement_id: P0-003
+    phase: 0
+    status: partial
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/job-queue.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: platform-core
+    eta: 2026-03-03
+    risk: low
+
+  - requirement_id: P1-001
+    phase: 1
+    status: partial
+    code_paths: [server/output-schemas.ts]
+    api_routes: [/api/prompts]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [evidence-capture]
+    tests: [tests/server/anti-hallucination.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: platform-core
+    eta: 2026-03-05
+    risk: medium
+  - requirement_id: P1-002
+    phase: 1
+    status: partial
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/agent-dashboard.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/orchestrator.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: runtime
+    eta: 2026-03-05
+    risk: medium
+  - requirement_id: P1-003
+    phase: 1
+    status: partial
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/job-queue.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: runtime
+    eta: 2026-03-05
+    risk: medium
+  - requirement_id: P1-004
+    phase: 1
+    status: partial
+    code_paths: [lib/telemetry.ts]
+    api_routes: [/api/metrics]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [metrics-export]
+    tests: [tests/performance/websocket-load.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: observability
+    eta: 2026-03-05
+    risk: medium
+  - requirement_id: P1-005
+    phase: 1
+    status: implemented
+    code_paths: [server/security-checks.ts]
+    api_routes: [/api/admin]
+    ui_components: [components/user-management.tsx]
+    jobs: [security-scan]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-02-27
+    risk: low
+  - requirement_id: P1-006
+    phase: 1
+    status: partial
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/cli-detect]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: runtime
+    eta: 2026-03-05
+    risk: medium
+  - requirement_id: P1-007
+    phase: 1
+    status: missing
+    code_paths: [server/mcp-client.ts]
+    api_routes: [/api/mcp]
+    ui_components: [components/mcp-config.tsx]
+    jobs: [provider-health]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: runtime
+    eta: 2026-03-06
+    risk: medium
+
+  - requirement_id: P2-001
+    phase: 2
+    status: partial
+    code_paths: [server/storage.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/agent-dashboard.tsx]
+    jobs: [job-queue]
+    tests: [tests/contract/projects.consumer.test.ts]
+    docs: [docs/openapi.yaml]
+    owner: platform-core
+    eta: 2026-03-07
+    risk: high
+  - requirement_id: P2-002
+    phase: 2
+    status: partial
+    code_paths: [auth.ts]
+    api_routes: [/api/auth]
+    ui_components: [components/user-management.tsx]
+    jobs: [auth-sync]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-07
+    risk: high
+  - requirement_id: P2-003
+    phase: 2
+    status: partial
+    code_paths: [server/security-checks.ts]
+    api_routes: [/api/settings]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [config-validate]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: platform-core
+    eta: 2026-03-07
+    risk: medium
+  - requirement_id: P2-004
+    phase: 2
+    status: partial
+    code_paths: [lib/audit.ts]
+    api_routes: [/api/admin/audit]
+    ui_components: [components/audit-log-viewer.tsx]
+    jobs: [audit-rollup]
+    tests: [tests/security/xss.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-07
+    risk: medium
+
+  - requirement_id: P3-001
+    phase: 3
+    status: partial
+    code_paths: [components/dev-environment.tsx]
+    api_routes: [/api/workspaces]
+    ui_components: [components/code-editor.tsx]
+    jobs: [workspace-restore]
+    tests: [tests/server/files-search-route.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: ide-runtime
+    eta: 2026-03-09
+    risk: medium
+  - requirement_id: P3-002
+    phase: 3
+    status: partial
+    code_paths: [components/file-browser.tsx]
+    api_routes: [/api/files]
+    ui_components: [components/file-tree.tsx]
+    jobs: [workspace-restore]
+    tests: [tests/server/files-search-route.test.ts]
+    docs: [docs/openapi.yaml]
+    owner: ide-runtime
+    eta: 2026-03-09
+    risk: medium
+  - requirement_id: P3-003
+    phase: 3
+    status: partial
+    code_paths: [server/terminal-manager.ts]
+    api_routes: [/api/terminal]
+    ui_components: [components/terminal-emulator.tsx]
+    jobs: [terminal-persistence]
+    tests: [tests/terminal-api.integration.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: ide-runtime
+    eta: 2026-03-09
+    risk: high
+  - requirement_id: P3-004
+    phase: 3
+    status: partial
+    code_paths: [server/terminal-manager.ts]
+    api_routes: [/api/workspaces]
+    ui_components: [components/dev-environment.tsx]
+    jobs: [workspace-restore]
+    tests: [tests/terminal-api.integration.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: ide-runtime
+    eta: 2026-03-09
+    risk: high
+  - requirement_id: P3-005
+    phase: 3
+    status: partial
+    code_paths: [server/workspace-quotas.ts]
+    api_routes: [/api/v1/workspaces]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [quota-enforcement]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-09
+    risk: high
+  - requirement_id: P3-006
+    phase: 3
+    status: partial
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/chat-view.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/WEBSOCKET_API.md]
+    owner: runtime
+    eta: 2026-03-09
+    risk: high
+  - requirement_id: P3-007
+    phase: 3
+    status: partial
+    code_paths: [server/ws-server.ts]
+    api_routes: [/api/v1/runs/emergency-stop]
+    ui_components: [components/command-palette.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/ws-server.test.ts]
+    docs: [docs/WEBSOCKET_API.md]
+    owner: runtime
+    eta: 2026-03-09
+    risk: high
+
+  - requirement_id: P4-001
+    phase: 4
+    status: partial
+    code_paths: [server/prd-workflow.ts]
+    api_routes: [/api/v1/projects/create-wizard]
+    ui_components: [components/create-project-dialog.tsx]
+    jobs: [project-bootstrap]
+    tests: [tests/contract/projects.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: medium
+  - requirement_id: P4-002
+    phase: 4
+    status: partial
+    code_paths: [server/prd-workflow.ts]
+    api_routes: ['/api/projects/[id]/prd']
+    ui_components: [components/prd-workflow-wizard.tsx]
+    jobs: [prd-generation]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/openapi.yaml]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: medium
+  - requirement_id: P4-003
+    phase: 4
+    status: partial
+    code_paths: [server/fact-checker.ts]
+    api_routes: ['/api/projects/[id]/prd']
+    ui_components: [components/prd-workflow-wizard.tsx]
+    jobs: [prd-generation]
+    tests: [tests/server/confidence.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: medium
+  - requirement_id: P4-004
+    phase: 4
+    status: partial
+    code_paths: [server/prd-workflow.ts]
+    api_routes: ['/api/projects/[id]/prd']
+    ui_components: [components/mermaid-viewer.tsx]
+    jobs: [prd-generation]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: low
+  - requirement_id: P4-005
+    phase: 4
+    status: partial
+    code_paths: [server/approval-chain.ts]
+    api_routes: [/api/approvals]
+    ui_components: [components/approval-panel.tsx]
+    jobs: [approval-pipeline]
+    tests: [tests/contract/projects.consumer.test.ts]
+    docs: [docs/openapi.yaml]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: medium
+  - requirement_id: P4-006
+    phase: 4
+    status: partial
+    code_paths: [server/ticket-manager.ts]
+    api_routes: [/api/v1/tickets/graph]
+    ui_components: [components/dependency-graph.tsx]
+    jobs: [ticket-autogen]
+    tests: [tests/contract/projects.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: product-runtime
+    eta: 2026-03-11
+    risk: medium
+
+  - requirement_id: P5-001
+    phase: 5
+    status: partial
+    code_paths: [server/workflow-engine.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/agent-dashboard.tsx]
+    jobs: [workflow-execution]
+    tests: [tests/server/orchestrator.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: high
+  - requirement_id: P5-002
+    phase: 5
+    status: implemented
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/job-queue.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/PERFORMANCE_BASELINES.md]
+    owner: runtime
+    eta: 2026-02-27
+    risk: low
+  - requirement_id: P5-003
+    phase: 5
+    status: partial
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/job-queue.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/PERFORMANCE_BASELINES.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: high
+  - requirement_id: P5-004
+    phase: 5
+    status: partial
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/v1/integrations/health]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [provider-health]
+    tests: [tests/performance/api-load.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: high
+  - requirement_id: P5-005
+    phase: 5
+    status: partial
+    code_paths: [server/job-queue.ts]
+    api_routes: ['/api/v1/runs/[id]/pause']
+    ui_components: [components/job-queue.tsx]
+    jobs: [job-queue]
+    tests: [tests/server/job-queue.test.ts]
+    docs: [docs/WEBSOCKET_API.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: high
+  - requirement_id: P5-006
+    phase: 5
+    status: partial
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/agent-dashboard.tsx]
+    jobs: [workflow-execution]
+    tests: [tests/server/orchestrator.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: medium
+  - requirement_id: P5-007
+    phase: 5
+    status: partial
+    code_paths: [server/error-to-ticket.ts]
+    api_routes: [/api/errors]
+    ui_components: [components/approval-panel.tsx]
+    jobs: [error-escalation]
+    tests: [tests/server/anti-hallucination.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: runtime
+    eta: 2026-03-13
+    risk: medium
+
+  - requirement_id: P6-001
+    phase: 6
+    status: partial
+    code_paths: [server/cli-detect.ts]
+    api_routes: [/api/cli-detect]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+  - requirement_id: P6-002
+    phase: 6
+    status: unverified
+    code_paths: [server/cli-detect.ts]
+    api_routes: [/api/v1/integrations/health]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+  - requirement_id: P6-003
+    phase: 6
+    status: unverified
+    code_paths: [server/cli-detect.ts]
+    api_routes: [/api/v1/integrations/health]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+  - requirement_id: P6-004
+    phase: 6
+    status: partial
+    code_paths: [server/cli-runner.ts]
+    api_routes: [/api/v1/integrations/health]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+  - requirement_id: P6-005
+    phase: 6
+    status: missing
+    code_paths: [server/cli-runner.ts]
+    api_routes: [/api/v1/integrations/health]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/integration/cli-e2e.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: high
+  - requirement_id: P6-006
+    phase: 6
+    status: partial
+    code_paths: [server/mcp-client.ts]
+    api_routes: [/api/v1/mcp/registry]
+    ui_components: [components/mcp-config.tsx]
+    jobs: [provider-health]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+  - requirement_id: P6-007
+    phase: 6
+    status: partial
+    code_paths: [server/github-integration.ts]
+    api_routes: [/api/git]
+    ui_components: [components/figma-panel.tsx]
+    jobs: [provider-health]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/INTEGRATION_STRATEGY.md]
+    owner: integrations
+    eta: 2026-03-15
+    risk: medium
+
+  - requirement_id: P7-001
+    phase: 7
+    status: partial
+    code_paths: [server/output-schemas.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [schema-validation]
+    tests: [tests/server/anti-hallucination.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-002
+    phase: 7
+    status: partial
+    code_paths: [server/evidence.ts]
+    api_routes: ['/api/v1/runs/[id]/artifacts']
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [evidence-capture]
+    tests: [tests/server/confidence.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: medium
+  - requirement_id: P7-003
+    phase: 7
+    status: partial
+    code_paths: [server/anti-hallucination.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/chat-view.tsx]
+    jobs: [evidence-capture]
+    tests: [tests/server/anti-hallucination.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: medium
+  - requirement_id: P7-004
+    phase: 7
+    status: partial
+    code_paths: [server/storage.ts]
+    api_routes: [/api/prompts]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [policy-regression]
+    tests: [tests/server/confidence.test.ts]
+    docs: [docs/OPEN_SOURCE_TOOLS_RESEARCH_2026.md]
+    owner: security
+    eta: 2026-03-17
+    risk: medium
+  - requirement_id: P7-005
+    phase: 7
+    status: partial
+    code_paths: [auth.ts]
+    api_routes: [/api/auth]
+    ui_components: [components/user-management.tsx]
+    jobs: [auth-sync]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-006
+    phase: 7
+    status: partial
+    code_paths: [lib/csrf.ts]
+    api_routes: [/api/csrf]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [security-scan]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-007
+    phase: 7
+    status: partial
+    code_paths: ['app/api/projects/[id]/tickets/[ticketId]/attachments/route.ts']
+    api_routes: ['/api/projects/[id]/tickets/[ticketId]/attachments']
+    ui_components: [components/file-upload.tsx]
+    jobs: [security-scan]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-008
+    phase: 7
+    status: partial
+    code_paths: [server/secrets-scanner.ts]
+    api_routes: [/api/settings]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [security-scan]
+    tests: [tests/security/xss.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-009
+    phase: 7
+    status: partial
+    code_paths: [server/workspace-path.ts]
+    api_routes: [/api/workspaces]
+    ui_components: [components/dev-environment.tsx]
+    jobs: [quota-enforcement]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: high
+  - requirement_id: P7-010
+    phase: 7
+    status: partial
+    code_paths: [lib/audit.ts]
+    api_routes: [/api/admin/audit]
+    ui_components: [components/audit-log-viewer.tsx]
+    jobs: [audit-rollup]
+    tests: [tests/security/csrf.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-03-17
+    risk: medium
+  - requirement_id: P7-011
+    phase: 7
+    status: implemented
+    code_paths: [server/security-checks.ts]
+    api_routes: [/api/admin]
+    ui_components: [components/user-management.tsx]
+    jobs: [security-scan]
+    tests: [tests/security/injection.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: security
+    eta: 2026-02-27
+    risk: low
+
+  - requirement_id: P8-001
+    phase: 8
+    status: broken
+    code_paths: [server.ts]
+    api_routes: [/api/health]
+    ui_components: [components/chat-view.tsx]
+    jobs: [runtime-validation]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: release
+    eta: 2026-03-19
+    risk: high
+  - requirement_id: P8-002
+    phase: 8
+    status: unverified
+    code_paths: [server/orchestrator.ts]
+    api_routes: [/api/v1/runs]
+    ui_components: [components/testing-dashboard.tsx]
+    jobs: [runtime-validation]
+    tests: [tests/performance/api-load.test.ts]
+    docs: [docs/PERFORMANCE_BASELINES.md]
+    owner: release
+    eta: 2026-03-19
+    risk: high
+  - requirement_id: P8-003
+    phase: 8
+    status: unverified
+    code_paths: [components/dev-environment.tsx]
+    api_routes: [/api/workspaces]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [runtime-validation]
+    tests: [e2e/swarm.spec.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: release
+    eta: 2026-03-19
+    risk: high
+  - requirement_id: P8-004
+    phase: 8
+    status: missing
+    code_paths: [server/job-queue.ts]
+    api_routes: [/api/jobs]
+    ui_components: [components/testing-dashboard.tsx]
+    jobs: [runtime-validation]
+    tests: [tests/performance/websocket-load.test.ts]
+    docs: [docs/PERFORMANCE_BASELINES.md]
+    owner: release
+    eta: 2026-03-19
+    risk: high
+
+  - requirement_id: P9-001
+    phase: 9
+    status: partial
+    code_paths: [.github/workflows/ci.yml]
+    api_routes: [/api/health]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [release-gate]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/SECURITY.md]
+    owner: release
+    eta: 2026-03-20
+    risk: high
+  - requirement_id: P9-002
+    phase: 9
+    status: partial
+    code_paths: [app/api/health/route.ts]
+    api_routes: [/api/health, /api/health/ready, /api/metrics]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [release-gate]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: release
+    eta: 2026-03-20
+    risk: medium
+  - requirement_id: P9-003
+    phase: 9
+    status: partial
+    code_paths: [README.md]
+    api_routes: [/api/openapi]
+    ui_components: [components/settings-panel.tsx]
+    jobs: [release-gate]
+    tests: [tests/contract/projects.consumer.test.ts]
+    docs: [docs/openapi.yaml]
+    owner: release
+    eta: 2026-03-20
+    risk: medium
+  - requirement_id: P9-004
+    phase: 9
+    status: missing
+    code_paths: [server.ts]
+    api_routes: [/api/health]
+    ui_components: [components/chat-view.tsx]
+    jobs: [release-gate]
+    tests: [tests/server/orchestrator.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: release
+    eta: 2026-03-20
+    risk: medium
+  - requirement_id: P9-005
+    phase: 9
+    status: missing
+    code_paths: [.github/workflows/release.yml]
+    api_routes: [/api/health]
+    ui_components: [components/observability-dashboard.tsx]
+    jobs: [release-gate]
+    tests: [tests/contract/health.consumer.test.ts]
+    docs: [docs/ARCHITECTURE.md]
+    owner: release
+    eta: 2026-03-20
+    risk: medium

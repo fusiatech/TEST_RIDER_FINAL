@@ -5,6 +5,7 @@ import { useSwarmStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { MessageCircle, Settings, Terminal, Sparkles } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'swarmui-onboarding-dismissed'
 
@@ -21,37 +22,46 @@ const STEPS: StepInfo[] = [
     title: 'Choose your mode',
     description:
       'Chat mode for quick Q&A, Swarm mode to dispatch parallel agents on a task, or Project mode to decompose and manage a full project pipeline.',
-    color: '#60a5fa',
+    color: 'var(--color-role-researcher)',
   },
   {
     icon: Settings,
     title: 'Configure your agents',
     description:
       'Open Settings to enable CLI agents (Cursor, Claude, Gemini, etc.), set parallel counts, and configure testing & security guardrails.',
-    color: '#a78bfa',
+    color: 'var(--color-role-planner)',
   },
   {
     icon: Terminal,
     title: 'Start building',
     description:
       'Type a prompt in the input bar to start. In Swarm mode, agents spawn in parallel and stream results live to the dashboard.',
-    color: '#34d399',
+    color: 'var(--color-role-coder)',
   },
 ]
 
 export function Onboarding() {
   const sessions = useSwarmStore((s) => s.sessions)
   const sessionsLoading = useSwarmStore((s) => s.sessionsLoading)
+  const settings = useSwarmStore((s) => s.settings)
+  const updateSettings = useSwarmStore((s) => s.updateSettings)
   const [visible, setVisible] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
+  const [entryMode, setEntryMode] = useState<'free' | 'keys'>(
+    settings.onboardingState?.entryMode ?? 'free'
+  )
+  const [setupLevel, setSetupLevel] = useState<'basic' | 'advanced'>(
+    settings.onboardingState?.setupLevel ?? 'basic'
+  )
 
   useEffect(() => {
     if (sessionsLoading) return
     const dismissed = localStorage.getItem(STORAGE_KEY)
-    if (!dismissed && sessions.length === 0) {
+    const alreadyCompleted = settings.onboardingState?.completed === true
+    if (!dismissed && !alreadyCompleted && sessions.length === 0) {
       setVisible(true)
     }
-  }, [sessions, sessionsLoading])
+  }, [sessions, sessionsLoading, settings.onboardingState?.completed])
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, 'true')
@@ -64,6 +74,19 @@ export function Onboarding() {
     } else {
       handleDismiss()
     }
+  }
+
+  const handleFinishSetup = () => {
+    updateSettings({
+      freeOnlyMode: entryMode === 'free',
+      onboardingState: {
+        completed: true,
+        entryMode,
+        setupLevel,
+        completedAt: Date.now(),
+      },
+    })
+    handleDismiss()
   }
 
   if (!visible) return null
@@ -100,6 +123,73 @@ export function Onboarding() {
               </div>
             </div>
 
+            {currentStep === STEPS.length - 1 ? (
+              <div className="mt-4 w-full space-y-3">
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+                    Access Mode
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('free')}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-xs text-left',
+                        entryMode === 'free'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-muted'
+                      )}
+                    >
+                      Free Mode
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntryMode('keys')}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-xs text-left',
+                        entryMode === 'keys'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-muted'
+                      )}
+                    >
+                      Connect Keys
+                    </button>
+                  </div>
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+                    Setup Level
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSetupLevel('basic')}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-xs text-left',
+                        setupLevel === 'basic'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-muted'
+                      )}
+                    >
+                      Basic
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSetupLevel('advanced')}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-xs text-left',
+                        setupLevel === 'advanced'
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-muted'
+                      )}
+                    >
+                      Advanced
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="mt-4 flex items-center gap-1.5">
               {STEPS.map((_, i) => (
                 <div
@@ -107,7 +197,7 @@ export function Onboarding() {
                   className="h-1.5 rounded-full transition-all duration-300"
                   style={{
                     width: i === currentStep ? 20 : 8,
-                    backgroundColor: i === currentStep ? step.color : '#3f3f46',
+                    backgroundColor: i === currentStep ? step.color : 'var(--color-zinc-700)',
                   }}
                 />
               ))}
@@ -117,9 +207,15 @@ export function Onboarding() {
               <Button variant="ghost" size="sm" onClick={handleDismiss}>
                 Skip
               </Button>
-              <Button size="sm" onClick={handleNext}>
-                {currentStep < STEPS.length - 1 ? 'Next' : 'Get Started'}
-              </Button>
+              {currentStep < STEPS.length - 1 ? (
+                <Button size="sm" onClick={handleNext}>
+                  Next
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handleFinishSetup}>
+                  Get Started
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

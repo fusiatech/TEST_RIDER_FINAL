@@ -1,0 +1,18 @@
+{
+  "phase": -1,
+  "basePort": 4100,
+  "timestamp": "2026-02-27T23:24:12.762Z",
+  "attempts": 3,
+  "passes": 3,
+  "status": "pass",
+  "checks": {
+    "startupConsistency": true,
+    "firstRequestNo500": true,
+    "healthReady": true,
+    "websocketReady": true
+  },
+  "screenshot": {
+    "ok": false,
+    "message": "Screenshot skipped: disabled or no successful run target"
+  }
+}

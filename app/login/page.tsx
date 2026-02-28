@@ -2,13 +2,15 @@
 
 import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Github, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
 
 function LoginForm() {
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const callbackUrl = searchParams.get('callbackUrl') || '/app'
   const error = searchParams.get('error')
+  const registered = searchParams.get('registered') === '1'
   const demoAuthEnabled = process.env.NEXT_PUBLIC_DEMO_AUTH_ENABLED === 'true'
 
   const [email, setEmail] = useState('')
@@ -63,6 +65,11 @@ function LoginForm() {
         </div>
 
         {/* Error Message */}
+        {registered && (
+          <div className="flex items-center gap-2 p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-green-600">
+            <p className="text-sm">Registration complete. Sign in to continue.</p>
+          </div>
+        )}
         {error && (
           <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
             <AlertCircle className="w-5 h-5 shrink-0" />
@@ -190,9 +197,15 @@ function LoginForm() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
-        </p>
+        <div className="text-center text-sm text-muted space-y-1">
+          <p>
+            No account yet?{' '}
+            <Link href="/register" className="text-primary underline-offset-2 hover:underline">
+              Create one
+            </Link>
+          </p>
+          <p>By signing in, you agree to our Terms of Service and Privacy Policy.</p>
+        </div>
       </div>
     </div>
   )

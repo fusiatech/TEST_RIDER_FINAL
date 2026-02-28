@@ -26,9 +26,7 @@ export function ConfirmDialog() {
 
   useEffect(() => {
     initWebSocket()
-
-    const originalHandler = wsClient.onMessage
-    wsClient.onMessage = (msg) => {
+    const unsubscribe = wsClient.addMessageListener((msg) => {
       if (msg.type === 'confirm-write') {
         setPending({
           requestId: msg.requestId,
@@ -36,11 +34,10 @@ export function ConfirmDialog() {
           diff: msg.diff,
         })
       }
-      originalHandler?.(msg)
-    }
+    })
 
     return () => {
-      wsClient.onMessage = originalHandler
+      unsubscribe()
     }
   }, [initWebSocket])
 
@@ -84,7 +81,7 @@ export function ConfirmDialog() {
             </div>
 
             <ScrollArea className="max-h-64">
-              <pre className="rounded-lg bg-[#0d0d0d] p-4 font-mono text-xs leading-relaxed text-zinc-300 overflow-x-auto">
+              <pre className="rounded-lg bg-[#0d0d0d] p-4 font-mono text-xs leading-relaxed text-muted overflow-x-auto">
                 {pending.diff || 'No diff available'}
               </pre>
             </ScrollArea>

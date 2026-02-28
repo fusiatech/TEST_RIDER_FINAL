@@ -1,0 +1,104 @@
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:4100
+   - Network:      http://169.254.83.107:4100
+
+ ✓ Starting...
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+   The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+   	- include was updated to add '/tmp/.next-swarm-4100/types/**/*.ts'
+
+ ○ Compiling /instrumentation ...
+ ✓ Compiled /instrumentation in 4.2s (290 modules)
+[telemetry] OpenTelemetry initialized for swarm-ui
+[telemetry] Exporting traces to http://localhost:4318/v1/traces
+ ✓ Ready in 17.9s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 821ms (233 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:03:27.542Z","requestId":"ba773240-c18d-49ca-a3c7-5e40fd5eef05","method":"GET","path":"/app","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:03:27.544Z","requestId":"d0da1bc6-ab3b-4ae5-b446-b959064b2b05","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:03:27.556Z","requestId":"c75287e1-c3f7-46b1-8be3-7416c0914c5e","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ○ Compiling /login ...
+ ✓ Compiled /login in 4s (1000 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:03:32.264Z","requestId":"fecb943a-d556-4282-b2d9-549f130f7f0b","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ✓ Compiled in 694ms (276 modules)
+ GET /login?callbackUrl=%2Fapp 200 in 4745ms
+ ✓ Compiled in 231ms (276 modules)
+ ✓ Compiled in 174ms (276 modules)
+ ✓ Compiled in 147ms (276 modules)
+ ✓ Compiled in 198ms (276 modules)
+ ✓ Compiled in 164ms (276 modules)
+ ✓ Compiled in 215ms (276 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:49.874Z","requestId":"524dc989-5801-42b6-9e8a-d1d44e3d37e9","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /login?callbackUrl=%2Fapp 200 in 110ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:50.616Z","requestId":"0b38756f-a4e9-4d85-9bb1-23f5ce5709a3","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1274ms (1176 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:52.123Z","requestId":"ab60d74b-e5c8-4e86-9a3e-631c491d09ea","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 95ms
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 2163ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:52.805Z","requestId":"b63317b1-79d7-4b1a-af57-596caabff906","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 39ms
+ ✓ Compiled in 197ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:53.846Z","requestId":"efa251c7-af6f-405f-80e9-6b36800f5f3d","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ ✓ Compiled in 2.3s (1409 modules)
+ GET /login?callbackUrl=%2Fapp 200 in 2435ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:56.316Z","requestId":"39d66747-6d43-47c7-bef7-672cfba2a61f","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 83ms
+ ✓ Compiled in 196ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:02.580Z","requestId":"efa2db19-e996-4ee5-8886-84bb236eb0bf","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 51ms
+ ✓ Compiled in 168ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:03.023Z","requestId":"0b0b20a8-9de0-4378-9c5c-3a5bbd34e239","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 50ms
+ ✓ Compiled in 193ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:03.604Z","requestId":"8e1e8bed-0e10-49ab-b9c7-57d2073e74e5","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 44ms
+ ✓ Compiled in 166ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.233Z","requestId":"527c6cec-6dcc-4452-8ced-db567cc5a6d9","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 49ms
+ ✓ Compiled in 161ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:10.767Z","requestId":"d40e6d6a-5b29-4fdc-b9f2-dc4e2ba79861","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 46ms
+ ✓ Compiled in 158ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:13.011Z","requestId":"8dae0b1e-73f4-4834-8a7c-197ce37c9ccd","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 48ms
+ ✓ Compiled in 165ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:15.104Z","requestId":"edee7c93-3500-483d-a36d-0360faff88d9","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 52ms
+ ✓ Compiled in 159ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:17.262Z","requestId":"d2189e9b-d719-40d7-b9c1-36efa16d0312","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 41ms
+ ✓ Compiled in 174ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:22.586Z","requestId":"f60d1a99-6089-45a7-a707-7e93153cdd8e","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 39ms
+ ✓ Compiled in 152ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:22.910Z","requestId":"280268c5-b745-49c1-a74c-6a1b75d1fed8","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 41ms
+ ✓ Compiled in 199ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:07:04.803Z","requestId":"08e4b912-3f6c-4fe4-b3f6-f590355d9a26","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 41ms
+ ✓ Compiled in 174ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:07:45.826Z","requestId":"3e03d63d-0528-4f20-a2c1-b77f5342b47c","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 47ms
+ ✓ Compiled in 221ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:08:03.857Z","requestId":"a2010617-e154-4e70-9bc2-8e34edc83d9e","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 50ms
+ ✓ Compiled in 201ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:08:21.359Z","requestId":"8b19315e-06e5-40f6-b57b-6e16b6450068","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 73ms
+ ✓ Compiled in 170ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:08:26.884Z","requestId":"df10b2cd-f527-44df-b16b-ce0d2589c6b5","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp 200 in 43ms
+[?25h

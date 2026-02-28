@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generatePRDPrompt, generatePRDRefinementPrompt, PRDInputSchema, validatePRDContent } from '@/lib/prd-template'
 import { getProject, saveProject } from '@/server/storage'
 import { runAPIAgent } from '@/server/api-runner'
-import { getSettings } from '@/server/storage'
+import { getEffectiveSettingsForUser } from '@/server/storage'
 import { z } from 'zod'
 import * as prdVersioning from '@/server/prd-versioning'
+import { auth } from '@/auth'
 
 const GeneratePRDSchema = z.object({
   projectName: z.string(),
@@ -74,6 +75,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const project = await getProject(id)
     
@@ -94,8 +100,8 @@ export async function POST(
     const input = PRDInputSchema.parse(result.data)
     const prompt = generatePRDPrompt(input)
     
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
+    const settings = await getEffectiveSettingsForUser(session.user.id)
+    const apiKey = settings.apiKeys?.openai
     
     if (!apiKey) {
       return NextResponse.json(
@@ -218,6 +224,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const project = await getProject(id)
     
@@ -245,8 +256,8 @@ export async function PATCH(
     const { feedback } = result.data
     const prompt = generatePRDRefinementPrompt(project.prd, feedback)
     
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
+    const settings = await getEffectiveSettingsForUser(session.user.id)
+    const apiKey = settings.apiKeys?.openai
     
     if (!apiKey) {
       return NextResponse.json(

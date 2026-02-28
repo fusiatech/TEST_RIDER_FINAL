@@ -17,7 +17,9 @@ import type {
   AgentRole,
   AgentInstance,
   CLIProvider,
+  AgentSelectionMode,
   Ticket,
+  ChatIntent,
 } from '@/lib/types'
 import {
   SwarmError,
@@ -82,6 +84,7 @@ import {
   selectBestOutput as selectBestOutputAH,
   analyzeStageOutputs,
   shouldRerunValidation,
+  evaluateEvidenceSufficiency,
 } from '@/server/anti-hallucination'
 import type { AgentOutput } from '@/server/anti-hallucination'
 import { runPipeline, cancelAll } from '@/server/pipeline-engine'
@@ -97,6 +100,7 @@ import {
   getValidationErrorSummary,
   type OutputValidationResult,
 } from '@/server/output-schemas'
+import { getEvidence } from '@/server/storage'
 export { runPipeline, cancelAll }
 
 /* ── GAP-015: Confidence Gates Configuration ──────────────────────── */
@@ -139,6 +143,9 @@ export type PipelineMode = 'chat' | 'swarm' | 'project'
 
 export interface SwarmPipelineOptions {
   prompt: string
+  intent?: ChatIntent
+  agentSelectionMode?: AgentSelectionMode
+  preferredAgent?: CLIProvider
   settings: Settings
   projectPath: string
   mode?: PipelineMode
@@ -198,14 +205,81 @@ echo "This is a mock response. Please install a real CLI agent."
  */
 async function resolveAvailableCLIs(
   enabledCLIs: CLIProvider[],
+  settings: Settings,
+  agentSelectionMode?: AgentSelectionMode,
+  preferredAgent?: CLIProvider,
 ): Promise<CLIProvider[]> {
+  const executionRuntime = settings.executionRuntime ?? 'server_managed'
+  const systemCLIsEnabled =
+    process.env.SWARM_ENABLE_SYSTEM_CLIS === '1' ||
+    process.env.SWARM_ENABLE_SYSTEM_CLIS === 'true'
+  const localRuntimeAllowed =
+    executionRuntime === 'local_dev' && systemCLIsEnabled
+  const forceMockAgents =
+    process.env.SWARM_FORCE_MOCK_AGENTS === '1' ||
+    process.env.SWARM_FORCE_MOCK_AGENTS === 'true'
+  if (forceMockAgents) {
+    ensureMockAgent()
+    const cursorEntry = CLI_REGISTRY.find((c) => c.id === 'cursor')
+    if (cursorEntry) {
+      cursorEntry.command = MOCK_AGENT_PATH
+      cursorEntry.args = []
+    }
+    return ['cursor']
+  }
+
+  // In normal app mode we force server-managed providers and avoid local CLI execution.
+  if (!localRuntimeAllowed) {
+    const inAppProviders = enabledCLIs.filter((id) => {
+      const apiProvider = mapProviderToAPI(id)
+      if (!apiProvider) return false
+      const apiKey = getAPIKeyForProvider(id, settings)
+      return Boolean(apiKey && apiKey.trim().length > 0)
+    })
+    const freeEligible = settings.freeOnlyMode
+      ? inAppProviders.filter((id) => id === 'gemini')
+      : inAppProviders
+    const priority = settings.providerPriority ?? enabledCLIs
+    const ordered = [
+      ...priority.filter((id): id is CLIProvider => freeEligible.includes(id)),
+      ...freeEligible.filter((id) => !priority.includes(id)),
+    ]
+
+    if (agentSelectionMode === 'manual' && preferredAgent) {
+      if (ordered.includes(preferredAgent)) return [preferredAgent]
+      throw new ValidationError(
+        `Preferred agent '${preferredAgent}' is unavailable in server-managed mode. Configure a valid key or choose another provider.`
+      )
+    }
+
+    if (ordered.length > 0) return ordered
+
+    throw new ValidationError(
+      'No server-managed AI provider is configured for this user profile. Add API keys in Settings > API Keys and enable codex/gemini/claude providers.'
+    )
+  }
+
   const detected = await detectInstalledCLIs()
   const installedIds = new Set(
     detected.filter((c) => c.installed).map((c) => c.id),
   )
 
-  const available = enabledCLIs.filter((id) => installedIds.has(id))
-  if (available.length > 0) return available
+  const initiallyAvailable = enabledCLIs.filter((id) => installedIds.has(id))
+  const freeEligible = settings.freeOnlyMode
+    ? initiallyAvailable.filter((id) => id === 'gemini' || id === 'cursor' || id === 'custom')
+    : initiallyAvailable
+
+  const priority = settings.providerPriority ?? enabledCLIs
+  const ordered = [
+    ...priority.filter((id): id is CLIProvider => freeEligible.includes(id)),
+    ...freeEligible.filter((id) => !priority.includes(id)),
+  ]
+
+  if (agentSelectionMode === 'manual' && preferredAgent && ordered.includes(preferredAgent)) {
+    return [preferredAgent]
+  }
+
+  if (ordered.length > 0) return ordered
 
   ensureMockAgent()
   const cursorEntry = CLI_REGISTRY.find((c) => c.id === 'cursor')
@@ -246,6 +320,26 @@ function detectMode(prompt: string): PipelineMode {
   return 'chat'
 }
 
+function applyIntentToPrompt(prompt: string, intent: ChatIntent | undefined): string {
+  switch (intent ?? 'auto') {
+    case 'one_line_fix':
+      return `${prompt}\n\nOutput policy: Provide a single concise fix line and no extra commentary.`
+    case 'plan':
+      return `${prompt}\n\nOutput policy: Provide a structured implementation plan with clear phases and acceptance criteria.`
+    case 'code_review':
+      return `${prompt}\n\nOutput policy: Return findings-first code review output ordered by severity, then brief recommendations.`
+    case 'explain':
+      return `${prompt}\n\nOutput policy: Explain clearly with short rationale and practical examples.`
+    case 'debug':
+      return `${prompt}\n\nOutput policy: Focus on root cause, minimal reproduction hints, and exact fix steps.`
+    case 'code_implementation':
+      return `${prompt}\n\nOutput policy: Prioritize implementation-ready code and concrete file-level changes.`
+    case 'auto':
+    default:
+      return prompt
+  }
+}
+
 /* ── Helpers ───────────────────────────────────────────────────── */
 
 function getProvider(enabledCLIs: CLIProvider[], index: number): CLIProvider {
@@ -262,6 +356,7 @@ function mapProviderToAPI(
 ): 'chatgpt' | 'gemini-api' | 'claude' | null {
   switch (provider) {
     case 'codex':
+    case 'cursor':
       return 'chatgpt'
     case 'gemini':
       return 'gemini-api'
@@ -285,11 +380,15 @@ function getAPIKeyForProvider(
 
   switch (provider) {
     case 'codex':
-      return apiKeys.openai ?? null
+      return apiKeys.codex ?? apiKeys.openai ?? null
+    case 'cursor':
+      return apiKeys.openai ?? apiKeys.codex ?? null
     case 'gemini':
-      return apiKeys.google ?? null
+      return apiKeys.gemini ?? apiKeys.google ?? null
     case 'claude':
-      return apiKeys.anthropic ?? null
+      return apiKeys.claude ?? apiKeys.anthropic ?? null
+    case 'copilot':
+      return apiKeys.copilot ?? apiKeys.github ?? null
     default:
       return null
   }
@@ -336,6 +435,57 @@ function buildCancelledResult(agents: AgentInstance[]): SwarmResult {
     agents,
     sources: [],
     validationPassed: false,
+  }
+}
+
+async function enforceEvidenceGuardrails(
+  result: SwarmResult,
+  evidenceId: string | undefined,
+  onAgentOutput: (agentId: string, data: string) => void,
+): Promise<SwarmResult> {
+  if (result.finalOutput === 'Swarm cancelled.') {
+    return result
+  }
+
+  if (!evidenceId) {
+    return result
+  }
+
+  const evidence = await getEvidence(evidenceId)
+  const decision = evaluateEvidenceSufficiency({
+    confidence: result.confidence,
+    sourceCount: result.sources.length,
+    evidence,
+  })
+
+  const evidenceStatus = {
+    sufficient: !decision.refuse,
+    traceId: decision.traceId,
+    references: decision.references,
+  }
+
+  if (!decision.refuse) {
+    return {
+      ...result,
+      evidenceStatus,
+    }
+  }
+
+  onAgentOutput(
+    'system',
+    `[orchestrator] Refusal triggered: ${decision.reason ?? 'insufficient evidence'} (trace: ${decision.traceId ?? 'n/a'})\n`,
+  )
+
+  return {
+    ...result,
+    finalOutput: `Refusal: insufficient evidence to provide a reliable result.\nReason: ${decision.reason ?? 'insufficient evidence'}\nRequired evidence: ${decision.requiredEvidence.join(', ')}\nTrace ID: ${decision.traceId ?? 'n/a'}`,
+    validationPassed: false,
+    refusal: {
+      reason: decision.reason ?? 'Insufficient evidence for a reliable response',
+      requiredEvidence: decision.requiredEvidence,
+      traceId: decision.traceId,
+    },
+    evidenceStatus,
   }
 }
 
@@ -468,7 +618,7 @@ async function runStage(
   })
   const enabledCLIs: CLIProvider[] =
     settings.enabledCLIs.length > 0 ? settings.enabledCLIs : ['cursor']
-  const chatsPerAgent: number = settings.chatsPerAgent ?? 1
+  const chatsPerAgent: number = Math.max(1, Math.min(settings.chatsPerAgent ?? 1, 2))
   const agents: AgentInstance[] = []
 
   for (let i = 0; i < count; i++) {
@@ -640,10 +790,11 @@ async function runStage(
                 maxRuntimeMs: settings.maxRuntimeSeconds * 1000,
                 customTemplate: settings.customCLICommand,
                 env: {
-                  OPENAI_API_KEY: settings.apiKeys?.openai,
-                  GOOGLE_API_KEY: settings.apiKeys?.google,
-                  ANTHROPIC_API_KEY: settings.apiKeys?.anthropic,
-                  GITHUB_TOKEN: settings.apiKeys?.github,
+                  OPENAI_API_KEY: settings.apiKeys?.openai ?? settings.apiKeys?.codex ?? settings.apiKeys?.cursor,
+                  GOOGLE_API_KEY: settings.apiKeys?.google ?? settings.apiKeys?.gemini,
+                  ANTHROPIC_API_KEY: settings.apiKeys?.anthropic ?? settings.apiKeys?.claude,
+                  GITHUB_TOKEN: settings.apiKeys?.github ?? settings.apiKeys?.copilot,
+                  CURSOR_API_KEY: settings.apiKeys?.cursor,
                 },
                 onOutput: (data: string) => {
                   chatOutputs[chatIndex] += data
@@ -851,11 +1002,12 @@ async function runChatMode(
   options.onAgentOutput('system', '[orchestrator] Running in CHAT mode\n')
   options.onAgentStatus('system', 'running')
 
+  const chatSettings = { ...options.settings, chatsPerAgent: 1 }
   const { outputs, agents } = await runStage(
     'coder',
     1,
     options.prompt,
-    options.settings,
+    chatSettings,
     options.projectPath,
     options,
     false,
@@ -1227,21 +1379,6 @@ async function runSwarmMode(
       await appendDiffSummary(options.evidenceId, projectPath)
     }
 
-    /* T3.4: Refusal stub - return "refused" when confidence < 30 and no evidence */
-    if (finalConfidence < 30 && sources.length === 0) {
-      onAgentOutput(
-        'system',
-        `[orchestrator] Refusal: confidence ${finalConfidence}% < 30 with no evidence\n`,
-      )
-      return {
-        finalOutput: 'refused',
-        confidence: finalConfidence,
-        agents: allAgents,
-        sources: [],
-        validationPassed: false,
-      }
-    }
-
     /* T3.2: Use selectBestOutput for synthesis fallback when synthesizer empty */
     const bestCodeOutput = selectBestOutput(codeOutputs, codeStageAgents)
 
@@ -1592,48 +1729,99 @@ export async function runSwarmPipeline(
     async (pipelineSpan) => {
       cancelled = false
       activeProcesses.length = 0
+      const effectivePrompt = applyIntentToPrompt(options.prompt, options.intent)
+      const effectiveOptions: SwarmPipelineOptions = { ...options, prompt: effectivePrompt }
 
       const resolvedCLIs = await resolveAvailableCLIs(
-        options.settings.enabledCLIs.length > 0
-          ? options.settings.enabledCLIs
+        effectiveOptions.settings.enabledCLIs.length > 0
+          ? effectiveOptions.settings.enabledCLIs
           : ['cursor'],
+        effectiveOptions.settings,
+        effectiveOptions.agentSelectionMode,
+        effectiveOptions.preferredAgent,
       )
-      options.settings = { ...options.settings, enabledCLIs: resolvedCLIs }
-      options.onAgentOutput(
+      effectiveOptions.settings = { ...effectiveOptions.settings, enabledCLIs: resolvedCLIs }
+      effectiveOptions.onAgentOutput(
         'system',
         `[orchestrator] Resolved CLIs: ${resolvedCLIs.join(', ')}\n`,
       )
+      if (resolvedCLIs.length === 1) {
+        effectiveOptions.onAgentOutput(
+          'system',
+          '[orchestrator] Degraded mode: only one real provider available.\n',
+        )
+      }
+      if (effectiveOptions.settings.freeOnlyMode) {
+        effectiveOptions.onAgentOutput(
+          'system',
+          '[orchestrator] Free-only mode enabled; paid-only providers excluded.\n',
+        )
+      }
 
-      const mode = options.mode ?? detectMode(options.prompt)
-      options.onAgentOutput('system', `[orchestrator] Mode: ${mode}\n`)
+      const mode = effectiveOptions.mode ?? detectMode(options.prompt)
+      effectiveOptions.onAgentOutput('system', `[orchestrator] Mode: ${mode}\n`)
 
       pipelineSpan.setAttributes({
         'swarm.mode': mode,
+        'swarm.intent': options.intent ?? 'auto',
         'swarm.enabled_clis': resolvedCLIs.join(','),
-        'swarm.project_path': options.projectPath,
+        'swarm.project_path': effectiveOptions.projectPath,
         'swarm.prompt_length': options.prompt.length,
       })
 
       addSpanEvent('pipeline.started', { mode })
 
-      options.evidenceId = await createPipelineEvidence(options.projectPath)
+      effectiveOptions.evidenceId = await createPipelineEvidence(effectiveOptions.projectPath)
 
-      let result: SwarmResult
-      switch (mode) {
-        case 'chat':
-          result = await runChatMode(options)
-          break
-        case 'swarm':
-          result = await runSwarmMode(options)
-          break
-        case 'project':
-          result = await runProjectMode(options)
-          break
+      const pipelineTimeoutMs = Math.max(
+        15_000,
+        Math.min(120_000, (effectiveOptions.settings.maxRuntimeSeconds ?? 120) * 1000 + 10_000),
+      )
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new TimeoutError(
+              `Pipeline timed out after ${pipelineTimeoutMs}ms (mode=${mode})`,
+              {
+                timeoutMs: pipelineTimeoutMs,
+                operation: `pipeline:${mode}`,
+              },
+            ),
+          )
+        }, pipelineTimeoutMs)
+      })
+
+      const runByMode = async (): Promise<SwarmResult> => {
+        switch (mode) {
+          case 'chat':
+            return await runChatMode(effectiveOptions)
+          case 'swarm':
+            return await runSwarmMode(effectiveOptions)
+          case 'project':
+            return await runProjectMode(effectiveOptions)
+        }
       }
 
-      pipelineSpan.setAttributes({
-        'swarm.confidence': result.confidence,
-        'swarm.validation_passed': result.validationPassed,
+      let result: SwarmResult
+      try {
+        result = await Promise.race([runByMode(), timeoutPromise])
+      } catch (error) {
+        if (error instanceof TimeoutError) {
+          cancelSwarm()
+          effectiveOptions.onAgentOutput('system', `[orchestrator] ${error.message}\n`)
+        }
+        throw error
+      }
+
+        result = await enforceEvidenceGuardrails(
+          result,
+          effectiveOptions.evidenceId,
+          effectiveOptions.onAgentOutput,
+        )
+
+        pipelineSpan.setAttributes({
+          'swarm.confidence': result.confidence,
+          'swarm.validation_passed': result.validationPassed,
         'swarm.agent_count': result.agents.length,
         'swarm.sources_count': result.sources.length,
       })

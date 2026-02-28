@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import type { Ticket, ApprovalHistoryEntry, TicketAttachment, FigmaLink } from '@/lib/types'
+import type { Ticket, ApprovalHistoryEntry, TicketAttachment, FigmaLink, TicketLevel } from '@/lib/types'
 import { ROLE_COLORS, ROLE_LABELS } from '@/lib/types'
 import { AttachmentUpload } from '@/components/attachment-upload'
 import { FigmaLinks } from '@/components/figma-link'
@@ -14,12 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useSwarmStore } from '@/lib/store'
-import { Tooltip, TERM_DEFINITIONS } from '@/components/ui/tooltip'
+import { Tooltip, TERM_DEFINITIONS, ROLE_DESCRIPTIONS, COMPLEXITY_DESCRIPTIONS } from '@/components/ui/tooltip'
 import { checkSLAStatus, getDefaultPriorityFromComplexity } from '@/lib/sla-calculator'
 import { toast } from 'sonner'
 import { 
   X, Check, Clock, Tag, GitBranch, FileText, Shield, TestTube2, RotateCcw, Terminal,
-  Edit2, Save, XCircle, Plus, Trash2, MessageSquare, History, User, Paperclip, Figma, Link2
+  Edit2, Save, XCircle, Plus, Trash2, MessageSquare, History, User, Paperclip, Figma, Link2,
+  ArrowUp, ChevronRight
 } from 'lucide-react'
 
 const MAX_TRUNCATE = 2000
@@ -62,6 +63,7 @@ interface TicketDetailProps {
   onUpdate?: (ticketId: string, updates: Partial<Ticket>) => Promise<void>
   onAddDependency?: (ticketId: string, dependencyId: string, type: 'blockedBy' | 'blocks') => Promise<void>
   onRemoveDependency?: (ticketId: string, dependencyId: string, type: 'blockedBy' | 'blocks') => Promise<void>
+  onSelectTicket?: (ticketId: string) => void
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -80,7 +82,16 @@ const COMPLEXITY_COLORS: Record<string, string> = {
   XL: '#ef4444',
 }
 
-export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAddDependency, onRemoveDependency }: TicketDetailProps) {
+const LEVEL_COLORS: Record<TicketLevel, string> = {
+  feature: '#a855f7',
+  epic: '#3b82f6',
+  story: '#22c55e',
+  task: '#eab308',
+  subtask: '#f97316',
+  subatomic: '#ef4444',
+}
+
+export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAddDependency, onRemoveDependency, onSelectTicket }: TicketDetailProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'proof' | 'history' | 'attachments' | 'design' | 'dependencies'>('details')
   const [attachments, setAttachments] = useState<TicketAttachment[]>(ticket.attachments || [])
   const [figmaLinks, setFigmaLinks] = useState<FigmaLink[]>(ticket.figmaLinks || [])
@@ -95,6 +106,15 @@ export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAdd
       priority
     )
   }, [ticket.createdAt, ticket.firstResponseAt, ticket.resolvedAt, ticket.sla?.priority, ticket.complexity])
+
+  const parentTicket = useMemo(() => {
+    if (!ticket.parentId) return null
+    return allTickets.find(t => t.id === ticket.parentId) || null
+  }, [ticket.parentId, allTickets])
+
+  const childTickets = useMemo(() => {
+    return allTickets.filter(t => t.parentId === ticket.id)
+  }, [ticket.id, allTickets])
   const approveTicket = useSwarmStore((s) => s.approveTicket)
   const rejectTicket = useSwarmStore((s) => s.rejectTicket)
   const isReview = ticket.status === 'review'
@@ -272,7 +292,7 @@ export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAdd
               >
                 {ticket.status.replace('_', ' ')}
               </Badge>
-              <Tooltip content={TERM_DEFINITIONS.Complexity}>
+              <Tooltip content={COMPLEXITY_DESCRIPTIONS[ticket.complexity]}>
                 <Badge
                   variant="outline"
                   className="text-[10px] px-1.5 cursor-help"
@@ -284,16 +304,18 @@ export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAdd
                   {ticket.complexity}
                 </Badge>
               </Tooltip>
-              <Badge
-                variant="outline"
-                className="text-[10px] px-1.5"
-                style={{
-                  color: ROLE_COLORS[ticket.assignedRole],
-                  borderColor: ROLE_COLORS[ticket.assignedRole],
-                }}
-              >
-                {ROLE_LABELS[ticket.assignedRole]}
-              </Badge>
+              <Tooltip content={ROLE_DESCRIPTIONS[ticket.assignedRole]}>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 cursor-help"
+                  style={{
+                    color: ROLE_COLORS[ticket.assignedRole],
+                    borderColor: ROLE_COLORS[ticket.assignedRole],
+                  }}
+                >
+                  {ROLE_LABELS[ticket.assignedRole]}
+                </Badge>
+              </Tooltip>
               {ticket.confidence != null && (
                 <Tooltip content={TERM_DEFINITIONS.Confidence}>
                   <Badge variant="secondary" className="text-[10px] px-1.5 cursor-help">
@@ -383,6 +405,65 @@ export function TicketDetail({ ticket, allTickets = [], onClose, onUpdate, onAdd
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Parent/Child Navigation */}
+        {(ticket.parentId || childTickets.length > 0) && activeTab === 'details' && (
+          <div className="space-y-3 pb-3 border-b border-border">
+            {/* View Parent Link */}
+            {ticket.parentId && (
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <ArrowUp className="h-4 w-4" />
+                <button
+                  onClick={() => onSelectTicket?.(ticket.parentId!)}
+                  className="hover:text-foreground hover:underline transition-colors"
+                >
+                  View Parent Ticket
+                  {parentTicket && (
+                    <span className="ml-1 text-muted">
+                      ({parentTicket.title.slice(0, 30)}{parentTicket.title.length > 30 ? '...' : ''})
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Child Tickets Section */}
+            {childTickets.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <ChevronRight className="h-4 w-4 text-muted" />
+                  Child Tickets ({childTickets.length})
+                </h4>
+                <div className="space-y-1 pl-6">
+                  {childTickets.map(child => (
+                    <button
+                      key={child.id}
+                      onClick={() => onSelectTicket?.(child.id)}
+                      className="flex items-center gap-2 text-sm hover:bg-secondary/50 p-2 rounded w-full text-left transition-colors"
+                    >
+                      {child.level && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5"
+                          style={{
+                            color: LEVEL_COLORS[child.level],
+                            borderColor: LEVEL_COLORS[child.level],
+                          }}
+                        >
+                          {child.level}
+                        </Badge>
+                      )}
+                      <span className="text-foreground truncate flex-1">{child.title}</span>
+                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                        {child.status.replace('_', ' ')}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'proof' ? <ProofTab ticket={ticket} /> : activeTab === 'history' ? (
           <ApprovalHistoryTab ticket={ticket} />
         ) : activeTab === 'attachments' ? (

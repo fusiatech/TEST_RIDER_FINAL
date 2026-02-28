@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-02-28T00:31:48.545Z",
+  "results": [
+    {
+      "name": "settings-persisted",
+      "pass": true
+    },
+    {
+      "name": "settings-consumed-health",
+      "pass": true
+    }
+  ]
+}

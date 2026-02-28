@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createTerminalSession, listTerminalSessions, initializeTerminalPersistence } from '@/server/terminal-manager'
+import { getDefaultWorkspaceQuotaPolicy } from '@/server/workspace-quotas'
 
 export const runtime = 'nodejs'
 
@@ -24,6 +25,17 @@ export async function POST(request: NextRequest) {
     cwd = body?.cwd
   } catch {
     // keep defaults when no body provided
+  }
+
+  const quota = getDefaultWorkspaceQuotaPolicy()
+  const activeSessions = listTerminalSessions().filter((s) => !s.terminated).length
+  if (activeSessions >= quota.maxTerminalSessions) {
+    return NextResponse.json(
+      {
+        error: `Terminal session quota exceeded (${activeSessions} >= ${quota.maxTerminalSessions})`,
+      },
+      { status: 413 }
+    )
   }
 
   const session = createTerminalSession(cols, rows, name, cwd)

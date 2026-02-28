@@ -15,9 +15,36 @@ Colors are defined in `app/globals.css` using CSS custom properties within the `
 | `--color-card` | `#f4f4f5` | `#18181b` | Card backgrounds |
 | `--color-primary` | `#7c3aed` | `#a78bfa` | Primary actions, links, focus rings |
 | `--color-secondary` | `#e4e4e7` | `#27272a` | Secondary backgrounds, hover states |
-| `--color-muted` | `#a1a1aa` | `#71717a` | Muted text, placeholders |
+| `--color-muted` | `#71717a` | `#a1a1aa` | Muted text, placeholders (~4.5:1 contrast) |
 | `--color-border` | `#d4d4d8` | `#3f3f46` | Borders, dividers |
 | `--color-destructive` | `#dc2626` | `#ef4444` | Error states, delete actions |
+| `--color-popover` | `#ffffff` | `#18181b` | Popover/dropdown backgrounds |
+| `--color-popover-foreground` | `#09090b` | `#fafafa` | Popover text |
+| `--color-ring` | `var(--color-primary)` | `var(--color-primary)` | Focus ring color |
+
+### Status Colors
+
+Semantic colors for status indicators and feedback:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-success` | `#22c55e` | Success states, positive feedback |
+| `--color-warning` | `#eab308` | Warning states, caution indicators |
+| `--color-error` | `#ef4444` | Error states (alias for destructive) |
+| `--color-info` | `#3b82f6` | Informational messages |
+
+### Neutral Gray Scale (Zinc)
+
+The zinc scale provides consistent neutral grays:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-zinc-400` | `#a1a1aa` | Light muted text |
+| `--color-zinc-500` | `#71717a` | Medium muted text |
+| `--color-zinc-700` | `#3f3f46` | Dark borders |
+| `--color-zinc-800` | `#27272a` | Dark backgrounds |
+| `--color-zinc-900` | `#18181b` | Darker backgrounds |
+| `--color-zinc-950` | `#09090b` | Darkest backgrounds |
 
 ### Role Colors (Agent Roles)
 
@@ -180,6 +207,15 @@ All animations respect `prefers-reduced-motion: reduce` media query.
 |-----------|------|-------|
 | `ContextMenu` | `components/ui/context-menu.tsx` | Right-click menus |
 
+### IDE & Development Components
+
+| Component | File | Usage |
+|-----------|------|-------|
+| `ProblemsPanel` | `components/problems-panel.tsx` | Displays linter errors/warnings grouped by file |
+| `LevelBadge` | `components/kanban-board.tsx` | Ticket hierarchy level indicator (Epic/Story/Task/Subtask) |
+| `TicketCardSkeleton` | `components/kanban-board.tsx` | Loading placeholder for ticket cards |
+| `InlineError` | `components/testing-dashboard.tsx` | Inline error display with retry button |
+
 ## Component Usage Guidelines
 
 ### Button Variants
@@ -256,6 +292,74 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 </Card>
 ```
 
+### ProblemsPanel Component
+
+Display linter errors and warnings grouped by file:
+
+```tsx
+import { ProblemsPanel, Problem } from '@/components/problems-panel'
+
+const problems: Problem[] = [
+  { file: 'src/app.tsx', line: 10, column: 5, severity: 'error', message: 'Type error', source: 'typescript' },
+  { file: 'src/app.tsx', line: 15, column: 1, severity: 'warning', message: 'Unused variable', source: 'eslint' },
+]
+
+<ProblemsPanel
+  problems={problems}
+  onProblemClick={(problem) => navigateToLine(problem.file, problem.line)}
+/>
+```
+
+Features:
+- Groups problems by file with collapsible sections
+- Sorts files by error count (most errors first)
+- Shows severity icons (error, warning, info)
+- Displays line/column location and source
+
+### LevelBadge Component
+
+Display ticket hierarchy levels:
+
+```tsx
+import { LevelBadge } from '@/components/kanban-board'
+
+<LevelBadge level="epic" />    // Purple badge
+<LevelBadge level="story" />   // Blue badge
+<LevelBadge level="task" />    // Green badge
+<LevelBadge level="subtask" /> // Gray badge
+```
+
+### TicketCardSkeleton Component
+
+Loading placeholder for ticket cards:
+
+```tsx
+import { TicketCardSkeleton } from '@/components/kanban-board'
+
+{isLoading && (
+  <div className="space-y-2">
+    {[...Array(3)].map((_, i) => (
+      <TicketCardSkeleton key={i} />
+    ))}
+  </div>
+)}
+```
+
+### InlineError Component
+
+Display inline errors with retry functionality:
+
+```tsx
+import { InlineError } from '@/components/testing-dashboard'
+
+{error && (
+  <InlineError
+    error={error}
+    onRetry={() => refetchData()}
+  />
+)}
+```
+
 ## Icon Guidelines
 
 SwarmUI uses [Lucide React](https://lucide.dev/) icons.
@@ -280,7 +384,7 @@ SwarmUI uses [Lucide React](https://lucide.dev/) icons.
 
 ### Focus States
 
-All interactive elements have visible focus rings:
+All interactive elements have visible focus rings with enhanced visibility:
 
 ```css
 *:focus-visible {
@@ -288,17 +392,218 @@ All interactive elements have visible focus rings:
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
 ```
+
+### Focus Management Patterns
+
+When building interactive components:
+
+1. **Modal dialogs**: Focus the first focusable element on open, trap focus within, return focus on close
+2. **Dropdown menus**: Focus first item on open, support arrow key navigation
+3. **Collapsible sections**: Keep focus on trigger after toggle
+4. **Dynamic content**: Use `aria-live` for updates that don't receive focus
+
+### aria-live Usage
+
+Use `aria-live` regions to announce dynamic content changes:
+
+```tsx
+// Polite announcements (wait for user to finish)
+<div aria-live="polite" aria-atomic="true">
+  {statusMessage}
+</div>
+
+// Assertive announcements (interrupt immediately)
+<div aria-live="assertive" role="alert">
+  {errorMessage}
+</div>
+
+// Status updates
+<div role="status" aria-live="polite">
+  Loading... {progress}%
+</div>
+```
+
+Common patterns:
+- **Toast notifications**: `aria-live="polite"` with `role="status"`
+- **Error messages**: `aria-live="assertive"` with `role="alert"`
+- **Progress updates**: `aria-live="polite"` with `aria-atomic="true"`
+- **Search results count**: `aria-live="polite"`
+
+### Keyboard Navigation Patterns
+
+| Pattern | Keys | Behavior |
+|---------|------|----------|
+| **Buttons** | `Enter`, `Space` | Activate |
+| **Links** | `Enter` | Navigate |
+| **Menus** | `↑↓` | Navigate items |
+| **Menus** | `Enter`, `Space` | Select item |
+| **Menus** | `Escape` | Close menu |
+| **Tabs** | `←→` | Switch tabs |
+| **Dialogs** | `Escape` | Close dialog |
+| **Dialogs** | `Tab` | Cycle through focusable elements |
+| **Trees** | `↑↓` | Navigate siblings |
+| **Trees** | `←→` | Collapse/expand or navigate parent/child |
+
+### data-testid Conventions
+
+Use consistent `data-testid` attributes for testing:
+
+```tsx
+// Component containers
+<div data-testid="problems-panel">
+<div data-testid="kanban-board">
+
+// Interactive elements
+<button data-testid="retry-button">
+<input data-testid="search-input">
+
+// List items with identifiers
+<div data-testid={`ticket-${ticket.id}`}>
+<div data-testid={`problem-${index}`}>
+
+// States
+<div data-testid="loading-skeleton">
+<div data-testid="empty-state">
+<div data-testid="error-state">
+```
+
+Naming conventions:
+- Use kebab-case: `problems-panel`, not `problemsPanel`
+- Include context: `ticket-card-skeleton`, not just `skeleton`
+- Add identifiers for lists: `ticket-${id}`, `file-${path}`
 
 ### Color Contrast
 
-- Text on background: Minimum 4.5:1 contrast ratio
-- Large text: Minimum 3:1 contrast ratio
+- Text on background: Minimum 4.5:1 contrast ratio (WCAG AA)
+- Large text (18px+ or 14px bold): Minimum 3:1 contrast ratio
 - Interactive elements: Clear visual distinction
+- Focus indicators: Minimum 3:1 contrast against adjacent colors
 
 ### Reduced Motion
 
-Animations are disabled when `prefers-reduced-motion: reduce` is set.
+All animations respect `prefers-reduced-motion: reduce`:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+## Responsive Design
+
+### Breakpoints
+
+SwarmUI uses Tailwind's default breakpoints:
+
+| Breakpoint | Min Width | CSS | Usage |
+|------------|-----------|-----|-------|
+| `sm` | 640px | `@media (min-width: 640px)` | Large phones, small tablets |
+| `md` | 768px | `@media (min-width: 768px)` | Tablets |
+| `lg` | 1024px | `@media (min-width: 1024px)` | Small laptops |
+| `xl` | 1280px | `@media (min-width: 1280px)` | Desktops |
+| `2xl` | 1536px | `@media (min-width: 1536px)` | Large desktops |
+
+### Mobile-First Patterns
+
+Write styles mobile-first, then add breakpoint modifiers:
+
+```tsx
+// Mobile-first approach
+<div className="flex flex-col md:flex-row">
+  <aside className="w-full md:w-64 lg:w-80">
+    {/* Sidebar */}
+  </aside>
+  <main className="flex-1 p-4 md:p-6">
+    {/* Content */}
+  </main>
+</div>
+
+// Responsive text
+<h1 className="text-xl md:text-2xl lg:text-3xl">
+  Title
+</h1>
+
+// Responsive spacing
+<div className="p-4 md:p-6 lg:p-8">
+  {/* Content */}
+</div>
+
+// Hide/show at breakpoints
+<nav className="hidden md:flex">
+  {/* Desktop nav */}
+</nav>
+<button className="md:hidden">
+  {/* Mobile menu button */}
+</button>
+```
+
+### Touch Target Sizes
+
+Ensure touch targets meet minimum size requirements:
+
+| Element | Minimum Size | Tailwind Classes |
+|---------|--------------|------------------|
+| Buttons | 44x44px | `min-h-11 min-w-11` or `p-3` |
+| Icon buttons | 44x44px | `h-11 w-11` or `p-2.5` with icon |
+| Links in lists | 44px height | `py-3` or `min-h-11` |
+| Form inputs | 44px height | `h-11` (default in our Input component) |
+
+```tsx
+// Icon button with proper touch target
+<button className="h-11 w-11 flex items-center justify-center rounded-lg hover:bg-secondary">
+  <Settings className="h-5 w-5" />
+</button>
+
+// List item with proper touch target
+<button className="w-full min-h-11 px-4 py-3 text-left hover:bg-secondary">
+  {item.label}
+</button>
+```
+
+### Responsive Patterns
+
+Common responsive patterns used in SwarmUI:
+
+**Sidebar collapse:**
+```tsx
+<aside className="hidden lg:block w-64">
+  {/* Full sidebar */}
+</aside>
+<aside className="lg:hidden w-16">
+  {/* Collapsed sidebar with icons only */}
+</aside>
+```
+
+**Card grid:**
+```tsx
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {items.map(item => <Card key={item.id} />)}
+</div>
+```
+
+**Stack to row:**
+```tsx
+<div className="flex flex-col sm:flex-row gap-2">
+  <Button>Primary</Button>
+  <Button variant="outline">Secondary</Button>
+</div>
+```
 
 ## Dark Mode
 

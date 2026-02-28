@@ -51,6 +51,8 @@ export function useKeyboardShortcuts(
         const { key, ctrl, meta, shift, alt, handler, allowInInput } = shortcut
 
         if (isInput && !allowInInput) continue
+        if (!key || typeof key !== 'string') continue
+        if (!e.key || typeof e.key !== 'string') continue
 
         const keyMatch = e.key.toLowerCase() === key.toLowerCase()
         if (!keyMatch) continue

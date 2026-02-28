@@ -1,5 +1,55 @@
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+async function unregisterAllServiceWorkers(): Promise<void> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+}
+
+async function clearSwarmCaches(): Promise<void> {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return;
+  }
+
+  const cacheNames = await caches.keys();
+  await Promise.all(
+    cacheNames
+      .filter((name) => name.startsWith('swarmui-'))
+      .map((name) => caches.delete(name))
+  );
+}
+
+export async function cleanupDevServiceWorkers(): Promise<void> {
+  if (isProductionRuntime()) {
+    return;
+  }
+
+  try {
+    const hadController = typeof navigator !== 'undefined' && navigator.serviceWorker.controller !== null;
+    await unregisterAllServiceWorkers();
+    await clearSwarmCaches();
+    console.log('[PWA] Development cleanup complete (service workers + caches removed)');
+
+    // If a stale SW was controlling this page, one reload is required to detach it.
+    if (hadController && typeof window !== 'undefined') {
+      const reloadKey = 'swarmui-dev-sw-cleanup-reloaded';
+      if (sessionStorage.getItem(reloadKey) !== '1') {
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.reload();
+      }
+    }
+  } catch (error) {
+    console.warn('[PWA] Development cleanup failed:', error);
+  }
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -7,6 +57,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return Promise.resolve(null);
+  }
+
+  if (!isProductionRuntime()) {
+    void cleanupDevServiceWorkers();
     return Promise.resolve(null);
   }
 
@@ -39,6 +94,10 @@ export async function checkForUpdates(): Promise<boolean> {
     return false;
   }
 
+  if (!isProductionRuntime()) {
+    return false;
+  }
+
   try {
     const registration = await navigator.serviceWorker.getRegistration();
     if (registration) {
@@ -57,6 +116,10 @@ export function applyUpdate(): void {
     return;
   }
 
+  if (!isProductionRuntime()) {
+    return;
+  }
+
   navigator.serviceWorker.getRegistration().then((registration) => {
     if (registration?.waiting) {
       registration.waiting.postMessage('skipWaiting');
@@ -67,6 +130,10 @@ export function applyUpdate(): void {
 
 export function setupInstallPrompt(): void {
   if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (!isProductionRuntime()) {
     return;
   }
 
@@ -125,19 +192,17 @@ export async function clearCache(): Promise<void> {
     return;
   }
 
+  if (!isProductionRuntime()) {
+    await clearSwarmCaches();
+    return;
+  }
+
   const registration = await navigator.serviceWorker.getRegistration();
   if (registration?.active) {
     registration.active.postMessage('clearCache');
   }
 
-  if ('caches' in window) {
-    const cacheNames = await caches.keys();
-    await Promise.all(
-      cacheNames
-        .filter((name) => name.startsWith('swarmui-'))
-        .map((name) => caches.delete(name))
-    );
-  }
+  await clearSwarmCaches();
 }
 
 export function getCacheSize(): Promise<number> {

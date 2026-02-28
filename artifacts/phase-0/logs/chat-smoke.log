@@ -1,0 +1,35 @@
+[2026-02-27T23:23:31.382Z] [dev] [dev-local] Starting SwarmUI at http://127.0.0.1:59627 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-27T23:23:38.304Z] [dev]  ○ Compiling /instrumentation ...
+[2026-02-27T23:23:38.439Z] [dev]  ✓ Compiled /instrumentation in 1168ms (290 modules)
+[2026-02-27T23:23:38.826Z] [dev] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-27T23:23:38.826Z] [dev] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-27T23:23:38.850Z] [dev] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-27T23:23:38.851Z] [dev] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-27T23:23:38.852Z] [dev] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-27T23:23:38.855Z] [dev] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:59627
+[2026-02-27T23:23:38.856Z] [dev] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-27T23:23:38.857Z] [dev] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-27T23:23:38.857Z] [dev] [36mINFO [0m [server] Mode: development
+[2026-02-27T23:23:38.859Z] [dev] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-27T23:23:39.569Z] [dev:stderr] <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\2.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\2.pack.gz'
+[2026-02-27T23:23:39.773Z] [dev]  ✓ Compiled /middleware in 259ms (160 modules)
+[2026-02-27T23:23:39.881Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:39.880Z","requestId":"6cff2e8a-4fe0-460c-80e2-afd360dab16c","method":"GET","path":"/api/health/live","durationMs":2,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:40.390Z] [dev]  ○ Compiling /api/health/live ...
+[2026-02-27T23:23:40.741Z] [dev:stderr] <w> [webpack.cache.PackFileCacheStrategy] Restoring pack failed from C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development.pack.gz: Error: incorrect header check
+[2026-02-27T23:23:42.130Z] [dev]  ✓ Compiled /api/health/live in 2.2s (612 modules)
+[2026-02-27T23:23:42.358Z] [dev]  GET /api/health/live 200 in 2471ms
+[2026-02-27T23:23:42.371Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:42.370Z","requestId":"07d09245-8bfd-44b3-9b96-e8daf56eabeb","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:42.533Z] [dev:stderr] <w> [webpack.cache.PackFileCacheStrategy] Restoring pack failed from C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development.pack.gz: Error: incorrect header check
+[2026-02-27T23:23:42.887Z] [dev]  ○ Compiling /api/health/ready ...
+[2026-02-27T23:23:45.166Z] [dev:stderr] <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\0.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\0.pack.gz'
+[2026-02-27T23:23:45.197Z] [dev]  ✓ Compiled /api/health/ready in 2.8s (1095 modules)
+[2026-02-27T23:23:45.578Z] [dev]  GET /api/health/ready 503 in 3205ms
+[2026-02-27T23:23:46.602Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:46.601Z","requestId":"7f3d92e6-2ec4-4fb8-bf5f-746b48f7e9d2","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:46.655Z] [dev]  GET /api/health/live 200 in 52ms
+[2026-02-27T23:23:46.666Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:46.666Z","requestId":"a5cd63b7-df02-4e39-b965-35d9f8b58763","method":"GET","path":"/api/health/ready","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:23:46.710Z] Server ready at http://127.0.0.1:59627
+[2026-02-27T23:23:46.714Z] [dev]  GET /api/health/ready 200 in 42ms
+[2026-02-27T23:23:46.718Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:23:46.722Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-smoke-1772234626717","mode":"chat","agentSelectionMode":"auto","traceModeValidation":false,"prompt":"Reply with one concise sentence: chat smoke test"}
+[2026-02-27T23:23:48.649Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:23:48.648Z","requestId":"515053a6-7c42-4afc-afc0-78742828af30","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-27T23:23:48.929Z] [dev:stderr] <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\0.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\0.pack.gz'

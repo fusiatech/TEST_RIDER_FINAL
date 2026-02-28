@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-02-28T00:33:05.980Z",
+  "results": [
+    {
+      "name": "sanitize-noisy-output",
+      "pass": true,
+      "details": {
+        "sanitized": "Warning: 'p' is not in the list of known options, but still passed to Electron/Chromium.",
+        "qualityPass": false
+      }
+    },
+    {
+      "name": "insufficient-evidence-refusal",
+      "pass": true,
+      "details": {
+        "refuse": true,
+        "reason": "Insufficient evidence for a reliable response",
+        "references": 0
+      }
+    },
+    {
+      "name": "final-output-cleanliness",
+      "pass": true,
+      "details": {
+        "runAccepted": true,
+        "finalType": "swarm-result"
+      }
+    }
+  ]
+}

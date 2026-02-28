@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSwarmStore } from '@/lib/store'
 import type { AppMode } from '@/lib/store'
 import { cn } from '@/lib/utils'
@@ -90,13 +91,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPaletteProps) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
   const createSession = useSwarmStore((s) => s.createSession)
-  const toggleSettings = useSwarmStore((s) => s.toggleSettings)
   const toggleSidebar = useSwarmStore((s) => s.toggleSidebar)
   const sidebarOpen = useSwarmStore((s) => s.sidebarOpen)
   const setMode = useSwarmStore((s) => s.setMode)
@@ -133,7 +134,7 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
         icon: <Settings className="h-4 w-4" />,
         shortcut: '⌘,',
         action: () => {
-          toggleSettings()
+          router.push('/settings')
           close()
         },
         category: 'settings',
@@ -248,7 +249,6 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
     })
   }, [
     createSession,
-    toggleSettings,
     toggleSidebar,
     sidebarOpen,
     setMode,
@@ -257,6 +257,7 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
     setActiveTab,
     theme,
     setTheme,
+    router,
     close,
   ])
 

@@ -13,6 +13,8 @@ import {
 import type { AgentInstance } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTooltip, TERM_DEFINITIONS } from '@/components/ui/tooltip'
+import { HelpCircle } from 'lucide-react'
 
 interface ConfidenceChartProps {
   agents: AgentInstance[]
@@ -26,9 +28,9 @@ interface ChartDatum {
 }
 
 function getConfidenceColor(value: number): string {
-  if (value < 40) return '#ef4444'
-  if (value <= 70) return '#eab308'
-  return '#22c55e'
+  if (value < 40) return 'var(--color-error)'
+  if (value <= 70) return 'var(--color-warning)'
+  return 'var(--color-success)'
 }
 
 export function ConfidenceChart({ agents, confidence }: ConfidenceChartProps) {
@@ -60,8 +62,12 @@ export function ConfidenceChart({ agents, confidence }: ConfidenceChartProps) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="px-4 py-3">
-        <CardTitle className="text-sm font-medium text-foreground">
+        <CardTitle className="text-sm font-medium text-foreground flex items-center gap-2">
           Confidence Scores
+          <InfoTooltip 
+            term={<HelpCircle className="h-3.5 w-3.5 text-muted hover:text-foreground transition-colors" />} 
+            description={TERM_DEFINITIONS.Confidence} 
+          />
         </CardTitle>
       </CardHeader>
       <CardContent className="px-2 pb-3">
@@ -70,24 +76,24 @@ export function ConfidenceChart({ agents, confidence }: ConfidenceChartProps) {
             <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 10, fill: '#71717a' }}
+                tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fontSize: 10, fill: '#71717a' }}
+                tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }}
                 axisLine={false}
                 tickLine={false}
                 width={32}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#18181b',
-                  border: '1px solid #3f3f46',
+                  backgroundColor: 'var(--color-zinc-900)',
+                  border: '1px solid var(--color-zinc-700)',
                   borderRadius: 8,
                   fontSize: 12,
-                  color: '#fafafa',
+                  color: 'var(--color-foreground)',
                 }}
               />
               <Bar dataKey="confidence" radius={[4, 4, 0, 0]} maxBarSize={40}>

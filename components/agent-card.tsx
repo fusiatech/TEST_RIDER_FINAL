@@ -14,6 +14,7 @@ import {
   CollapsibleContent,
 } from '@/components/ui/collapsible'
 import { ChevronDown, ChevronRight, Bot, Clock, Loader2, Copy, Check, FileText } from 'lucide-react'
+import { Tooltip, ROLE_DESCRIPTIONS } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 
@@ -22,12 +23,12 @@ interface AgentCardProps {
 }
 
 const STATUS_STYLES: Record<AgentStatus, string> = {
-  pending: 'bg-zinc-600/20 text-zinc-400 border-zinc-600',
+  pending: 'bg-zinc-600/20 text-muted border-zinc-600',
   spawning: 'bg-blue-600/20 text-blue-400 border-blue-600',
   running: 'bg-yellow-600/20 text-yellow-400 border-yellow-600 animate-pulse-dot',
   completed: 'bg-green-600/20 text-green-400 border-green-600',
   failed: 'bg-red-600/20 text-red-400 border-red-600',
-  cancelled: 'bg-zinc-600/20 text-zinc-400 border-zinc-600',
+  cancelled: 'bg-zinc-600/20 text-muted border-zinc-600',
 }
 
 const STAGE_MAP: Record<AgentRole, string> = {
@@ -121,13 +122,15 @@ export function AgentCard({ agent }: AgentCardProps) {
               <span className="text-sm font-medium text-foreground">
                 {agent.label || ROLE_LABELS[agent.role]}
               </span>
-              <Badge
-                variant="outline"
-                className="text-[10px] px-1.5 py-0 border-border/50"
-                style={{ color: borderColor }}
-              >
-                {STAGE_MAP[agent.role]}
-              </Badge>
+              <Tooltip content={ROLE_DESCRIPTIONS[agent.role]}>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 border-border/50 cursor-help"
+                  style={{ color: borderColor }}
+                >
+                  {STAGE_MAP[agent.role]}
+                </Badge>
+              </Tooltip>
               <div className="ml-auto flex items-center gap-2">
                 {lineCount > 0 && (
                   <span className="flex items-center gap-1 text-[10px] text-muted">

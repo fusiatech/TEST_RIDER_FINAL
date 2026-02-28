@@ -1,6 +1,6 @@
-import type { SwarmJob, SwarmResult, AgentStatus as AgentStatusType, EnqueueAttachment } from '@/lib/types'
-import { getJobs, saveJob, getSettings } from '@/server/storage'
-import { runSwarmPipeline } from '@/server/orchestrator'
+import type { SwarmJob, SwarmResult, AgentStatus as AgentStatusType, EnqueueAttachment, RunRecord, ChatIntent } from '@/lib/types'
+import { getJobs, saveJob, getSettings, getEffectiveSettingsForUser, saveRun } from '@/server/storage'
+import { runSwarmPipeline, cancelSwarm } from '@/server/orchestrator'
 import { runScheduledPipeline } from '@/server/scheduled-pipeline'
 import { broadcastToAll } from '@/server/ws-server'
 import { randomUUID } from 'node:crypto'
@@ -31,12 +31,39 @@ export class JobQueue {
   private activeJobs: Set<string> = new Set()
   private queue: string[] = []
   private idempotencyIndex: Map<string, string> = new Map()
+  private skipFinalization: Set<string> = new Set()
   private processing = false
   private loaded = false
   private maxConcurrentJobs = DEFAULT_MAX_CONCURRENT_JOBS
 
   private getIdempotencyLookupKey(sessionId: string, idempotencyKey: string): string {
     return `${sessionId}:${idempotencyKey}`
+  }
+
+  private toRunRecord(job: SwarmJob): RunRecord {
+    return {
+      id: job.id,
+      sessionId: job.sessionId,
+      prompt: job.prompt,
+      mode: job.mode,
+      intent: job.intent,
+      agentSelectionMode: job.agentSelectionMode,
+      preferredAgent: job.preferredAgent,
+      status: job.status,
+      idempotencyKey: job.idempotencyKey,
+      traceModeValidation: job.traceModeValidation,
+      progress: job.progress,
+      currentStage: job.currentStage,
+      createdAt: job.createdAt,
+      startedAt: job.startedAt,
+      completedAt: job.completedAt,
+      error: job.error,
+      source: job.source,
+    }
+  }
+
+  private persistRun(job: SwarmJob): void {
+    void saveRun(this.toRunRecord(job))
   }
 
   private registerIdempotency(job: SwarmJob): void {
@@ -123,9 +150,13 @@ export class JobQueue {
 
   enqueue(params: {
     id?: string
+    userId?: string
     sessionId: string
     prompt: string
     mode: 'chat' | 'swarm' | 'project'
+    intent?: ChatIntent
+    agentSelectionMode?: 'auto' | 'manual'
+    preferredAgent?: 'cursor' | 'gemini' | 'claude' | 'copilot' | 'codex' | 'rovo' | 'custom'
     attachments?: EnqueueAttachment[]
     result?: SwarmResult
     error?: string
@@ -135,6 +166,7 @@ export class JobQueue {
     source?: 'scheduler' | 'user'
     priority?: number
     idempotencyKey?: string
+    traceModeValidation?: boolean
   }): SwarmJob {
     const normalizedIdempotencyKey = params.idempotencyKey?.trim() || undefined
     if (normalizedIdempotencyKey) {
@@ -156,10 +188,17 @@ export class JobQueue {
 
     const job: SwarmJob = {
       id: params.id ?? randomUUID(),
+      ...(params.userId ? { userId: params.userId } : {}),
       sessionId: params.sessionId,
       prompt: params.prompt,
       mode: params.mode,
+      ...(params.intent ? { intent: params.intent } : {}),
+      ...(params.agentSelectionMode ? { agentSelectionMode: params.agentSelectionMode } : {}),
+      ...(params.preferredAgent ? { preferredAgent: params.preferredAgent } : {}),
       ...(normalizedIdempotencyKey ? { idempotencyKey: normalizedIdempotencyKey } : {}),
+      ...(params.traceModeValidation !== undefined
+        ? { traceModeValidation: params.traceModeValidation }
+        : {}),
       status: 'queued',
       createdAt: Date.now(),
       progress: 0,
@@ -172,6 +211,7 @@ export class JobQueue {
     this.queue.push(job.id)
     this.sortQueueByPriority()
     void saveJob(job)
+    this.persistRun(job)
     
     const position = this.queue.indexOf(job.id) + 1
     broadcastToAll({ type: 'job-status', job })
@@ -205,8 +245,12 @@ export class JobQueue {
     const job = this.jobs.get(id)
     if (!job) return false
     
-    if (job.status === 'queued') {
+    if (job.status === 'queued' || job.status === 'paused') {
       this.queue = this.queue.filter((qid) => qid !== id)
+    }
+    if (job.status === 'running') {
+      this.skipFinalization.add(id)
+      cancelSwarm()
     }
     
     const updated: SwarmJob = { ...job, status: 'cancelled', completedAt: Date.now() }
@@ -214,6 +258,8 @@ export class JobQueue {
     this.clearIdempotency(updated)
     this.activeJobs.delete(id)
     await saveJob(updated)
+    this.persistRun(updated)
+    broadcastToAll({ type: 'run.cancelled', runId: id })
     broadcastToAll({ type: 'job-status', job: updated })
     this.broadcastActiveJobsCount()
     
@@ -236,6 +282,8 @@ export class JobQueue {
         this.jobs.set(id, updated)
         this.clearIdempotency(updated)
         await saveJob(updated)
+        this.persistRun(updated)
+        broadcastToAll({ type: 'run.cancelled', runId: id, reason: 'bulk-cancel' })
         broadcastToAll({ type: 'job-status', job: updated })
         cancelledCount++
       }
@@ -244,6 +292,71 @@ export class JobQueue {
     this.queue = []
     this.broadcastActiveJobsCount()
     return cancelledCount
+  }
+
+  async pauseJob(id: string, reason = 'manual'): Promise<boolean> {
+    await this.ensureLoaded()
+    const job = this.jobs.get(id)
+    if (!job) return false
+    if (job.status !== 'queued') return false
+
+    this.queue = this.queue.filter((qid) => qid !== id)
+    const updated: SwarmJob = { ...job, status: 'paused', currentStage: 'paused' }
+    this.jobs.set(id, updated)
+    await saveJob(updated)
+    this.persistRun(updated)
+    broadcastToAll({ type: 'run.paused', runId: id, reason })
+    broadcastToAll({ type: 'job-status', job: updated })
+    return true
+  }
+
+  async resumeJob(id: string): Promise<boolean> {
+    await this.ensureLoaded()
+    const job = this.jobs.get(id)
+    if (!job || job.status !== 'paused') return false
+
+    const updated: SwarmJob = { ...job, status: 'queued', currentStage: 'queued' }
+    this.jobs.set(id, updated)
+    this.queue.push(id)
+    this.sortQueueByPriority()
+    await saveJob(updated)
+    this.persistRun(updated)
+    broadcastToAll({ type: 'run.resumed', runId: id })
+    broadcastToAll({ type: 'job-status', job: updated })
+    if (!this.processing) {
+      void this.processQueue()
+    }
+    return true
+  }
+
+  async emergencyStop(reason = 'emergency-stop'): Promise<{ cancelledQueued: number; cancelledRunning: number }> {
+    await this.ensureLoaded()
+    const cancelledQueued = await this.cancelAllQueued()
+    const runningIds = Array.from(this.activeJobs)
+    let cancelledRunning = 0
+    if (runningIds.length > 0) {
+      cancelSwarm()
+    }
+    for (const id of runningIds) {
+      const job = this.jobs.get(id)
+      if (!job) continue
+      this.skipFinalization.add(id)
+      const updated: SwarmJob = {
+        ...job,
+        status: 'cancelled',
+        error: `Emergency stop: ${reason}`,
+        completedAt: Date.now(),
+      }
+      this.jobs.set(id, updated)
+      await saveJob(updated)
+      this.persistRun(updated)
+      broadcastToAll({ type: 'job-status', job: updated })
+      cancelledRunning++
+    }
+    this.activeJobs.clear()
+    broadcastToAll({ type: 'run.emergency_stopped', reason })
+    this.broadcastActiveJobsCount()
+    return { cancelledQueued, cancelledRunning }
   }
 
   updateJob(id: string, update: Partial<SwarmJob>): void {
@@ -257,6 +370,7 @@ export class JobQueue {
       this.registerIdempotency(updated)
     }
     void saveJob(updated)
+    this.persistRun(updated)
     broadcastToAll({ type: 'job-status', job: updated })
   }
 
@@ -282,7 +396,7 @@ export class JobQueue {
 
         const job = this.dequeue()
         if (!job) break
-        if (job.status === 'cancelled') continue
+        if (job.status === 'cancelled' || job.status === 'paused') continue
 
         this.activeJobs.add(job.id)
         const position = this.activeJobs.size
@@ -309,9 +423,14 @@ export class JobQueue {
     })
 
     try {
-      const settings = await getSettings()
+      const settings = job.userId
+        ? await getEffectiveSettingsForUser(job.userId)
+        : await getSettings()
       const pipelineOpts = {
         prompt: job.prompt,
+        intent: job.intent,
+        agentSelectionMode: job.agentSelectionMode,
+        preferredAgent: job.preferredAgent,
         settings,
         projectPath: settings.projectPath ?? process.cwd(),
         mode: job.mode,
@@ -355,6 +474,16 @@ export class JobQueue {
           ? await runScheduledPipeline(pipelineOpts)
           : await runSwarmPipeline(pipelineOpts)
 
+      const latest = this.jobs.get(job.id)
+      if (
+        this.skipFinalization.has(job.id) ||
+        latest?.status === 'cancelled' ||
+        latest?.status === 'paused'
+      ) {
+        this.skipFinalization.delete(job.id)
+        return
+      }
+
       this.updateJob(job.id, {
         status: 'completed',
         result,
@@ -371,6 +500,15 @@ export class JobQueue {
       broadcastToAll({ type: 'notification', notification: pipelineNotification })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
+      const latest = this.jobs.get(job.id)
+      if (
+        this.skipFinalization.has(job.id) ||
+        latest?.status === 'cancelled' ||
+        latest?.status === 'paused'
+      ) {
+        this.skipFinalization.delete(job.id)
+        return
+      }
       this.updateJob(job.id, {
         status: 'failed',
         error: message,
@@ -432,6 +570,7 @@ export class JobQueue {
       }
       this.jobs.set(jobId, updated)
       void saveJob(updated)
+      this.persistRun(updated)
     }
   }
 }

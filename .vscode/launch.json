@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SwarmUI: Full Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; $env:HOST='127.0.0.1'; $env:PORT='4100'; fnm exec --using v22.22.0 npm.cmd run dev:local"
+    },
+    {
+      "name": "SwarmUI: Full Dev Server (Port 4200)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; $env:HOST='127.0.0.1'; $env:PORT='4200'; fnm exec --using v22.22.0 npm.cmd run dev:local"
+    },
+    {
+      "name": "SwarmUI: Next.js Only (Turbopack)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; if (!(Test-Path '.tmp')) { New-Item -ItemType Directory -Force -Path '.tmp' | Out-Null }; $env:TEMP=(Resolve-Path '.tmp').Path; $env:TMP=$env:TEMP; fnm exec --using v22.22.0 npm.cmd run dev:next"
+    },
+    {
+      "name": "SwarmUI: Next.js Only (Cloud Stable)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; if (!(Test-Path '.tmp')) { New-Item -ItemType Directory -Force -Path '.tmp' | Out-Null }; $env:TEMP=(Resolve-Path '.tmp').Path; $env:TMP=$env:TEMP; $env:NEXT_DIST_DIR='/tmp/.next-swarm'; fnm exec --using v22.22.0 npx.cmd next dev -p 4000 -H 127.0.0.1"
+    }
+  ]
+}

@@ -30,6 +30,7 @@ export const TerminalEmulator = forwardRef<TerminalEmulatorRef, TerminalEmulator
   const lastScrollbackLengthRef = useRef(0)
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [lastOutputLines, setLastOutputLines] = useState<string>('')
 
   useImperativeHandle(ref, () => ({
     clear: () => {
@@ -134,6 +135,12 @@ export const TerminalEmulator = forwardRef<TerminalEmulatorRef, TerminalEmulator
           const newContent = scrollback.slice(lastScrollbackLengthRef.current)
           terminalRef.current.write(newContent)
           lastScrollbackLengthRef.current = scrollback.length
+          
+          const lines = newContent.replace(/\x1b\[[0-9;]*m/g, '').split('\n')
+          const recentLines = lines.slice(-3).join(' ').trim()
+          if (recentLines) {
+            setLastOutputLines(recentLines)
+          }
         }
       } catch {
         // Ignore fetch errors
@@ -213,28 +220,49 @@ export const TerminalEmulator = forwardRef<TerminalEmulatorRef, TerminalEmulator
   }, [])
 
   return (
-    <div
-      ref={containerRef}
-      className={`h-full w-full overflow-hidden ${className}`}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        const selection = terminalRef.current?.getSelection()
-        if (selection) {
-          handleCopy()
-        } else {
-          void handlePaste()
-        }
-      }}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'c' && terminalRef.current?.hasSelection()) {
+    <>
+      {/* Visually hidden keyboard instructions for screen readers */}
+      <div id="terminal-keyboard-instructions" className="sr-only">
+        This is an interactive terminal. Type commands and press Enter to execute.
+        Use Ctrl+C (or Cmd+C on Mac) to copy selected text.
+        Use Ctrl+V (or Cmd+V on Mac) to paste from clipboard.
+        Right-click to copy selection or paste if no selection.
+      </div>
+      {/* G-A11Y-03: aria-live region for screen reader announcements */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="false"
+        className="sr-only"
+        id="terminal-announcer"
+      >
+        {lastOutputLines}
+      </div>
+      <div
+        ref={containerRef}
+        className={`h-full w-full overflow-hidden ${className}`}
+        role="application"
+        aria-label="Terminal emulator"
+        aria-describedby="terminal-keyboard-instructions"
+        onContextMenu={(e) => {
           e.preventDefault()
-          handleCopy()
-        } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
-          e.preventDefault()
-          void handlePaste()
-        }
-      }}
-    />
+          const selection = terminalRef.current?.getSelection()
+          if (selection) {
+            handleCopy()
+          } else {
+            void handlePaste()
+          }
+        }}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 'c' && terminalRef.current?.hasSelection()) {
+            e.preventDefault()
+            handleCopy()
+          } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            e.preventDefault()
+            void handlePaste()
+          }
+        }}
+      />
+    </>
   )
 })

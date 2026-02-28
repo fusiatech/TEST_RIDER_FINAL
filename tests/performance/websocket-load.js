@@ -15,7 +15,7 @@ export const options = {
   },
 }
 
-const WS_URL = __ENV.WS_URL || 'ws://localhost:3000'
+const WS_URL = __ENV.WS_URL || 'ws://localhost:3000/api/ws'
 
 export default function () {
   const startTime = Date.now()

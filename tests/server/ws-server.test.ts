@@ -213,6 +213,9 @@ describe('ws-server.ts', () => {
           m.includes('agent-status') && m.includes('running')
         )
         expect(agentStatusMsg).toBeDefined()
+
+        const runAcceptedMsg = ws.sentMessages.find(m => m.includes('"type":"run.accepted"'))
+        expect(runAcceptedMsg).toBeDefined()
         
         const jobStatusMsg = ws.sentMessages.find(m => m.includes('job-status'))
         expect(jobStatusMsg).toBeDefined()
@@ -490,7 +493,7 @@ describe('ws-server.ts', () => {
       }
       
       const mockRequest = {
-        url: '/ws',
+        url: '/api/ws',
         headers: { host: 'localhost:3000' },
         socket: { remoteAddress: '127.0.0.1' },
       }

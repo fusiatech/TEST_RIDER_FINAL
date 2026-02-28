@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
 import { sanitizePath, sanitizeFilename, isPathSafe } from '@/lib/sanitize'
+import { getDefaultWorkspaceQuotaPolicy, getWorkspaceUsage } from '@/server/workspace-quotas'
 
 function getProjectPath(): string {
   return process.env.PROJECT_PATH ?? process.cwd()
@@ -80,6 +81,33 @@ export async function PUT(
 
   try {
     const body = await request.text()
+    const quota = getDefaultWorkspaceQuotaPolicy()
+    const usage = getWorkspaceUsage(projectRoot)
+    const exists = fs.existsSync(filePath)
+    const currentSize = exists ? fs.statSync(filePath).size : 0
+    const newSize = Buffer.byteLength(body, 'utf-8')
+    const projectedFileCount = exists ? usage.fileCount : usage.fileCount + 1
+    const projectedTotalBytes = usage.totalBytes - currentSize + newSize
+
+    if (newSize > quota.maxFileSizeBytes) {
+      return NextResponse.json(
+        { error: `File exceeds per-file limit (${newSize} > ${quota.maxFileSizeBytes})` },
+        { status: 413 }
+      )
+    }
+    if (projectedFileCount > quota.maxFileCount) {
+      return NextResponse.json(
+        { error: `Workspace file-count quota exceeded (${projectedFileCount} > ${quota.maxFileCount})` },
+        { status: 413 }
+      )
+    }
+    if (projectedTotalBytes > quota.maxTotalBytes) {
+      return NextResponse.json(
+        { error: `Workspace storage quota exceeded (${projectedTotalBytes} > ${quota.maxTotalBytes})` },
+        { status: 413 }
+      )
+    }
+
     fs.writeFileSync(filePath, body, 'utf-8')
     return NextResponse.json({ ok: true })
   } catch {

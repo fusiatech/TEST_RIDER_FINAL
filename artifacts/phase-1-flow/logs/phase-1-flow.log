@@ -1,0 +1,72 @@
+[2026-02-28T00:28:42.595Z] in-app-agent-check configured=0/3
+[2026-02-28T00:28:42.640Z] [dev] [dev-local] Starting SwarmUI at http://127.0.0.1:57106 (tmp=C:\Users\roryb\AppData\Local\Temp\swarm-ui-dev, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-28T00:28:49.418Z] [dev]  ○ Compiling /instrumentation ...
+[2026-02-28T00:28:49.498Z] [dev]  ✓ Compiled /instrumentation in 1096ms (290 modules)
+[2026-02-28T00:28:49.849Z] [dev] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-28T00:28:49.849Z] [dev] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-28T00:28:49.870Z] [dev] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-28T00:28:49.871Z] [dev] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-28T00:28:49.873Z] [dev] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-28T00:28:49.876Z] [dev] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:57106
+[2026-02-28T00:28:49.877Z] [dev] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-28T00:28:49.877Z] [dev] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-28T00:28:49.878Z] [dev] [36mINFO [0m [server] Mode: development
+[2026-02-28T00:28:49.880Z] [dev] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-28T00:28:50.916Z] [dev]  ✓ Compiled /middleware in 209ms (160 modules)
+[2026-02-28T00:28:51.037Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:28:51.037Z","requestId":"01fd0e7e-3c25-4e92-969d-a5f45915c87c","method":"GET","path":"/api/health/live","durationMs":2,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:28:51.576Z] [dev]  ○ Compiling /api/health/live ...
+[2026-02-28T00:28:51.702Z] [dev]  ✓ Compiled /api/health/live in 655ms (612 modules)
+[2026-02-28T00:28:51.935Z] [dev]  GET /api/health/live 200 in 889ms
+[2026-02-28T00:28:51.967Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:28:51.966Z","requestId":"48bea409-b3f4-4496-bac8-1f2a53f2a3a1","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:28:52.507Z] [dev]  ○ Compiling /api/health/ready ...
+[2026-02-28T00:28:52.926Z] [dev]  ✓ Compiled /api/health/ready in 922ms (1095 modules)
+[2026-02-28T00:28:53.301Z] server-started http://127.0.0.1:57106
+[2026-02-28T00:28:53.305Z] [dev]  GET /api/health/ready 200 in 1331ms
+[2026-02-28T00:28:53.308Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-28T00:28:53.311Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-1772238533308-session","mode":"chat","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Give one concise sentence confirming chat-mode res"}
+[2026-02-28T00:28:53.471Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:28:53.471Z","requestId":"e7fd94ef-438f-4671-9d15-46fb32f664b0","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-28T00:28:53.657Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-28T00:28:53.659Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"swarm-1772238533657-session","mode":"swarm","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Execute a multi-step orchestration summary: analyz"}
+[2026-02-28T00:28:53.760Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-28T00:28:53.789Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:28:53.789Z","requestId":"0d22a06c-66dd-4574-b125-fc5c2658d4a4","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-28T00:29:52.034Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-28T00:29:52.038Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"project-1772238592034-session","mode":"project","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Create a build planning output with phases, tasks,"}
+[2026-02-28T00:29:52.157Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-28T00:29:52.205Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:29:52.204Z","requestId":"15e45a4e-acb8-42b0-ba4c-b8ece4711a78","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-28T00:30:49.572Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-28T00:30:49.573Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-1772238649571-session","mode":"chat","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Repeat run reliability check: return one concise s"}
+[2026-02-28T00:30:49.667Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-28T00:30:49.699Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:30:49.699Z","requestId":"bca2b5ad-3ece-4824-be22-8cafb55f0c47","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-28T00:30:49.867Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-28T00:30:50.318Z] [dev] [dev-local] Starting SwarmUI at http://127.0.0.1:57592 (tmp=C:\Users\roryb\AppData\Local\Temp\swarm-ui-dev, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-28T00:30:56.666Z] [dev]  ○ Compiling /instrumentation ...
+[2026-02-28T00:30:56.743Z] [dev]  ✓ Compiled /instrumentation in 1072ms (290 modules)
+[2026-02-28T00:30:57.085Z] [dev] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-28T00:30:57.086Z] [dev] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-28T00:30:57.102Z] [dev] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-28T00:30:57.103Z] [dev] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-28T00:30:57.104Z] [dev] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-28T00:30:57.107Z] [dev] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:57592
+[2026-02-28T00:30:57.107Z] [dev] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-28T00:30:57.108Z] [dev] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-28T00:30:57.109Z] [dev] [36mINFO [0m [server] Mode: development
+[2026-02-28T00:30:57.110Z] [dev] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-28T00:30:57.502Z] [dev]  ✓ Compiled /middleware in 166ms (160 modules)
+[2026-02-28T00:30:57.626Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:30:57.625Z","requestId":"6d72e3fd-0d64-4502-be02-b6f2e0cd23c2","method":"GET","path":"/api/health/live","durationMs":2,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:30:58.102Z] [dev]  ✓ Compiled /api/health/live in 463ms (612 modules)
+[2026-02-28T00:30:58.330Z] [dev]  GET /api/health/live 200 in 698ms
+[2026-02-28T00:30:58.346Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:30:58.345Z","requestId":"3b0ddbb8-783e-42cb-8b95-cea5ccd00724","method":"GET","path":"/api/health/ready","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:30:58.865Z] [dev]  ○ Compiling /api/health/ready ...
+[2026-02-28T00:30:59.323Z] [dev]  ✓ Compiled /api/health/ready in 961ms (1095 modules)
+[2026-02-28T00:30:59.706Z] [dev]  GET /api/health/ready 200 in 1356ms
+[2026-02-28T00:30:59.721Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:30:59.720Z","requestId":"9fc236b5-640c-4295-a98f-008f7c014dd1","method":"POST","path":"/api/projects/project-v7-1772238649861/tickets","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:31:00.034Z] [dev]  ✓ Compiled /api/projects/[id]/tickets in 295ms (1099 modules)
+[2026-02-28T00:31:01.239Z] [dev]  POST /api/projects/project-v7-1772238649861/tickets 201 in 1511ms
+[2026-02-28T00:31:01.255Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:31:01.254Z","requestId":"c9dfe903-02f6-4bf8-a7bc-a9edda35d749","method":"PUT","path":"/api/projects/project-v7-1772238649861/tickets","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:31:01.330Z] [dev]  PUT /api/projects/project-v7-1772238649861/tickets 200 in 60ms
+[2026-02-28T00:31:01.341Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:31:01.340Z","requestId":"237884bd-486a-47a5-83ad-5e13670a9793","method":"GET","path":"/api/projects/project-v7-1772238649861/prd","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:31:01.857Z] [dev]  ○ Compiling /api/projects/[id]/prd ...
+[2026-02-28T00:31:01.912Z] [dev]  ✓ Compiled /api/projects/[id]/prd in 555ms (1103 modules)
+[2026-02-28T00:31:03.032Z] [dev]  GET /api/projects/project-v7-1772238649861/prd 200 in 1685ms
+[2026-02-28T00:31:03.047Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T00:31:03.046Z","requestId":"71d7451a-724a-43d4-8a80-a1ddc0f22249","method":"GET","path":"/api/projects/project-v7-1772238649861/prd-workflow","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-28T00:31:03.271Z] [dev]  ✓ Compiled /api/projects/[id]/prd-workflow in 211ms (1106 modules)

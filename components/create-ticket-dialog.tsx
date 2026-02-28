@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import type { TicketComplexity, AgentRole, Epic, Ticket } from '@/lib/types'
-import { ROLE_LABELS } from '@/lib/types'
+import { useState, useCallback, useMemo } from 'react'
+import type { TicketComplexity, AgentRole, Epic, Ticket, TicketLevel } from '@/lib/types'
+import { ROLE_LABELS, TICKET_HIERARCHY, validateTicketHierarchy } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -41,11 +41,21 @@ const ROLE_OPTIONS: { value: AgentRole; label: string }[] = [
   { value: 'synthesizer', label: ROLE_LABELS.synthesizer },
 ]
 
+const LEVEL_OPTIONS: { value: TicketLevel; label: string; color: string }[] = [
+  { value: 'feature', label: 'Feature', color: '#a855f7' },
+  { value: 'epic', label: 'Epic', color: '#3b82f6' },
+  { value: 'story', label: 'Story', color: '#22c55e' },
+  { value: 'task', label: 'Task', color: '#eab308' },
+  { value: 'subtask', label: 'Subtask', color: '#f97316' },
+  { value: 'subatomic', label: 'Subatomic', color: '#ef4444' },
+]
+
 interface CreateTicketDialogProps {
   projectId: string
   epics: Epic[]
   allTickets: Ticket[]
   onTicketCreated: () => void
+  parentId?: string
 }
 
 export function CreateTicketDialog({
@@ -53,6 +63,7 @@ export function CreateTicketDialog({
   epics,
   allTickets,
   onTicketCreated,
+  parentId,
 }: CreateTicketDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -63,8 +74,20 @@ export function CreateTicketDialog({
   const [epicId, setEpicId] = useState<string>('')
   const [blockedBy, setBlockedBy] = useState<string[]>([])
   const [blocks, setBlocks] = useState<string[]>([])
+  const [level, setLevel] = useState<TicketLevel | ''>('')
 
-  const [errors, setErrors] = useState<{ title?: string }>({})
+  const [errors, setErrors] = useState<{ title?: string; level?: string }>({})
+
+  const parentTicket = useMemo(() => {
+    if (!parentId) return null
+    return allTickets.find(t => t.id === parentId) || null
+  }, [parentId, allTickets])
+
+  const validLevelOptions = useMemo(() => {
+    if (!parentTicket?.level) return LEVEL_OPTIONS
+    const allowedChildren = TICKET_HIERARCHY[parentTicket.level]
+    return LEVEL_OPTIONS.filter(opt => allowedChildren.includes(opt.value))
+  }, [parentTicket])
 
   const resetForm = useCallback(() => {
     setTitle('')
@@ -74,11 +97,12 @@ export function CreateTicketDialog({
     setEpicId('')
     setBlockedBy([])
     setBlocks([])
+    setLevel('')
     setErrors({})
   }, [])
 
   const validateForm = useCallback((): boolean => {
-    const newErrors: { title?: string } = {}
+    const newErrors: { title?: string; level?: string } = {}
 
     if (!title.trim()) {
       newErrors.title = 'Title is required'
@@ -86,9 +110,16 @@ export function CreateTicketDialog({
       newErrors.title = 'Title must be at least 3 characters'
     }
 
+    if (parentId && parentTicket?.level && level) {
+      const validation = validateTicketHierarchy(parentTicket.level, level as TicketLevel)
+      if (!validation.valid) {
+        newErrors.level = validation.error
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }, [title])
+  }, [title, parentId, parentTicket, level])
 
   const handleSubmit = useCallback(async () => {
     if (!validateForm()) return
@@ -110,6 +141,8 @@ export function CreateTicketDialog({
         dependencies: [],
         blockedBy: blockedBy.length > 0 ? blockedBy : undefined,
         blocks: blocks.length > 0 ? blocks : undefined,
+        level: level || undefined,
+        parentId: parentId || undefined,
         createdAt: now,
         updatedAt: now,
       }
@@ -146,6 +179,8 @@ export function CreateTicketDialog({
     epicId,
     blockedBy,
     blocks,
+    level,
+    parentId,
     resetForm,
     onTicketCreated,
   ])
@@ -167,6 +202,7 @@ export function CreateTicketDialog({
         size="sm"
         className="gap-2"
         onClick={() => setOpen(true)}
+        data-testid="create-ticket-button"
       >
         <Plus className="h-4 w-4" />
         Create Ticket
@@ -248,6 +284,45 @@ export function CreateTicketDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Level {parentId && <span className="text-muted text-xs">(Creating child of {parentTicket?.level || 'ticket'})</span>}
+            </label>
+            <Select
+              value={level}
+              onValueChange={(v) => {
+                setLevel(v as TicketLevel)
+                if (errors.level) setErrors((prev) => ({ ...prev, level: undefined }))
+              }}
+            >
+              <SelectTrigger className={errors.level ? 'border-red-500' : ''}>
+                <SelectValue placeholder="Select level (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No Level</SelectItem>
+                {validLevelOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: opt.color }}
+                      />
+                      {opt.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.level && (
+              <p className="text-xs text-red-500">{errors.level}</p>
+            )}
+            {parentId && validLevelOptions.length === 0 && (
+              <p className="text-xs text-muted">
+                Parent ticket level does not allow child tickets
+              </p>
+            )}
           </div>
 
           {epics.length > 0 && (

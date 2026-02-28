@@ -4,10 +4,11 @@ import { useTheme } from 'next-themes'
 import Editor, { type OnChange, type BeforeMount, type OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useCallback, useRef, useEffect, useState } from 'react'
+import { useCallback, useRef, useEffect, useState, Component, type ReactNode } from 'react'
 import { useSwarmStore, type DebugBreakpoint } from '@/lib/store'
 import { generateId } from '@/lib/utils'
 import { LSPClient, filePathToUri, getLanguageId } from '@/lib/lsp-client'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface CodeEditorProps {
   filePath?: string
@@ -105,6 +106,70 @@ function EditorLoading() {
   )
 }
 
+interface EditorErrorFallbackProps {
+  error: Error
+  onRetry: () => void
+}
+
+function EditorErrorFallback({ error, onRetry }: EditorErrorFallbackProps) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 bg-card p-6 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+        <AlertTriangle className="h-6 w-6 text-destructive" />
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-sm font-medium text-foreground">Failed to load editor</h3>
+        <p className="text-xs text-muted max-w-xs">
+          {error.message || 'An error occurred while loading the Monaco editor.'}
+        </p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        <RefreshCw className="h-3.5 w-3.5" />
+        Retry
+      </button>
+    </div>
+  )
+}
+
+interface EditorErrorBoundaryProps {
+  children: ReactNode
+  onError?: (error: Error) => void
+}
+
+interface EditorErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+class EditorErrorBoundary extends Component<EditorErrorBoundaryProps, EditorErrorBoundaryState> {
+  constructor(props: EditorErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error): EditorErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError?.(error)
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null })
+  }
+
+  render() {
+    if (this.state.hasError && this.state.error) {
+      return <EditorErrorFallback error={this.state.error} onRetry={this.handleRetry} />
+    }
+    return this.props.children
+  }
+}
+
 export function CodeEditor({
   filePath,
   content,
@@ -137,6 +202,7 @@ export function CodeEditor({
   const currentDebugLine = useSwarmStore((s) => s.currentDebugLine)
   const addBreakpoint = useSwarmStore((s) => s.addBreakpoint)
   const removeBreakpoint = useSwarmStore((s) => s.removeBreakpoint)
+  const settings = useSwarmStore((s) => s.settings)
 
   const breakpoints = propBreakpoints ?? storeBreakpoints
   const currentLine = propCurrentLine ?? (currentDebugLine && currentDebugLine.file === filePath ? currentDebugLine.line : undefined)
@@ -771,18 +837,19 @@ declare module 'next/navigation' {
         </div>
       )}
       <div className="flex-1 min-h-0">
-        <Editor
-          height="100%"
-          language={lang}
-          value={content}
-          theme={monacoTheme}
-          onChange={handleChange}
-          beforeMount={handleBeforeMount}
-          onMount={handleMount}
-          loading={<EditorLoading />}
-          options={{
+        <EditorErrorBoundary>
+          <Editor
+            height="100%"
+            language={lang}
+            value={content}
+            theme={monacoTheme}
+            onChange={handleChange}
+            beforeMount={handleBeforeMount}
+            onMount={handleMount}
+            loading={<EditorLoading />}
+            options={{
             readOnly,
-            minimap: { enabled: false },
+            minimap: { enabled: settings?.showMinimap ?? true },
             fontSize: 13,
             lineNumbers: 'on',
             glyphMargin: true,
@@ -858,7 +925,8 @@ declare module 'next/navigation' {
               multipleReferences: 'goto',
             },
           }}
-        />
+          />
+        </EditorErrorBoundary>
       </div>
     </div>
   )

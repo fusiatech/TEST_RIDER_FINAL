@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-02-27T23:28:27.902Z",
+  "platform": "win32",
+  "installedCount": 2,
+  "total": 6,
+  "matrix": [
+    {
+      "provider": "cursor",
+      "command": "cursor",
+      "installed": true,
+      "executablePath": "C:\\Users\\roryb\\AppData\\Local\\Programs\\cursor\\resources\\app\\bin\\cursor",
+      "realAgent": true
+    },
+    {
+      "provider": "gemini",
+      "command": "gemini",
+      "installed": false,
+      "executablePath": null,
+      "realAgent": true
+    },
+    {
+      "provider": "claude",
+      "command": "claude",
+      "installed": false,
+      "executablePath": null,
+      "realAgent": true
+    },
+    {
+      "provider": "copilot",
+      "command": "copilot",
+      "installed": false,
+      "executablePath": null,
+      "realAgent": true
+    },
+    {
+      "provider": "codex",
+      "command": "codex",
+      "installed": true,
+      "executablePath": "c:\\Users\\roryb\\.cursor\\extensions\\openai.chatgpt-0.4.78-universal\\bin\\windows-x86_64\\codex.exe",
+      "realAgent": true
+    },
+    {
+      "provider": "rovo",
+      "command": "rovo",
+      "installed": false,
+      "executablePath": null,
+      "realAgent": true
+    }
+  ]
+}

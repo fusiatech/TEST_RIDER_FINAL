@@ -3,7 +3,8 @@ import {
   generateTicketSummaryPrompt,
   generateProjectSummaryPrompt,
 } from '@/lib/summary-generator'
-import { getSettings, getProject, getProjects } from '@/server/storage'
+import { getEffectiveSettingsForUser, getProject, getProjects } from '@/server/storage'
+import { auth } from '@/auth'
 
 async function callOpenAI(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -66,6 +67,11 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { type, id } = body as { type?: string; id?: string }
 
@@ -76,7 +82,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const settings = await getSettings()
+    const settings = await getEffectiveSettingsForUser(session.user.id)
     const openaiKey = settings.apiKeys?.openai
     const anthropicKey = settings.apiKeys?.anthropic
 

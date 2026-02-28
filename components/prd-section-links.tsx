@@ -434,7 +434,7 @@ export function PRDSectionLinks({
 
                     {totalLinks === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        No linked items. Click "Link" to connect tickets or epics.
+                        No linked items. Click &quot;Link&quot; to connect tickets or epics.
                       </p>
                     )}
                   </div>

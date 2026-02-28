@@ -91,6 +91,10 @@ function isCLIInstalled(command: string): boolean {
 
 function getCLIVersion(command: string, provider: CLIProvider): string | undefined {
   if (!command) return undefined
+  const skipVersionProbe =
+    process.env.SWARM_CLI_DETECT_SKIP_VERSION === '1' ||
+    process.env.NODE_ENV === 'test'
+  if (skipVersionProbe) return undefined
 
   const versionFlags: Record<CLIProvider, string[]> = {
     cursor: ['--version', '-v'],
@@ -154,9 +158,16 @@ export async function detectCLIsWithInfo(): Promise<CLIInfo[]> {
   if (cachedCLIs && now - cacheTimestamp < CACHE_TTL_MS) {
     return cachedCLIs
   }
+  const systemCLIsEnabled =
+    process.env.SWARM_ENABLE_SYSTEM_CLIS === '1' ||
+    process.env.SWARM_ENABLE_SYSTEM_CLIS === 'true'
+  const disableRealCLIs =
+    !systemCLIsEnabled ||
+    process.env.SWARM_DISABLE_REAL_CLIS === '1' ||
+    process.env.SWARM_DISABLE_REAL_CLIS === 'true'
 
   const results: CLIInfo[] = CLI_REGISTRY.map((cli) => {
-    const installed = isCLIInstalled(cli.command)
+    const installed = disableRealCLIs ? false : isCLIInstalled(cli.command)
     const version = installed ? getCLIVersion(cli.command, cli.id) : undefined
     const capabilities = getCapabilities(cli.id, version)
 

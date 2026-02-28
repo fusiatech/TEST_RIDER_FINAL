@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
 import { checkRateLimit, getClientIdentifier } from '@/lib/rate-limit'
+import { canCreateFile, getDefaultWorkspaceQuotaPolicy } from '@/server/workspace-quotas'
 
 interface FileEntry {
   name: string
@@ -145,6 +146,13 @@ export async function POST(request: NextRequest) {
     if (type === 'directory') {
       fs.mkdirSync(targetPath, { recursive: true })
     } else {
+      const quotaCheck = canCreateFile(projectRoot, 0, getDefaultWorkspaceQuotaPolicy())
+      if (!quotaCheck.ok) {
+        return NextResponse.json(
+          { error: quotaCheck.reason, quota: quotaCheck.quota, usage: quotaCheck.usage },
+          { status: 413 }
+        )
+      }
       fs.mkdirSync(path.dirname(targetPath), { recursive: true })
       fs.writeFileSync(targetPath, '', 'utf-8')
     }

@@ -117,17 +117,22 @@ export function Tooltip({
 }
 
 export interface InfoTooltipProps {
-  term: string
+  term: React.ReactNode
   description: string
   className?: string
 }
 
 export function InfoTooltip({ term, description, className }: InfoTooltipProps) {
+  const isStringTerm = typeof term === 'string'
   return (
     <Tooltip content={description} className={className}>
-      <span className="border-b border-dotted border-muted-foreground/50 hover:border-primary transition-colors">
-        {term}
-      </span>
+      {isStringTerm ? (
+        <span className="border-b border-dotted border-muted-foreground/50 hover:border-primary transition-colors">
+          {term}
+        </span>
+      ) : (
+        <span>{term}</span>
+      )}
     </Tooltip>
   )
 }
@@ -150,4 +155,20 @@ export const TERM_DEFINITIONS = {
   Agent: 'An AI helper that specializes in a specific task like researching, coding, or testing.',
   Validator: 'An AI agent that checks if the code works correctly and follows best practices.',
   Synthesizer: 'An AI agent that combines results from other agents into a final answer.',
+} as const
+
+export const ROLE_DESCRIPTIONS = {
+  researcher: 'Gathers information, analyzes requirements, and identifies relevant context for the task.',
+  planner: 'Creates implementation plans, breaks down tasks, and organizes the work structure.',
+  coder: 'Writes and modifies code based on the plan and requirements.',
+  validator: 'Reviews code quality, runs tests, and verifies the implementation meets requirements.',
+  security: 'Analyzes code for security vulnerabilities and ensures best practices are followed.',
+  synthesizer: 'Combines outputs from multiple agents and creates the final cohesive result.',
+} as const
+
+export const COMPLEXITY_DESCRIPTIONS = {
+  S: 'Small - Quick task, typically under 30 minutes',
+  M: 'Medium - A few hours of focused work',
+  L: 'Large - A full day or more of effort',
+  XL: 'Extra Large - Significant effort, multiple days',
 } as const

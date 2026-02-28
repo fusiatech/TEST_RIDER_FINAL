@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Ticket, TicketStatus, KanbanColumn } from '@/lib/types'
+import type { Ticket, TicketStatus, TicketLevel, KanbanColumn } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,64 @@ import {
   Palette,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { Skeleton } from '@/components/ui/skeleton'
+
+const LEVEL_COLORS: Record<TicketLevel, string> = {
+  feature: 'bg-purple-500',
+  epic: 'bg-blue-500',
+  story: 'bg-green-500',
+  task: 'bg-yellow-500',
+  subtask: 'bg-orange-500',
+  subatomic: 'bg-red-500',
+}
+
+const LEVEL_TEXT_COLORS: Record<TicketLevel, string> = {
+  feature: 'text-purple-100',
+  epic: 'text-blue-100',
+  story: 'text-green-100',
+  task: 'text-yellow-100',
+  subtask: 'text-orange-100',
+  subatomic: 'text-red-100',
+}
+
+const LEVEL_DEPTH: Record<TicketLevel, number> = {
+  feature: 0,
+  epic: 1,
+  story: 2,
+  task: 3,
+  subtask: 4,
+  subatomic: 5,
+}
+
+const VALID_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+  backlog: ['in_progress'],
+  in_progress: ['review', 'backlog'],
+  review: ['done', 'rejected'],
+  done: [],
+  rejected: ['in_progress', 'backlog'],
+  approved: ['done'],
+}
+
+function isValidTransition(from: TicketStatus, to: TicketStatus): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false
+}
+
+function LevelBadge({ level }: { level?: TicketLevel }) {
+  if (!level) return null
+  
+  return (
+    <Badge
+      className={cn(
+        'text-[9px] px-1.5 py-0 h-4 font-medium',
+        LEVEL_COLORS[level],
+        LEVEL_TEXT_COLORS[level]
+      )}
+    >
+      {level}
+    </Badge>
+  )
+}
 
 interface KanbanBoardProps {
   tickets: Ticket[]
@@ -55,6 +113,50 @@ interface KanbanBoardProps {
   onTicketMove: (ticketId: string, newStatus: TicketStatus, newIndex: number) => void
   onTicketClick?: (ticket: Ticket) => void
   onColumnsChange?: (columns: KanbanColumn[]) => void
+  isLoading?: boolean
+}
+
+function TicketCardSkeleton() {
+  return (
+    <div className="p-3 rounded-lg border border-border bg-card space-y-2 animate-pulse">
+      <div className="flex items-start gap-2">
+        <Skeleton className="h-4 w-4 mt-0.5 rounded" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-2 w-2 rounded-full" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-4 w-12 rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <div className="flex gap-2 pt-1">
+            <Skeleton className="h-5 w-8 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function KanbanColumnSkeleton() {
+  return (
+    <div className="flex flex-col w-full sm:w-64 md:w-72 lg:w-80 shrink-0">
+      <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3 w-3 rounded-full" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-5 w-6 rounded-full" />
+        </div>
+        <Skeleton className="h-7 w-7 rounded" />
+      </div>
+      <div className="flex-1 rounded-lg bg-secondary/30 p-2 min-h-[200px] space-y-2">
+        {[1, 2, 3].map((i) => (
+          <TicketCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const DEFAULT_COLUMNS: KanbanColumn[] = [
@@ -88,9 +190,10 @@ interface SortableTicketCardProps {
   ticket: Ticket
   columnColor: string
   onClick?: () => void
+  dragOverStatus?: TicketStatus | null
 }
 
-function SortableTicketCard({ ticket, columnColor, onClick }: SortableTicketCardProps) {
+function SortableTicketCard({ ticket, columnColor, onClick, dragOverStatus }: SortableTicketCardProps) {
   const {
     attributes,
     listeners,
@@ -105,13 +208,23 @@ function SortableTicketCard({ ticket, columnColor, onClick }: SortableTicketCard
     transition,
   }
 
+  const indentLevel = ticket.level ? LEVEL_DEPTH[ticket.level] : 0
+  const indentPx = indentLevel * 8
+
+  const isValidDrop = isDragging && dragOverStatus 
+    ? isValidTransition(ticket.status, dragOverStatus)
+    : null
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, marginLeft: `${indentPx}px` }}
       className={cn(
         'group relative rounded-lg border border-border bg-card p-3 shadow-sm transition-all',
-        isDragging && 'opacity-50 shadow-lg ring-2 ring-primary',
+        isDragging && 'opacity-50 shadow-lg ring-2',
+        isDragging && isValidDrop === true && 'ring-green-500 border-green-500',
+        isDragging && isValidDrop === false && 'ring-red-500 border-red-500',
+        isDragging && isValidDrop === null && 'ring-primary',
         !isDragging && 'hover:border-primary/30 hover:shadow-md'
       )}
     >
@@ -119,9 +232,10 @@ function SortableTicketCard({ ticket, columnColor, onClick }: SortableTicketCard
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 cursor-grab touch-none text-muted opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
+          className="mt-0.5 cursor-grab touch-none text-muted sm:opacity-0 opacity-100 transition-opacity group-hover:opacity-100 active:cursor-grabbing min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center -m-2.5 sm:m-0 p-2.5 sm:p-0 rounded-lg sm:rounded-none hover:bg-muted/20 sm:hover:bg-transparent"
+          aria-label="Drag to reorder"
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-5 w-5 sm:h-4 sm:w-4" />
         </button>
         <div className="flex-1 min-w-0" onClick={onClick}>
           <div className="flex items-center gap-2 mb-1.5">
@@ -130,6 +244,7 @@ function SortableTicketCard({ ticket, columnColor, onClick }: SortableTicketCard
               style={{ backgroundColor: columnColor }}
             />
             <span className="text-xs text-muted truncate">{ticket.id.slice(0, 8)}</span>
+            <LevelBadge level={ticket.level} />
           </div>
           <h4 className="text-sm font-medium text-foreground line-clamp-2 cursor-pointer hover:text-primary">
             {ticket.title}
@@ -161,11 +276,32 @@ function SortableTicketCard({ ticket, columnColor, onClick }: SortableTicketCard
   )
 }
 
-function TicketCardOverlay({ ticket, columnColor }: { ticket: Ticket; columnColor: string }) {
+function TicketCardOverlay({ 
+  ticket, 
+  columnColor, 
+  isValidDrop 
+}: { 
+  ticket: Ticket
+  columnColor: string
+  isValidDrop?: boolean | null
+}) {
+  const indentLevel = ticket.level ? LEVEL_DEPTH[ticket.level] : 0
+  const indentPx = indentLevel * 8
+
   return (
-    <div className="rounded-lg border border-primary bg-card p-3 shadow-xl ring-2 ring-primary">
+    <div 
+      className={cn(
+        'rounded-lg border bg-card p-3 shadow-xl ring-2',
+        isValidDrop === true && 'ring-green-500 border-green-500',
+        isValidDrop === false && 'ring-red-500 border-red-500',
+        isValidDrop === null && 'ring-primary border-primary'
+      )}
+      style={{ marginLeft: `${indentPx}px` }}
+    >
       <div className="flex items-start gap-2">
-        <GripVertical className="h-4 w-4 mt-0.5 text-muted" />
+        <div className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center -m-2.5 sm:m-0 p-2.5 sm:p-0">
+          <GripVertical className="h-5 w-5 sm:h-4 sm:w-4 text-muted" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
             <div
@@ -173,10 +309,16 @@ function TicketCardOverlay({ ticket, columnColor }: { ticket: Ticket; columnColo
               style={{ backgroundColor: columnColor }}
             />
             <span className="text-xs text-muted truncate">{ticket.id.slice(0, 8)}</span>
+            <LevelBadge level={ticket.level} />
           </div>
           <h4 className="text-sm font-medium text-foreground line-clamp-2">{ticket.title}</h4>
         </div>
       </div>
+      {isValidDrop === false && (
+        <div className="mt-2 text-xs text-red-500 font-medium">
+          Invalid transition
+        </div>
+      )}
     </div>
   )
 }
@@ -188,6 +330,8 @@ interface KanbanColumnProps {
   onEditColumn: () => void
   onDeleteColumn: () => void
   onColorChange: (color: string) => void
+  dragOverStatus?: TicketStatus | null
+  activeTicketStatus?: TicketStatus | null
 }
 
 function KanbanColumnComponent({
@@ -197,11 +341,18 @@ function KanbanColumnComponent({
   onEditColumn,
   onDeleteColumn,
   onColorChange,
+  dragOverStatus,
+  activeTicketStatus,
 }: KanbanColumnProps) {
   const ticketIds = useMemo(() => tickets.map((t) => t.id), [tickets])
 
+  const isDropTarget = dragOverStatus === column.status
+  const isValidDropTarget = activeTicketStatus 
+    ? isValidTransition(activeTicketStatus, column.status)
+    : null
+
   return (
-    <div className="flex flex-col w-72 shrink-0">
+    <div className="flex flex-col w-full sm:w-64 md:w-72 lg:w-80 shrink-0">
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <div
@@ -256,7 +407,13 @@ function KanbanColumnComponent({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="flex-1 rounded-lg bg-secondary/30 p-2 min-h-[200px]">
+      <div 
+        className={cn(
+          'flex-1 rounded-lg bg-secondary/30 p-2 min-h-[200px] transition-all',
+          isDropTarget && isValidDropTarget === true && 'ring-2 ring-green-500 bg-green-500/10',
+          isDropTarget && isValidDropTarget === false && 'ring-2 ring-red-500 bg-red-500/10'
+        )}
+      >
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {tickets.map((ticket) => (
@@ -265,11 +422,26 @@ function KanbanColumnComponent({
                 ticket={ticket}
                 columnColor={column.color}
                 onClick={() => onTicketClick?.(ticket)}
+                dragOverStatus={dragOverStatus}
               />
             ))}
             {tickets.length === 0 && (
-              <div className="flex items-center justify-center h-24 rounded-lg border border-dashed border-border">
-                <span className="text-xs text-muted">Drop tickets here</span>
+              <div className={cn(
+                'flex items-center justify-center h-24 rounded-lg border border-dashed',
+                isDropTarget && isValidDropTarget === true && 'border-green-500 bg-green-500/5',
+                isDropTarget && isValidDropTarget === false && 'border-red-500 bg-red-500/5',
+                !isDropTarget && 'border-border'
+              )}>
+                <span className={cn(
+                  'text-xs',
+                  isDropTarget && isValidDropTarget === true && 'text-green-500',
+                  isDropTarget && isValidDropTarget === false && 'text-red-500',
+                  !isDropTarget && 'text-muted'
+                )}>
+                  {isDropTarget && isValidDropTarget === false 
+                    ? 'Invalid transition' 
+                    : 'Drop tickets here'}
+                </span>
               </div>
             )}
           </div>
@@ -279,12 +451,15 @@ function KanbanColumnComponent({
   )
 }
 
+const KEYBOARD_INSTRUCTIONS_ID = 'kanban-keyboard-instructions'
+
 export function KanbanBoard({
   tickets,
   columns: initialColumns,
   onTicketMove,
   onTicketClick,
   onColumnsChange,
+  isLoading = false,
 }: KanbanBoardProps) {
   const [columns, setColumns] = useState<KanbanColumn[]>(initialColumns ?? DEFAULT_COLUMNS)
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null)
@@ -295,6 +470,7 @@ export function KanbanBoard({
   const [newColumnName, setNewColumnName] = useState('')
   const [newColumnColor, setNewColumnColor] = useState(COLUMN_COLORS[0].value)
   const [newColumnStatus, setNewColumnStatus] = useState<TicketStatus>('backlog')
+  const [dragOverStatus, setDragOverStatus] = useState<TicketStatus | null>(null)
 
   const ticketsByColumn = useMemo(() => {
     const map = new Map<string, Ticket[]>()
@@ -337,13 +513,20 @@ export function KanbanBoard({
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (!over) return
+    if (!over) {
+      setDragOverStatus(null)
+      return
+    }
 
     const activeId = active.id as string
     const overId = over.id as string
 
     const activeColumn = findColumnByTicketId(activeId)
     const overColumn = columns.find((c) => c.id === overId) ?? findColumnByTicketId(overId)
+
+    if (overColumn) {
+      setDragOverStatus(overColumn.status)
+    }
 
     if (!activeColumn || !overColumn || activeColumn.id === overColumn.id) {
       return
@@ -353,6 +536,7 @@ export function KanbanBoard({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTicket(null)
+    setDragOverStatus(null)
 
     if (!over) return
 
@@ -379,6 +563,16 @@ export function KanbanBoard({
         onTicketMove(activeId, activeColumn.status, newIndex)
       }
     } else {
+      if (!isValidTransition(activeColumn.status, overColumn.status)) {
+        const validTargets = VALID_TRANSITIONS[activeColumn.status]
+        toast.error('Invalid status transition', {
+          description: validTargets.length > 0
+            ? `From "${activeColumn.status.replace('_', ' ')}" you can only move to: ${validTargets.map(s => s.replace('_', ' ')).join(', ')}`
+            : `Tickets in "${activeColumn.status.replace('_', ' ')}" cannot be moved`,
+        })
+        return
+      }
+
       const overIndex = overTickets.findIndex((t) => t.id === overId)
       const newIndex = overIndex === -1 ? overTickets.length : overIndex
 
@@ -447,6 +641,13 @@ export function KanbanBoard({
 
   return (
     <div className="h-full flex flex-col">
+      {/* Visually hidden keyboard instructions for screen readers */}
+      <div id={KEYBOARD_INSTRUCTIONS_ID} className="sr-only">
+        Use Tab to navigate between tickets. Press Space or Enter to pick up a ticket.
+        Use arrow keys to move the ticket. Press Space or Enter to drop the ticket in its new position.
+        Press Escape to cancel dragging.
+      </div>
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">Kanban Board</h2>
@@ -458,37 +659,48 @@ export function KanbanBoard({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 h-full min-w-max">
-            {columns.map((column) => (
-              <KanbanColumnComponent
-                key={column.id}
-                column={column}
-                tickets={ticketsByColumn.get(column.id) ?? []}
-                onTicketClick={onTicketClick}
-                onEditColumn={() => handleEditColumn(column)}
-                onDeleteColumn={() => handleDeleteColumn(column.id)}
-                onColorChange={(color) => handleColorChange(column.id, color)}
-              />
+      <div className="flex-1 overflow-x-auto pb-4 -mx-2 px-2 sm:mx-0 sm:px-0" aria-describedby={KEYBOARD_INSTRUCTIONS_ID}>
+        {isLoading ? (
+          <div className="flex flex-col sm:flex-row gap-4 h-full sm:min-w-max">
+            {[1, 2, 3, 4].map((i) => (
+              <KanbanColumnSkeleton key={i} />
             ))}
           </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex flex-col sm:flex-row gap-4 h-full sm:min-w-max">
+              {columns.map((column) => (
+                <KanbanColumnComponent
+                  key={column.id}
+                  column={column}
+                  tickets={ticketsByColumn.get(column.id) ?? []}
+                  onTicketClick={onTicketClick}
+                  onEditColumn={() => handleEditColumn(column)}
+                  onDeleteColumn={() => handleDeleteColumn(column.id)}
+                  onColorChange={(color) => handleColorChange(column.id, color)}
+                  dragOverStatus={dragOverStatus}
+                  activeTicketStatus={activeTicket?.status ?? null}
+                />
+              ))}
+            </div>
 
-          <DragOverlay>
-            {activeTicket && activeTicketColumn && (
-              <TicketCardOverlay
-                ticket={activeTicket}
-                columnColor={activeTicketColumn.color}
-              />
-            )}
-          </DragOverlay>
-        </DndContext>
+            <DragOverlay>
+              {activeTicket && activeTicketColumn && (
+                <TicketCardOverlay
+                  ticket={activeTicket}
+                  columnColor={activeTicketColumn.color}
+                  isValidDrop={dragOverStatus ? isValidTransition(activeTicket.status, dragOverStatus) : null}
+                />
+              )}
+            </DragOverlay>
+          </DndContext>
+        )}
       </div>
 
       <Dialog open={columnDialogOpen} onOpenChange={setColumnDialogOpen}>

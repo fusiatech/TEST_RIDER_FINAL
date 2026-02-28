@@ -8,11 +8,14 @@ import { Loader2, Eye, EyeOff } from 'lucide-react'
 interface FileBrowserProps {
   rootPath?: string
   onFileSelect?: (filePath: string, content: string) => void
+  navigateToPath?: string | null
+  onNavigateComplete?: () => void
 }
 
-export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
+export function FileBrowser({ rootPath, onFileSelect, navigateToPath, onNavigateComplete }: FileBrowserProps) {
   const [rootFiles, setRootFiles] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(true)
+  const [expandPaths, setExpandPaths] = useState<string[]>([])
   const activeFilePath = useSwarmStore((s) => s.activeFilePath)
   const openFileInIde = useSwarmStore((s) => s.openFileInIde)
   const setFilesLoading = useSwarmStore((s) => s.setFilesLoading)
@@ -23,6 +26,29 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
   const initWebSocket = useSwarmStore((s) => s.initWebSocket)
   const isWatching = watchedProjectPath === rootPath && rootPath !== undefined
   const hasInitializedWatch = useRef(false)
+
+  useEffect(() => {
+    if (navigateToPath && rootPath) {
+      const relativePath = navigateToPath.startsWith(rootPath)
+        ? navigateToPath.slice(rootPath.length).replace(/^[/\\]/, '')
+        : navigateToPath
+      
+      if (relativePath) {
+        const pathParts = relativePath.split(/[/\\]/)
+        const pathsToExpand: string[] = []
+        let currentPath = rootPath
+        
+        for (const part of pathParts) {
+          currentPath = currentPath + '/' + part
+          pathsToExpand.push(currentPath.replace(/\\/g, '/'))
+        }
+        
+        setExpandPaths(pathsToExpand)
+      }
+      
+      onNavigateComplete?.()
+    }
+  }, [navigateToPath, rootPath, onNavigateComplete])
 
   const loadDirectory = useCallback(async (dirPath?: string) => {
     const query = dirPath ? `?path=${encodeURIComponent(dirPath)}` : ''
@@ -147,6 +173,8 @@ export function FileBrowser({ rootPath, onFileSelect }: FileBrowserProps) {
           onRefresh={() => {
             loadDirectory(rootPath).then(setRootFiles).catch(() => setRootFiles([]))
           }}
+          expandPaths={expandPaths}
+          onExpandPathsHandled={() => setExpandPaths([])}
         />
       </div>
     </div>

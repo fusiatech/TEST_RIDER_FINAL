@@ -637,7 +637,7 @@ export function FigmaPanel({
             <div className="flex flex-col items-center justify-center h-full text-muted">
               <Code className="h-10 w-10 mb-3 opacity-50" />
               <p className="text-sm">No code generated yet</p>
-              <p className="text-xs mt-1">Select a design and click "Generate Code"</p>
+              <p className="text-xs mt-1">Select a design and click &quot;Generate Code&quot;</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -703,7 +703,7 @@ export function FigmaPanel({
             <div className="flex flex-col items-center justify-center h-full text-muted">
               <Palette className="h-10 w-10 mb-3 opacity-50" />
               <p className="text-sm">No design tokens extracted</p>
-              <p className="text-xs mt-1">Select a design and click "Extract Tokens"</p>
+              <p className="text-xs mt-1">Select a design and click &quot;Extract Tokens&quot;</p>
             </div>
           ) : (
             <div className="space-y-6">

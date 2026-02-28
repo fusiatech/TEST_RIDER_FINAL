@@ -8,9 +8,9 @@ interface ConfidenceBadgeProps {
 }
 
 function getColor(score: number): string {
-  if (score < 40) return '#ef4444'
-  if (score <= 70) return '#eab308'
-  return '#22c55e'
+  if (score < 40) return 'var(--color-error)'
+  if (score <= 70) return 'var(--color-warning)'
+  return 'var(--color-success)'
 }
 
 export function ConfidenceBadge({ score, sources }: ConfidenceBadgeProps) {
@@ -38,7 +38,7 @@ export function ConfidenceBadge({ score, sources }: ConfidenceBadgeProps) {
             cy="40"
             r={radius}
             fill="none"
-            stroke="#27272a"
+            stroke="var(--color-zinc-800)"
             strokeWidth={strokeWidth}
           />
           <circle
@@ -57,16 +57,16 @@ export function ConfidenceBadge({ score, sources }: ConfidenceBadgeProps) {
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold text-zinc-100 animate-count-up">{score}</span>
+          <span className="text-lg font-bold text-foreground animate-count-up">{score}</span>
         </div>
       </div>
-      <span className="text-xs text-zinc-400">confidence</span>
+      <span className="text-xs text-muted">confidence</span>
       {sources && sources.length > 0 && (
         <div className="mt-1 flex flex-wrap justify-center gap-1">
           {sources.map((source) => (
             <span
               key={source}
-              className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+              className="text-[10px] text-muted hover:text-foreground transition-colors"
             >
               {source}
             </span>

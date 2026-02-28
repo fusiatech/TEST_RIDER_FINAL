@@ -61,6 +61,7 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
         .then((settings) =>
           runSwarmPipeline({
             prompt: msg.prompt,
+            intent: msg.intent,
             settings,
             projectPath: settings.projectPath ?? process.cwd(),
             mode: pipelineMode,

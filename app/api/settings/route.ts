@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSettings, saveSettings } from '@/server/storage'
+import { getSettings, saveSettings, getUserApiKeys, saveUserApiKeys } from '@/server/storage'
 import {
   SettingsSchema,
   ApiKeysSchema,
@@ -75,8 +75,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (rateLimitResponse) return rateLimitResponse
 
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const settings = await getSettings()
-    const response = NextResponse.json(redactSettings(settings))
+    const userApiKeys = await getUserApiKeys(session.user.id)
+    const response = NextResponse.json(
+      redactSettings({
+        ...settings,
+        apiKeys: userApiKeys,
+      })
+    )
     headers.forEach((value, key) => response.headers.set(key, value))
     return response
   } catch (err: unknown) {
@@ -124,10 +134,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const { response: rateLimitResponse, headers } = await applyRateLimit(request)
   if (rateLimitResponse) return rateLimitResponse
 
-  const permissionError = await requirePermission('canConfigureSettings')
-  if (permissionError) return permissionError
-
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body: unknown = await request.json()
     const result = SettingsSecretsSchema.safeParse(body)
     if (!result.success) {
@@ -137,11 +149,14 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const existing = await getSettings()
-    const merged: ApiKeys = { ...(existing.apiKeys ?? {}) }
+    const existing = await getUserApiKeys(session.user.id)
+    const merged: ApiKeys = { ...(existing ?? {}) }
 
     for (const [key, rawValue] of Object.entries(result.data)) {
       const value = (rawValue ?? '').trim()
+      if (value === REDACTED_SECRET) {
+        continue
+      }
       if (value.length === 0) {
         delete merged[key as keyof ApiKeys]
       } else {
@@ -149,11 +164,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const updated: Settings = {
-      ...existing,
-      apiKeys: merged,
-    }
-    await saveSettings(updated)
+    await saveUserApiKeys(session.user.id, merged)
     
     for (const key of Object.keys(result.data)) {
       await auditApiKeyRotate(key)
@@ -161,7 +172,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
     const response = NextResponse.json({
       success: true,
-      apiKeys: redactApiKeys(updated.apiKeys),
+      apiKeys: redactApiKeys(merged),
     })
     headers.forEach((value, key) => response.headers.set(key, value))
     return response

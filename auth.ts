@@ -44,16 +44,32 @@ const DEMO_AUTH_EMAIL = process.env.DEMO_AUTH_EMAIL
 const DEMO_AUTH_PASSWORD = process.env.DEMO_AUTH_PASSWORD
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '').split(',').filter(Boolean)
 
-export const authConfig: NextAuthConfig = {
-  providers: [
-    GitHub({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
-    }),
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+function buildAuthProviders(): NonNullable<NextAuthConfig['providers']> {
+  const providers: NonNullable<NextAuthConfig['providers']> = []
+
+  const githubId = process.env.GITHUB_ID
+  const githubSecret = process.env.GITHUB_SECRET
+  if (githubId && githubSecret) {
+    providers.push(
+      GitHub({
+        clientId: githubId,
+        clientSecret: githubSecret,
+      })
+    )
+  }
+
+  const googleClientId = process.env.GOOGLE_CLIENT_ID
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
+  if (googleClientId && googleClientSecret) {
+    providers.push(
+      Google({
+        clientId: googleClientId,
+        clientSecret: googleClientSecret,
+      })
+    )
+  }
+
+  providers.push(
     Credentials({
       name: 'credentials',
       credentials: {
@@ -61,18 +77,34 @@ export const authConfig: NextAuthConfig = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        const email = (credentials?.email as string | undefined)?.trim().toLowerCase()
+        const password = credentials?.password as string | undefined
+        if (!email || !password) {
+          return null
+        }
+
+        // Primary path: registered local user credentials.
+        const { getUserByEmail, getUserPasswordHash } = await import('@/server/storage')
+        const { verifyPassword } = await import('@/lib/password')
+        const existingUser = await getUserByEmail(email)
+        if (existingUser) {
+          const passwordHash = await getUserPasswordHash(existingUser.id)
+          if (passwordHash && verifyPassword(password, passwordHash)) {
+            return {
+              id: existingUser.id,
+              email: existingUser.email,
+              name: existingUser.name ?? existingUser.email.split('@')[0],
+              role: existingUser.role,
+            }
+          }
+        }
+
         // Demo credentials are explicitly disabled by default.
         if (!DEMO_AUTH_ENABLED) {
           return null
         }
 
         if (!DEMO_AUTH_EMAIL || !DEMO_AUTH_PASSWORD) {
-          return null
-        }
-
-        const email = credentials?.email as string | undefined
-        const password = credentials?.password as string | undefined
-        if (!email || !password) {
           return null
         }
 
@@ -88,8 +120,14 @@ export const authConfig: NextAuthConfig = {
 
         return null
       },
-    }),
-  ],
+    })
+  )
+
+  return providers
+}
+
+export const authConfig: NextAuthConfig = {
+  providers: buildAuthProviders(),
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -153,6 +191,7 @@ export const authConfig: NextAuthConfig = {
     async authorized({ auth, request }: { auth: Session | null; request: NextRequest }) {
       const isLoggedIn = !!auth?.user
       const isOnLoginPage = request.nextUrl.pathname.startsWith('/login')
+      const isOnRegisterPage = request.nextUrl.pathname.startsWith('/register')
       const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth')
       const isPublicApiRoute =
         request.nextUrl.pathname === '/api/metrics' ||
@@ -164,13 +203,8 @@ export const authConfig: NextAuthConfig = {
         return true
       }
 
-      // Redirect logged-in users away from login page
-      if (isOnLoginPage && isLoggedIn) {
-        return Response.redirect(new URL('/', request.nextUrl))
-      }
-
-      // Allow login page for unauthenticated users
-      if (isOnLoginPage) {
+      // Allow login/register pages for unauthenticated users
+      if (isOnLoginPage || isOnRegisterPage) {
         return true
       }
 

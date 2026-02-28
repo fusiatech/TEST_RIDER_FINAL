@@ -1,0 +1,37 @@
+{
+  "guardrailRun": {
+    "mode": "chat",
+    "prompt": "Return only one clear sentence; avoid terminal noise.",
+    "runAccepted": true,
+    "finalType": "swarm-result",
+    "finalPayload": {
+      "type": "swarm-result",
+      "result": {
+        "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: Return only one clear sentence; avoid terminal noise.",
+        "confidence": 50,
+        "agents": [
+          {
+            "id": "coder-1",
+            "role": "coder",
+            "label": "Coder #1",
+            "provider": "cursor",
+            "status": "completed",
+            "output": "[mock-agent] In-app agent mode active for cursor. Prompt: Return only one clear sentence; avoid terminal noise.",
+            "startedAt": 1772238785791,
+            "finishedAt": 1772238785792,
+            "exitCode": 0
+          }
+        ],
+        "sources": [],
+        "validationPassed": true,
+        "evidenceStatus": {
+          "sufficient": true,
+          "traceId": "7dd503cf561ef453bb132f21a5ac2491",
+          "references": 2
+        }
+      }
+    },
+    "pass": true,
+    "logsCount": 25
+  }
+}

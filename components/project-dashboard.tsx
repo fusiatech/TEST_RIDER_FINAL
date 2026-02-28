@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { useSwarmStore } from '@/lib/store'
-import type { Ticket, TicketComplexity, AgentRole, Project, Epic } from '@/lib/types'
+import type { Ticket, TicketComplexity, AgentRole, Project, Epic, TicketLevel } from '@/lib/types'
 import { TicketStatus } from '@/lib/types'
 import { ROLE_COLORS, ROLE_LABELS } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +12,7 @@ import { TicketDetail } from '@/components/ticket-detail'
 import { EpicManager } from '@/components/epic-manager'
 import { DependencyGraph } from '@/components/dependency-graph'
 import { isTicketBlocked } from '@/lib/dependency-utils'
-import { Tooltip, InfoTooltip, TERM_DEFINITIONS } from '@/components/ui/tooltip'
+import { Tooltip, InfoTooltip, TERM_DEFINITIONS, ROLE_DESCRIPTIONS, COMPLEXITY_DESCRIPTIONS } from '@/components/ui/tooltip'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -69,8 +69,13 @@ import {
   Loader2,
   Wand2,
   Figma,
+  List,
+  Network,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { cn } from '@/lib/utils'
 import { PRDEditor } from '@/components/prd-editor'
 import { FigmaPanel } from '@/components/figma-panel'
 import { PRDGeneratorDialog } from '@/components/prd-generator'
@@ -253,6 +258,109 @@ const COMPLEXITY_COLORS: Record<TicketComplexity, string> = {
   XL: '#ef4444',
 }
 
+const LEVEL_COLORS: Record<TicketLevel, string> = {
+  feature: 'bg-purple-500',
+  epic: 'bg-blue-500',
+  story: 'bg-green-500',
+  task: 'bg-yellow-500',
+  subtask: 'bg-orange-500',
+  subatomic: 'bg-red-500',
+}
+
+const LEVEL_TEXT_COLORS: Record<TicketLevel, string> = {
+  feature: 'text-purple-100',
+  epic: 'text-blue-100',
+  story: 'text-green-100',
+  task: 'text-yellow-100',
+  subtask: 'text-orange-100',
+  subatomic: 'text-red-100',
+}
+
+const LEVEL_DEPTH: Record<TicketLevel, number> = {
+  feature: 0,
+  epic: 1,
+  story: 2,
+  task: 3,
+  subtask: 4,
+  subatomic: 5,
+}
+
+function LevelBadge({ level }: { level?: TicketLevel }) {
+  if (!level) return null
+  
+  return (
+    <Badge
+      className={cn(
+        'text-[9px] px-1.5 py-0 h-4 font-medium',
+        LEVEL_COLORS[level],
+        LEVEL_TEXT_COLORS[level]
+      )}
+    >
+      {level}
+    </Badge>
+  )
+}
+
+function DashboardTicketCardSkeleton() {
+  return (
+    <Card className="border-border bg-card/80">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Skeleton className="h-4 w-12 rounded-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+          <Skeleton className="h-5 w-8 rounded-full" />
+        </div>
+        <Skeleton className="h-3 w-full" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3.5 w-3.5 rounded-full" />
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-5 w-20 rounded-full ml-auto" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DashboardColumnSkeleton({ label, color }: { label: string; color: string }) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          <h4 className="text-sm font-medium text-foreground">{label}</h4>
+        </div>
+        <Skeleton className="h-5 w-6 rounded-full" />
+      </div>
+      <div className="space-y-2 min-h-[100px] rounded-lg p-2 border-2 border-transparent">
+        {[1, 2].map((i) => (
+          <DashboardTicketCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DashboardStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i} className="border-border">
+          <CardContent className="flex flex-col items-center justify-center p-4 text-center">
+            <Skeleton className="h-5 w-5 mb-1 rounded" />
+            <Skeleton className="h-8 w-12 mb-1" />
+            <Skeleton className="h-3 w-16" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 const PRD_STATUS_COLORS: Record<string, string> = {
   draft: '#eab308',
   approved: '#22c55e',
@@ -375,20 +483,28 @@ function TicketCardContent({
     return dep && dep.status !== 'done' && dep.status !== 'approved'
   }).length || 0
 
+  const indentLevel = ticket.level ? LEVEL_DEPTH[ticket.level] : 0
+  const indentPx = indentLevel * 8
+
   return (
     <Card
-      className={`border-border bg-card/80 cursor-pointer hover:border-primary/30 transition-all ${
-        blocked ? 'border-red-500/30' : ''
-      } ${isSelected ? 'ring-2 ring-primary/50' : ''} ${
-        isDragging ? 'opacity-50 shadow-lg scale-105 ring-2 ring-primary' : ''
-      }`}
+      className={cn(
+        'border-border bg-card/80 cursor-pointer hover:border-primary/30 transition-all',
+        blocked && 'border-red-500/30',
+        isSelected && 'ring-2 ring-primary/50',
+        isDragging && 'opacity-50 shadow-lg scale-105 ring-2 ring-primary'
+      )}
+      style={{ marginLeft: `${indentPx}px` }}
       onClick={onClick}
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           {showDragHandle && (
-            <div className="shrink-0 mt-0.5 cursor-grab active:cursor-grabbing text-muted hover:text-foreground">
-              <GripVertical className="h-4 w-4" />
+            <div 
+              className="shrink-0 cursor-grab active:cursor-grabbing text-muted hover:text-foreground min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center -m-2 sm:m-0 p-2 sm:p-0 rounded-lg sm:rounded-none hover:bg-muted/20 sm:hover:bg-transparent"
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="h-5 w-5 sm:h-4 sm:w-4" />
             </div>
           )}
           {showCheckbox && (
@@ -406,8 +522,11 @@ function TicketCardContent({
               )}
             </button>
           )}
-          <span className="text-sm font-medium text-foreground line-clamp-1 flex-1">{ticket.title}</span>
-          <Tooltip content={TERM_DEFINITIONS.Complexity}>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <LevelBadge level={ticket.level} />
+            <span className="text-sm font-medium text-foreground line-clamp-1">{ticket.title}</span>
+          </div>
+          <Tooltip content={COMPLEXITY_DESCRIPTIONS[ticket.complexity]}>
             <Badge
               variant="outline"
               className="shrink-0 text-[10px] px-1.5"
@@ -421,8 +540,12 @@ function TicketCardContent({
           <p className="text-xs text-muted line-clamp-2">{ticket.description}</p>
         )}
         <div className="flex items-center gap-2">
-          <RoleIcon className="h-3.5 w-3.5" style={{ color: ROLE_COLORS[ticket.assignedRole] }} />
-          <span className="text-xs text-muted">{ROLE_LABELS[ticket.assignedRole]}</span>
+          <Tooltip content={ROLE_DESCRIPTIONS[ticket.assignedRole]}>
+            <span className="flex items-center gap-1.5 cursor-help">
+              <RoleIcon className="h-3.5 w-3.5" style={{ color: ROLE_COLORS[ticket.assignedRole] }} />
+              <span className="text-xs text-muted border-b border-dotted border-muted-foreground/30">{ROLE_LABELS[ticket.assignedRole]}</span>
+            </span>
+          </Tooltip>
           {dependencyCount > 0 && (
             <Tooltip content={`${dependencyCount} dependencies${blockedByCount > 0 ? `, ${blockedByCount} blocking` : ''}`}>
               <span className="flex items-center gap-0.5">
@@ -620,21 +743,138 @@ function DroppableColumn({
   )
 }
 
-export function ProjectDashboard() {
+function TreeTicketNode({
+  ticket,
+  allTickets,
+  depth,
+  isExpanded,
+  onToggle,
+  onTicketClick,
+  getChildTickets,
+  expandedNodes,
+}: {
+  ticket: Ticket
+  allTickets: Ticket[]
+  depth: number
+  isExpanded: boolean
+  onToggle: (ticketId: string) => void
+  onTicketClick: (ticketId: string) => void
+  getChildTickets: (parentId: string) => Ticket[]
+  expandedNodes: Set<string>
+}) {
+  const children = getChildTickets(ticket.id)
+  const hasChildren = children.length > 0
+  const RoleIcon = ROLE_ICONS[ticket.assignedRole]
+
+  return (
+    <div>
+      <Collapsible open={isExpanded} onOpenChange={() => onToggle(ticket.id)}>
+        <div
+          className={cn(
+            'flex items-center gap-2 p-2 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors',
+            'border border-transparent hover:border-border'
+          )}
+          style={{ marginLeft: `${depth * 20}px` }}
+        >
+          {hasChildren ? (
+            <CollapsibleTrigger asChild>
+              <button className="p-0.5 hover:bg-secondary rounded" onClick={(e) => e.stopPropagation()}>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+          ) : (
+            <span className="w-5" />
+          )}
+          <div className="flex items-center gap-2 flex-1 min-w-0" onClick={() => onTicketClick(ticket.id)}>
+            <LevelBadge level={ticket.level} />
+            <span className="text-sm font-medium text-foreground truncate">{ticket.title}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <RoleIcon className="h-3.5 w-3.5" style={{ color: ROLE_COLORS[ticket.assignedRole] }} />
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5"
+              style={{ color: COMPLEXITY_COLORS[ticket.complexity], borderColor: COMPLEXITY_COLORS[ticket.complexity] }}
+            >
+              {ticket.complexity}
+            </Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              {ticket.status.replace('_', ' ')}
+            </Badge>
+            {hasChildren && (
+              <Badge variant="outline" className="text-[10px] text-muted">
+                {children.length} child{children.length !== 1 ? 'ren' : ''}
+              </Badge>
+            )}
+          </div>
+        </div>
+        {hasChildren && (
+          <CollapsibleContent>
+            {children.map(child => (
+              <TreeTicketNode
+                key={child.id}
+                ticket={child}
+                allTickets={allTickets}
+                depth={depth + 1}
+                isExpanded={expandedNodes.has(child.id)}
+                onToggle={onToggle}
+                onTicketClick={onTicketClick}
+                getChildTickets={getChildTickets}
+                expandedNodes={expandedNodes}
+              />
+            ))}
+          </CollapsibleContent>
+        )}
+      </Collapsible>
+    </div>
+  )
+}
+
+interface ProjectDashboardProps {
+  onProjectSelect?: (projectId: string | null) => void
+  onTicketSelect?: (ticketId: string | null) => void
+  initialTicketId?: string | null
+}
+
+export function ProjectDashboard({ 
+  onProjectSelect, 
+  onTicketSelect,
+  initialTicketId 
+}: ProjectDashboardProps) {
   const tickets = useSwarmStore((s) => s.tickets)
   const projects = useSwarmStore((s) => s.projects)
   const currentProjectId = useSwarmStore((s) => s.currentProjectId)
   const updateProject = useSwarmStore((s) => s.updateProject)
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [selectedTicketId, setSelectedTicketIdInternal] = useState<string | null>(initialTicketId ?? null)
   const [activeTab, setActiveTab] = useState<DashboardTab>('board')
+
+  // G-IA-01: Wrapper to update URL when ticket selection changes
+  const setSelectedTicketId = useCallback((ticketId: string | null) => {
+    setSelectedTicketIdInternal(ticketId)
+    onTicketSelect?.(ticketId)
+  }, [onTicketSelect])
+
+  // G-IA-01: Sync initialTicketId from URL
+  useEffect(() => {
+    if (initialTicketId !== undefined && initialTicketId !== selectedTicketId) {
+      setSelectedTicketIdInternal(initialTicketId)
+    }
+  }, [initialTicketId, selectedTicketId])
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set())
   const [showCheckboxes, setShowCheckboxes] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [epicFilter, setEpicFilter] = useState<string>('all')
+  const [viewMode, setViewMode] = useState<'flat' | 'tree'>('flat')
+  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set())
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
@@ -699,6 +939,7 @@ export function ProjectDashboard() {
 
   const handleTicketCreated = useCallback(async () => {
     if (!currentProjectId) return
+    setIsLoadingTickets(true)
     try {
       const res = await fetch(`/api/projects/${currentProjectId}`)
       if (res.ok) {
@@ -707,6 +948,8 @@ export function ProjectDashboard() {
       }
     } catch {
       // Silently fail - the ticket was created, just couldn't refresh
+    } finally {
+      setIsLoadingTickets(false)
     }
   }, [currentProjectId, updateProject])
 
@@ -815,6 +1058,26 @@ export function ProjectDashboard() {
       })
     }
   }, [currentProject, updateProject])
+
+  const toggleTreeNode = useCallback((ticketId: string) => {
+    setExpandedTreeNodes(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(ticketId)) {
+        newSet.delete(ticketId)
+      } else {
+        newSet.add(ticketId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const rootTickets = useMemo(() => {
+    return allTickets.filter(t => !t.parentId)
+  }, [allTickets])
+
+  const getChildTickets = useCallback((parentId: string) => {
+    return allTickets.filter(t => t.parentId === parentId)
+  }, [allTickets])
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null)
@@ -1281,6 +1544,27 @@ export function ProjectDashboard() {
                   </SelectContent>
                 </Select>
               )}
+              {/* View Mode Toggle */}
+              <div className="flex items-center border border-border rounded-md">
+                <Button
+                  variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 px-2 rounded-r-none"
+                  onClick={() => setViewMode('flat')}
+                  title="Flat view"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-8 px-2 rounded-l-none"
+                  onClick={() => setViewMode('tree')}
+                  title="Tree view"
+                >
+                  <Network className="h-4 w-4" />
+                </Button>
+              </div>
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -1506,7 +1790,8 @@ export function ProjectDashboard() {
 
                   return (
                     <div key={stage.role} className="flex flex-1 items-center min-w-0">
-                      <div className="flex-1 rounded-lg border border-border p-2.5 transition-all">
+                      <Tooltip content={ROLE_DESCRIPTIONS[stage.role]}>
+                      <div className="flex-1 rounded-lg border border-border p-2.5 transition-all cursor-help">
                         <div className="flex items-center gap-1.5 mb-1">
                           <StageIcon className="h-3.5 w-3.5 shrink-0" style={{ color: ROLE_COLORS[stage.role] }} />
                           <span className="text-[11px] font-medium truncate" style={{ color: ROLE_COLORS[stage.role] }}>
@@ -1527,6 +1812,7 @@ export function ProjectDashboard() {
                           />
                         </div>
                       </div>
+                      </Tooltip>
                       {idx < PIPELINE_STAGES.length - 1 && (
                         <div className="mx-0.5 h-4 w-px bg-border" />
                       )}
@@ -1539,67 +1825,134 @@ export function ProjectDashboard() {
         </div>
       </div>
 
-      {/* Kanban Board with Drag and Drop */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          {BOARD_COLUMNS.map((col) => {
-            const colTickets = allTickets.filter((t) => t.status === col.status)
-            const isRejected = col.status === 'rejected'
-            const isCollapsed = isRejected && !rejectedExpanded
-
-            return (
-              <DroppableColumn
-                key={col.status}
-                status={col.status}
-                label={col.label}
-                color={col.color}
-                tickets={colTickets}
-                allTickets={allTickets}
-                isOver={overId === col.status}
-                onTicketClick={(ticketId) =>
-                  setSelectedTicketId(selectedTicketId === ticketId ? null : ticketId)
-                }
-                selectedTicketId={selectedTicketId}
-                selectedTicketIds={selectedTicketIds}
-                handleSelectToggle={handleSelectToggle}
-                showCheckboxes={showCheckboxes}
-                isCollapsed={isCollapsed}
-                onToggleCollapse={isRejected ? () => setRejectedExpanded(!rejectedExpanded) : undefined}
-              />
-            )
-          })}
-        </div>
-
-        {/* Drag Overlay */}
-        <DragOverlay dropAnimation={{
-          duration: 200,
-          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-        }}>
-          {activeTicket && (
-            <div className="w-[250px]">
-              <TicketCardContent
-                ticket={activeTicket}
-                allTickets={allTickets}
-                isDragging={false}
-                showDragHandle={true}
-              />
+      {/* Tree View */}
+      {viewMode === 'tree' && (
+        <Card className="border-border">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Network className="h-4 w-4 text-primary" />
+                Ticket Hierarchy
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setExpandedTreeNodes(new Set(allTickets.map(t => t.id)))}
+                >
+                  Expand All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setExpandedTreeNodes(new Set())}
+                >
+                  Collapse All
+                </Button>
+              </div>
             </div>
-          )}
-        </DragOverlay>
-      </DndContext>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {rootTickets.length === 0 ? (
+              <div className="text-center py-8 text-muted text-sm">
+                No tickets found. Create a ticket to get started.
+              </div>
+            ) : (
+              rootTickets.map(ticket => (
+                <TreeTicketNode
+                  key={ticket.id}
+                  ticket={ticket}
+                  allTickets={allTickets}
+                  depth={0}
+                  isExpanded={expandedTreeNodes.has(ticket.id)}
+                  onToggle={toggleTreeNode}
+                  onTicketClick={(ticketId) =>
+                    setSelectedTicketId(selectedTicketId === ticketId ? null : ticketId)
+                  }
+                  getChildTickets={getChildTickets}
+                  expandedNodes={expandedTreeNodes}
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Kanban Board with Drag and Drop */}
+      {viewMode === 'flat' && (
+      isLoadingTickets ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+          {BOARD_COLUMNS.map((col) => (
+            <DashboardColumnSkeleton key={col.status} label={col.label} color={col.color} />
+          ))}
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5" data-testid="kanban-board">
+            {BOARD_COLUMNS.map((col) => {
+              const colTickets = allTickets.filter((t) => t.status === col.status)
+              const isRejected = col.status === 'rejected'
+              const isCollapsed = isRejected && !rejectedExpanded
+
+              return (
+                <DroppableColumn
+                  key={col.status}
+                  status={col.status}
+                  label={col.label}
+                  color={col.color}
+                  tickets={colTickets}
+                  allTickets={allTickets}
+                  isOver={overId === col.status}
+                  onTicketClick={(ticketId) =>
+                    setSelectedTicketId(selectedTicketId === ticketId ? null : ticketId)
+                  }
+                  selectedTicketId={selectedTicketId}
+                  selectedTicketIds={selectedTicketIds}
+                  handleSelectToggle={handleSelectToggle}
+                  showCheckboxes={showCheckboxes}
+                  isCollapsed={isCollapsed}
+                  onToggleCollapse={isRejected ? () => setRejectedExpanded(!rejectedExpanded) : undefined}
+                />
+              )
+            })}
+          </div>
+
+          {/* Drag Overlay */}
+          <DragOverlay dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}>
+            {activeTicket && (
+              <div className="w-[250px]">
+                <TicketCardContent
+                  ticket={activeTicket}
+                  allTickets={allTickets}
+                  isDragging={false}
+                  showDragHandle={true}
+                />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      )
+      )}
 
       {/* Ticket Detail */}
       {selectedTicket && (
         <TicketDetail
           ticket={selectedTicket}
+          allTickets={allTickets}
           onClose={() => setSelectedTicketId(null)}
+          onSelectTicket={(ticketId) => setSelectedTicketId(ticketId)}
           onUpdate={async (ticketId, updates) => {
             if (!currentProject) return
             try {

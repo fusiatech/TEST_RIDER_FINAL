@@ -3,6 +3,7 @@ import { decode } from 'next-auth/jwt'
 import type { JWT } from 'next-auth/jwt'
 import type { UserRole } from '@/lib/types'
 import { createLogger } from '@/server/logger'
+import { getEffectiveAuthSecret } from '@/lib/auth-env'
 
 const logger = createLogger('ws-auth')
 
@@ -19,13 +20,16 @@ export interface WSAuthResult {
   error?: string
 }
 
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET
+let loggedMissingSecretWarning = false
 
 const SENSITIVE_MESSAGE_TYPES = new Set([
   'start-swarm',
   'cancel-swarm',
   'cancel-job',
+  'pause-job',
+  'resume-job',
   'cancel-all-queued',
+  'emergency-stop',
   'mcp-tool-call',
   'watch-project',
   'unwatch-project',
@@ -72,8 +76,13 @@ function getTokenFromRequest(req: IncomingMessage): string | null {
 }
 
 export async function authenticateWSConnection(req: IncomingMessage): Promise<WSAuthResult> {
-  if (!NEXTAUTH_SECRET) {
-    logger.warn('No NEXTAUTH_SECRET configured - WebSocket auth disabled')
+  const authSecret = getEffectiveAuthSecret()
+
+  if (!authSecret) {
+    if (!loggedMissingSecretWarning) {
+      logger.warn('No AUTH_SECRET/NEXTAUTH_SECRET configured - WebSocket auth disabled')
+      loggedMissingSecretWarning = true
+    }
     return {
       authenticated: true,
       user: {
@@ -97,14 +106,14 @@ export async function authenticateWSConnection(req: IncomingMessage): Promise<WS
   try {
     const decoded = await decode({
       token,
-      secret: NEXTAUTH_SECRET,
+      secret: authSecret,
       salt: 'authjs.session-token',
     }) as JWT | null
 
     if (!decoded) {
       const decodedAlt = await decode({
         token,
-        secret: NEXTAUTH_SECRET,
+        secret: authSecret,
         salt: 'next-auth.session-token',
       }) as JWT | null
       
@@ -174,7 +183,10 @@ export function getRequiredRoleForOperation(messageType: string): UserRole {
     case 'start-swarm':
     case 'cancel-swarm':
     case 'cancel-job':
+    case 'pause-job':
+    case 'resume-job':
     case 'cancel-all-queued':
+    case 'emergency-stop':
     case 'mcp-tool-call':
     case 'watch-project':
     case 'unwatch-project':

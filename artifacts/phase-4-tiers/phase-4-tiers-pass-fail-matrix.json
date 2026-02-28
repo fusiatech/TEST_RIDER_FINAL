@@ -1,0 +1,154 @@
+{
+  "timestamp": "2026-02-28T00:33:05.667Z",
+  "results": [
+    {
+      "name": "health-free-only-flag",
+      "pass": true
+    },
+    {
+      "name": "dashboard-subscription-visible",
+      "pass": true
+    },
+    {
+      "name": "free-only-run-lifecycle",
+      "pass": true,
+      "details": {
+        "mode": "swarm",
+        "prompt": "Run in free-only mode and return a brief status summary.",
+        "runAccepted": true,
+        "finalType": "swarm-result",
+        "finalPayload": {
+          "type": "swarm-result",
+          "result": {
+            "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\n\n## Confidence Score: 52/100\n\n## Original Task\nRun in free-only mode and return a brief status summary.\n\n## All Stage Ou",
+            "confidence": 49,
+            "agents": [
+              {
+                "id": "researcher-1",
+                "role": "researcher",
+                "label": "Researcher #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to thoroughly research and gather context for the following task.\nResearch depth: medium\n\nTask: Run in free-only mode and return a brief status summary.\n\nInstructions:\n- Analyze the codebase structure a",
+                "startedAt": 1772238723440,
+                "finishedAt": 1772238723445,
+                "exitCode": 0
+              },
+              {
+                "id": "planner-1",
+                "role": "planner",
+                "label": "Planner #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the research findings below.\n\n## Research Context\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to ",
+                "startedAt": 1772238723482,
+                "finishedAt": 1772238723484,
+                "exitCode": 0
+              },
+              {
+                "id": "planner-2",
+                "role": "planner",
+                "label": "Planner #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the research findings below.\n\n## Research Context\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to ",
+                "startedAt": 1772238723482,
+                "finishedAt": 1772238723692,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-1",
+                "role": "coder",
+                "label": "Coder #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238723748,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+                "finishedAt": 1772238724164,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-2",
+                "role": "coder",
+                "label": "Coder #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238723748,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-2",
+                "finishedAt": 1772238724627,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-3",
+                "role": "coder",
+                "label": "Coder #3",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238723748,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-3",
+                "finishedAt": 1772238725079,
+                "exitCode": 0
+              },
+              {
+                "id": "validator-1",
+                "role": "validator",
+                "label": "Validator #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a validation agent. Your job is to review code changes and verify their correctness.\n\n## Original Task\nRun in free-only mode and return a brief status summary.\n\n## Code Outputs to Review\n### Code Output 1\n[mock-agent] In-app agent m",
+                "startedAt": 1772238725851,
+                "finishedAt": 1772238725851,
+                "exitCode": 0
+              },
+              {
+                "id": "validator-2",
+                "role": "validator",
+                "label": "Validator #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a validation agent. Your job is to review code changes and verify their correctness.\n\n## Original Task\nRun in free-only mode and return a brief status summary.\n\n## Code Outputs to Review\n### Code Output 1\n[mock-agent] In-app agent m",
+                "startedAt": 1772238725851,
+                "finishedAt": 1772238726051,
+                "exitCode": 0
+              },
+              {
+                "id": "security-1",
+                "role": "security",
+                "label": "Security #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a security review agent. Your job is to identify security vulnerabilities in the proposed code changes.\n\n## Original Task\nRun in free-only mode and return a brief status summary.\n\n## Code Outputs to Review\n### Code Output 1\n[mock-ag",
+                "startedAt": 1772238785403,
+                "finishedAt": 1772238785405,
+                "exitCode": 0
+              },
+              {
+                "id": "synthesizer-1",
+                "role": "synthesizer",
+                "label": "Synthesizer #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\n\n## Confidence Score: 52/100\n\n## Original Task\nRun in free-only mode and return a brief status summary.\n\n## All Stage Ou",
+                "startedAt": 1772238785429,
+                "finishedAt": 1772238785431,
+                "exitCode": 0
+              }
+            ],
+            "sources": [],
+            "validationPassed": false,
+            "evidenceStatus": {
+              "sufficient": true,
+              "traceId": "51f5c3bfe229bdb72be8593043b2d314",
+              "references": 11
+            }
+          }
+        },
+        "pass": true,
+        "logsCount": 85
+      }
+    }
+  ]
+}

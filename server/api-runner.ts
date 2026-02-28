@@ -10,6 +10,11 @@ export interface APIRunnerOptions {
   onError: (error: string) => void
 }
 
+const PROVIDER_TIMEOUT_MS = Number.parseInt(
+  process.env.SWARM_PROVIDER_TIMEOUT_MS || '45000',
+  10
+)
+
 export async function runAPIAgent(
   options: APIRunnerOptions,
 ): Promise<string> {
@@ -71,6 +76,7 @@ async function runChatGPT(
       'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
@@ -158,23 +164,45 @@ async function runGemini(
   onError: (error: string) => void,
 ): Promise<string> {
   let fullOutput = ''
+  const candidateModels = [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+  ]
+  let lastError = ''
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      onError(`Gemini API error (${response.status}): ${errorText}`)
+    let response: Response | null = null
+    let selectedModel: string | null = null
+    for (const model of candidateModels) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, {
+        method: 'POST',
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      })
+      if (res.ok) {
+        response = res
+        selectedModel = model
+        break
+      }
+      const errorText = await res.text()
+      lastError = `model=${model} status=${res.status} ${errorText}`
+      // For invalid key or quota, fail fast instead of trying next model.
+      if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 429) {
+        onError(`Gemini API error (${res.status}): ${errorText}`)
+        return ''
+      }
+    }
+    if (!response || !selectedModel) {
+      onError(`Gemini API model resolution failed: ${lastError || 'no compatible model found'}`)
       return ''
     }
+    onOutput(`[api-runner] Gemini model: ${selectedModel}\n`)
 
     const body = response.body
     if (!body) {
@@ -255,6 +283,7 @@ async function runClaudeAPI(
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,

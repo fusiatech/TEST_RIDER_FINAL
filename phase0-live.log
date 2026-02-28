@@ -1,0 +1,27 @@
+
+> swarm-ui@1.0.0 dev:local
+> node ./scripts/dev-local.mjs
+
+[dev-local] Starting SwarmUI at http://127.0.0.1:4100 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\swarm-ui-dev, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+Error: spawn EPERM
+    at ChildProcess.spawn (node:internal/child_process:420:11)
+    at Object.spawn (node:child_process:787:9)
+    at ensureServiceIsRunning (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\esbuild\lib\main.js:1978:29)
+    at startSyncServiceWorker (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\esbuild\lib\main.js:2184:19)
+    at Object.<anonymous> (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\esbuild\lib\main.js:2225:3)
+    at Module._compile (node:internal/modules/cjs/loader:1706:14)
+    at Object..js (node:internal/modules/cjs/loader:1839:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  name: 'TransformError',
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'spawn'
+}
+
+Node.js v22.22.0

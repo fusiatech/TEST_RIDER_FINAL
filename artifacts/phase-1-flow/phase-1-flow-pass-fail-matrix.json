@@ -1,0 +1,397 @@
+{
+  "timestamp": "2026-02-28T00:31:04.324Z",
+  "results": [
+    {
+      "name": "mode-chat",
+      "pass": true,
+      "details": {
+        "mode": "chat",
+        "prompt": "Give one concise sentence confirming chat-mode response path.",
+        "runAccepted": true,
+        "finalType": "swarm-result",
+        "finalPayload": {
+          "type": "swarm-result",
+          "result": {
+            "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: Give one concise sentence confirming chat-mode response path.",
+            "confidence": 50,
+            "agents": [
+              {
+                "id": "coder-1",
+                "role": "coder",
+                "label": "Coder #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: Give one concise sentence confirming chat-mode response path.",
+                "startedAt": 1772238533451,
+                "finishedAt": 1772238533455,
+                "exitCode": 0
+              }
+            ],
+            "sources": [],
+            "validationPassed": true,
+            "evidenceStatus": {
+              "sufficient": true,
+              "traceId": "53389aa121cfd9225974005733fbfa96",
+              "references": 2
+            }
+          }
+        },
+        "pass": true,
+        "logsCount": 25
+      }
+    },
+    {
+      "name": "mode-swarm",
+      "pass": true,
+      "details": {
+        "mode": "swarm",
+        "prompt": "Execute a multi-step orchestration summary: analyze, plan, validate, and summarize.",
+        "runAccepted": true,
+        "finalType": "swarm-result",
+        "finalPayload": {
+          "type": "swarm-result",
+          "result": {
+            "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\n\n## Confidence Score: 53/100\n\n## Original Task\nExecute a multi-step orchestration summary: analyze, plan, validate, and ",
+            "confidence": 51,
+            "agents": [
+              {
+                "id": "researcher-1",
+                "role": "researcher",
+                "label": "Researcher #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to thoroughly research and gather context for the following task.\nResearch depth: medium\n\nTask: Execute a multi-step orchestration summary: analyze, plan, validate, and summarize.\n\nInstructions:\n- Analy",
+                "startedAt": 1772238533773,
+                "finishedAt": 1772238533776,
+                "exitCode": 0
+              },
+              {
+                "id": "planner-1",
+                "role": "planner",
+                "label": "Planner #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the research findings below.\n\n## Research Context\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to ",
+                "startedAt": 1772238533796,
+                "finishedAt": 1772238533799,
+                "exitCode": 0
+              },
+              {
+                "id": "planner-2",
+                "role": "planner",
+                "label": "Planner #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the research findings below.\n\n## Research Context\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a research agent. Your job is to ",
+                "startedAt": 1772238533796,
+                "finishedAt": 1772238534003,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-1",
+                "role": "coder",
+                "label": "Coder #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238534050,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+                "finishedAt": 1772238534453,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-2",
+                "role": "coder",
+                "label": "Coder #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238534051,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-2",
+                "finishedAt": 1772238534865,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-3",
+                "role": "coder",
+                "label": "Coder #3",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238534051,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-3",
+                "finishedAt": 1772238535307,
+                "exitCode": 0
+              },
+              {
+                "id": "validator-1",
+                "role": "validator",
+                "label": "Validator #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a validation agent. Your job is to review code changes and verify their correctness.\n\n## Original Task\nExecute a multi-step orchestration summary: analyze, plan, validate, and summarize.\n\n## Code Outputs to Review\n### Code Output 1\n",
+                "startedAt": 1772238535882,
+                "finishedAt": 1772238535883,
+                "exitCode": 0
+              },
+              {
+                "id": "validator-2",
+                "role": "validator",
+                "label": "Validator #2",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a validation agent. Your job is to review code changes and verify their correctness.\n\n## Original Task\nExecute a multi-step orchestration summary: analyze, plan, validate, and summarize.\n\n## Code Outputs to Review\n### Code Output 1\n",
+                "startedAt": 1772238535882,
+                "finishedAt": 1772238536096,
+                "exitCode": 0
+              },
+              {
+                "id": "security-1",
+                "role": "security",
+                "label": "Security #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a security review agent. Your job is to identify security vulnerabilities in the proposed code changes.\n\n## Original Task\nExecute a multi-step orchestration summary: analyze, plan, validate, and summarize.\n\n## Code Outputs to Review",
+                "startedAt": 1772238591799,
+                "finishedAt": 1772238591801,
+                "exitCode": 0
+              },
+              {
+                "id": "synthesizer-1",
+                "role": "synthesizer",
+                "label": "Synthesizer #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are the synthesizer agent. Your job is to merge all previous agent outputs into a single, coherent, final response.\n\n## Confidence Score: 53/100\n\n## Original Task\nExecute a multi-step orchestration summary: analyze, plan, validate, and ",
+                "startedAt": 1772238591816,
+                "finishedAt": 1772238591819,
+                "exitCode": 0
+              }
+            ],
+            "sources": [],
+            "validationPassed": false,
+            "evidenceStatus": {
+              "sufficient": true,
+              "traceId": "ba2833c455a781352d2d918539a9dc82",
+              "references": 11
+            }
+          }
+        },
+        "pass": true,
+        "logsCount": 84
+      }
+    },
+    {
+      "name": "mode-project",
+      "pass": true,
+      "details": {
+        "mode": "project",
+        "prompt": "Create a build planning output with phases, tasks, dependencies, and acceptance criteria for a note-taking app.",
+        "runAccepted": true,
+        "finalType": "swarm-result",
+        "finalPayload": {
+          "type": "swarm-result",
+          "result": {
+            "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+            "confidence": 59,
+            "agents": [
+              {
+                "id": "planner-1",
+                "role": "planner",
+                "label": "Planner #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the research findings below.\n\n## Research Context\n\n\n## Original Task\nCreate a build planning output with phases, tasks, dependencies, and acceptance ",
+                "startedAt": 1772238592181,
+                "finishedAt": 1772238592186,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-ticket-1",
+                "role": "coder",
+                "label": "Coder (Ticket 1)",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (1 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238592240,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+                "finishedAt": 1772238592659,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-ticket-2",
+                "role": "coder",
+                "label": "Coder (Ticket 2)",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (2 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238592857,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+                "finishedAt": 1772238593356,
+                "exitCode": 0
+              },
+              {
+                "id": "coder-ticket-3",
+                "role": "coder",
+                "label": "Coder (Ticket 3)",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a coding agent (3 of 3). Your job is to write production-quality code.\n\n## Plan\n[mock-agent] In-app agent mode active for cursor. Prompt: You are a planning agent. Your job is to produce a structured implementation plan based on the",
+                "startedAt": 1772238593625,
+                "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+                "finishedAt": 1772238594104,
+                "exitCode": 0
+              },
+              {
+                "id": "validator-1",
+                "role": "validator",
+                "label": "Validator #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: You are a validation agent. Your job is to review code changes and verify their correctness.\n\n## Original Task\nCreate a build planning output with phases, tasks, dependencies, and acceptance criteria for a note-taking app.\n\nOutput policy: P",
+                "startedAt": 1772238594314,
+                "finishedAt": 1772238594316,
+                "exitCode": 0
+              }
+            ],
+            "sources": [],
+            "validationPassed": false,
+            "evidenceStatus": {
+              "sufficient": true,
+              "traceId": "2bd51df429fdf5004c6e6c9c6d5cc811",
+              "references": 6
+            }
+          }
+        },
+        "pass": true,
+        "logsCount": 60
+      }
+    },
+    {
+      "name": "mode-chat-repeat",
+      "pass": true,
+      "details": {
+        "mode": "chat",
+        "prompt": "Repeat run reliability check: return one concise sentence.",
+        "runAccepted": true,
+        "finalType": "swarm-result",
+        "finalPayload": {
+          "type": "swarm-result",
+          "result": {
+            "finalOutput": "[mock-agent] In-app agent mode active for cursor. Prompt: Repeat run reliability check: return one concise sentence.",
+            "confidence": 50,
+            "agents": [
+              {
+                "id": "coder-1",
+                "role": "coder",
+                "label": "Coder #1",
+                "provider": "cursor",
+                "status": "completed",
+                "output": "[mock-agent] In-app agent mode active for cursor. Prompt: Repeat run reliability check: return one concise sentence.",
+                "startedAt": 1772238649684,
+                "finishedAt": 1772238649686,
+                "exitCode": 0
+              }
+            ],
+            "sources": [],
+            "validationPassed": true,
+            "evidenceStatus": {
+              "sufficient": true,
+              "traceId": "be260a81dd22bf971196f4e50954478b",
+              "references": 2
+            }
+          }
+        },
+        "pass": true,
+        "logsCount": 24
+      }
+    },
+    {
+      "name": "project-seeded",
+      "pass": true,
+      "details": {
+        "projectId": "project-v7-1772238649861"
+      }
+    },
+    {
+      "name": "ticket-create",
+      "pass": true,
+      "details": {
+        "status": 201,
+        "body": {
+          "id": "ticket-v7-1772238649861",
+          "projectId": "project-v7-1772238649861",
+          "title": "Validation ticket",
+          "description": "Ensure ticket API create/update works.",
+          "acceptanceCriteria": [
+            "Ticket can be created",
+            "Ticket can be updated"
+          ],
+          "complexity": "S",
+          "status": "backlog",
+          "assignedRole": "coder",
+          "level": "task",
+          "dependencies": [],
+          "createdAt": 1772238649861,
+          "updatedAt": 1772238649861
+        }
+      }
+    },
+    {
+      "name": "ticket-update",
+      "pass": true,
+      "details": {
+        "status": 200,
+        "body": {
+          "id": "ticket-v7-1772238649861",
+          "projectId": "project-v7-1772238649861",
+          "title": "Validation ticket",
+          "description": "Ensure ticket API create/update works.",
+          "acceptanceCriteria": [
+            "Ticket can be created",
+            "Ticket can be updated"
+          ],
+          "complexity": "S",
+          "status": "in_progress",
+          "assignedRole": "coder",
+          "level": "task",
+          "dependencies": [],
+          "createdAt": 1772238649861,
+          "updatedAt": 1772238661317,
+          "evidenceIds": []
+        }
+      }
+    },
+    {
+      "name": "prd-get",
+      "pass": true,
+      "details": {
+        "status": 200,
+        "body": {
+          "prd": "# Product Requirements\n\n## Scope\nValidate PRD endpoint flow.",
+          "status": "draft",
+          "projectName": "V7 Flow Validation Project"
+        }
+      }
+    },
+    {
+      "name": "prd-workflow-get",
+      "pass": true,
+      "details": {
+        "status": 200,
+        "body": {
+          "projectId": "project-v7-1772238649861",
+          "hasPRD": true,
+          "prdStatus": "draft",
+          "epicCount": 0,
+          "ticketCount": 1,
+          "ticketsByLevel": {
+            "story": 0,
+            "task": 1,
+            "subtask": 0
+          }
+        }
+      }
+    }
+  ]
+}

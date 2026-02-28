@@ -3,7 +3,6 @@
 import { useEffect, Suspense } from 'react'
 import { Sidebar } from '@/components/sidebar'
 import { ChatView } from '@/components/chat-view'
-import { SettingsPanel } from '@/components/settings-panel'
 import { GlobalProgress } from '@/components/global-progress'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { Onboarding } from '@/components/onboarding'
@@ -43,7 +42,6 @@ export function ChatLayout() {
             <ChatView />
           </Suspense>
         </main>
-        <SettingsPanel />
       </div>
       <KeyboardShortcuts />
       <Onboarding />

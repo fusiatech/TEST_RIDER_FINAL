@@ -3,13 +3,15 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { WSMessageSchema } from '@/lib/types'
 import type { WSMessage } from '@/lib/types'
 import { cancelSwarm } from '@/server/orchestrator'
-import { getSettings } from '@/server/storage'
+import { getDb, getEffectiveSettingsForUser, getSettings, getUsers } from '@/server/storage'
 import { jobQueue } from '@/server/job-queue'
 import { scheduler } from '@/server/scheduler'
 import { createLogger } from '@/server/logger'
 import { websocketConnections } from '@/lib/metrics'
 import { startFileWatcher, stopFileWatcher } from '@/server/file-watcher'
 import { resolvePathWithinWorkspace } from '@/server/workspace-path'
+import { auditEmergencyStop, auditJobCancel, auditJobPause, auditJobResume } from '@/lib/audit'
+import { validateToolContractEnvelope } from '@/server/output-schemas'
 import {
   authenticateWSConnection,
   canPerformOperation,
@@ -18,10 +20,13 @@ import {
 } from '@/server/ws-auth'
 
 const logger = createLogger('ws-server')
+const WS_PATH = '/api/ws'
 
 const HEARTBEAT_INTERVAL = 30000
 
-const WS_AUTH_ENABLED = process.env.WS_AUTH_ENABLED !== 'false'
+// In development we default to unauthenticated WS unless explicitly enabled.
+// In production we default to authenticated WS unless explicitly disabled.
+const WS_AUTH_ENABLED = process.env.WS_AUTH_ENABLED === 'false' ? false : true
 
 interface ExtWebSocket extends WebSocket {
   isAlive: boolean
@@ -30,8 +35,54 @@ interface ExtWebSocket extends WebSocket {
 }
 
 let wss: WebSocketServer | null = null
+let cachedDevFallbackUserId: string | undefined
 
-function handleMessage(ws: ExtWebSocket, raw: string): void {
+async function resolveDevFallbackUserId(): Promise<string | null> {
+  if (cachedDevFallbackUserId) {
+    return cachedDevFallbackUserId
+  }
+
+  const users = await getUsers()
+  if (users.length === 0) {
+    // Don't cache null: a user may register after server startup.
+    return null
+  }
+
+  const preferredEmail = process.env.SWARM_DEV_FALLBACK_EMAIL?.trim().toLowerCase()
+  if (preferredEmail) {
+    const exact = users.find((u) => u.email.toLowerCase() === preferredEmail)
+    if (exact) {
+      cachedDevFallbackUserId = exact.id
+      return exact.id
+    }
+  }
+
+  // Prefer users that already have profile API keys configured so
+  // unauthenticated dev runs use a working provider path immediately.
+  const db = await getDb()
+  const userApiKeys = db.data.userApiKeys ?? {}
+  const usersWithKeys = users.filter((u) => {
+    const keys = userApiKeys[u.id]
+    return Boolean(keys && Object.values(keys).some((value) => Boolean(value)))
+  })
+  const keyedNonViewer = usersWithKeys
+    .filter((u) => u.role !== 'viewer')
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+  const keyedPick = keyedNonViewer[0] ?? usersWithKeys[0]
+  if (keyedPick) {
+    cachedDevFallbackUserId = keyedPick.id
+    return keyedPick.id
+  }
+
+  const nonViewer = users
+    .filter((u) => u.role !== 'viewer')
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+  const pick = nonViewer[0] ?? users[0]
+  cachedDevFallbackUserId = pick?.id
+  return pick?.id ?? null
+}
+
+async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
@@ -74,8 +125,42 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
 
   switch (msg.type) {
     case 'start-swarm': {
+      let effectiveUserId: string | undefined = ws.user?.id
+      if (!effectiveUserId && process.env.NODE_ENV !== 'production') {
+        const fallbackUserId = await resolveDevFallbackUserId()
+        effectiveUserId = fallbackUserId ?? undefined
+        if (effectiveUserId) {
+          logger.warn('Using dev profile fallback for unauthenticated websocket run', {
+            userId: effectiveUserId,
+          })
+          ws.send(
+            JSON.stringify({
+              type: 'agent-status',
+              agentId: 'system',
+              status: 'running',
+            }),
+          )
+        }
+      }
+
+      if (!effectiveUserId) {
+        ws.send(
+          JSON.stringify({
+            type: 'swarm-error',
+            error: 'Authentication is required for profile-scoped API keys.',
+          })
+        )
+        break
+      }
       const pipelineMode = msg.mode ?? 'chat'
-      logger.info('start-swarm received', { sessionId: msg.sessionId, mode: pipelineMode, prompt: msg.prompt.slice(0, 50) })
+      logger.info('start-swarm received', {
+        sessionId: msg.sessionId,
+        mode: pipelineMode,
+        agentSelectionMode: msg.agentSelectionMode ?? 'auto',
+        preferredAgent: msg.preferredAgent,
+        traceModeValidation: msg.traceModeValidation ?? false,
+        prompt: msg.prompt.slice(0, 50),
+      })
       ws.send(
         JSON.stringify({
           type: 'agent-status',
@@ -85,13 +170,29 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
       )
 
       const job = jobQueue.enqueue({
+        userId: effectiveUserId,
         sessionId: msg.sessionId,
         prompt: msg.prompt,
         mode: pipelineMode,
+        ...(msg.intent ? { intent: msg.intent } : {}),
+        ...(msg.agentSelectionMode ? { agentSelectionMode: msg.agentSelectionMode } : {}),
+        ...(msg.preferredAgent ? { preferredAgent: msg.preferredAgent } : {}),
+        ...(msg.traceModeValidation !== undefined
+          ? { traceModeValidation: msg.traceModeValidation }
+          : {}),
         idempotencyKey: msg.idempotencyKey,
         priority: msg.priority,
         ...(msg.attachments && msg.attachments.length > 0 ? { attachments: msg.attachments } : {}),
       })
+      ws.send(
+        JSON.stringify({
+          type: 'run.accepted',
+          runId: job.id,
+          sessionId: msg.sessionId,
+          idempotencyKey: msg.idempotencyKey,
+          queuedAt: Date.now(),
+        })
+      )
       ws.send(JSON.stringify({ type: 'job-status', job }))
       break
     }
@@ -105,7 +206,32 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
       logger.info('cancel-job received', { jobId: msg.jobId })
       void jobQueue.cancelJob(msg.jobId).then((cancelled) => {
         if (cancelled) {
+          void auditJobCancel(msg.jobId)
           ws.send(JSON.stringify({ type: 'agent-status', agentId: 'system', status: 'cancelled' }))
+        }
+      })
+      break
+
+    case 'pause-job':
+      logger.info('pause-job received', { jobId: msg.jobId })
+      void jobQueue.pauseJob(msg.jobId).then((paused) => {
+        if (paused) {
+          void auditJobPause(msg.jobId, 'ws-pause')
+          ws.send(JSON.stringify({ type: 'run.paused', runId: msg.jobId, reason: 'ws-pause' }))
+        } else {
+          ws.send(JSON.stringify({ type: 'swarm-error', error: 'Job cannot be paused in current state' }))
+        }
+      })
+      break
+
+    case 'resume-job':
+      logger.info('resume-job received', { jobId: msg.jobId })
+      void jobQueue.resumeJob(msg.jobId).then((resumed) => {
+        if (resumed) {
+          void auditJobResume(msg.jobId)
+          ws.send(JSON.stringify({ type: 'run.resumed', runId: msg.jobId }))
+        } else {
+          ws.send(JSON.stringify({ type: 'swarm-error', error: 'Job cannot be resumed in current state' }))
         }
       })
       break
@@ -115,6 +241,21 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
       void jobQueue.cancelAllQueued().then((count) => {
         ws.send(JSON.stringify({ type: 'agent-status', agentId: 'system', status: 'completed' }))
         logger.info('Cancelled queued jobs', { count })
+      })
+      break
+
+    case 'emergency-stop':
+      logger.warn('emergency-stop received', { reason: msg.reason })
+      void jobQueue.emergencyStop(msg.reason ?? 'ws-emergency-stop').then((result) => {
+        void auditEmergencyStop(msg.reason)
+        ws.send(
+          JSON.stringify({
+            type: 'run.emergency_stopped',
+            reason: msg.reason ?? 'ws-emergency-stop',
+            cancelledQueued: result.cancelledQueued,
+            cancelledRunning: result.cancelledRunning,
+          })
+        )
       })
       break
 
@@ -133,8 +274,18 @@ function handleMessage(ws: ExtWebSocket, raw: string): void {
 
     case 'mcp-tool-call': {
       const { call } = msg
+      const contract = validateToolContractEnvelope(call)
+      if (!contract.isValid || !contract.parsed) {
+        ws.send(
+          JSON.stringify({
+            type: 'swarm-error',
+            error: `Invalid MCP tool call contract: ${contract.errors.join('; ')}`,
+          })
+        )
+        break
+      }
       logger.info('mcp-tool-call received', { serverId: call.serverId, toolName: call.toolName })
-      void handleMCPToolCall(ws, call)
+      void handleMCPToolCall(ws, contract.parsed)
       break
     }
 
@@ -187,7 +338,9 @@ async function handleMCPToolCall(
 ): Promise<void> {
   try {
     const { connectMCPServer, callMCPTool } = await import('@/server/mcp-client')
-    const settings = await getSettings()
+    const settings = ws.user?.id
+      ? await getEffectiveSettingsForUser(ws.user.id)
+      : await getSettings()
     const mcpServers = settings.mcpServers ?? []
     const serverConfig = mcpServers.find((s) => s.id === call.serverId)
 
@@ -254,12 +407,18 @@ export function broadcastToAll(msg: WSMessage): void {
 }
 
 export function startWSServer(server: http.Server): WebSocketServer {
-  wss = new WebSocketServer({ noServer: true })
+  wss = new WebSocketServer({
+    noServer: true,
+    perMessageDeflate: false,
+    maxPayload: 5 * 1024 * 1024,
+  })
 
   server.on('upgrade', async (request, socket, head) => {
     const pathname = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`).pathname
 
-    if (pathname === '/api/lsp/ws') {
+    // Only handle Swarm UI websocket upgrades on the dedicated endpoint.
+    // This avoids collisions with Next.js dev/HMR and other websocket handlers.
+    if (pathname !== WS_PATH) {
       return
     }
 
@@ -311,15 +470,23 @@ export function startWSServer(server: http.Server): WebSocketServer {
     })
 
     extWs.on('message', (data) => {
-      handleMessage(extWs, data.toString())
+      void handleMessage(extWs, data.toString())
     })
 
-    extWs.on('close', () => {
+    extWs.on('close', (code: number, reasonBuffer: Buffer) => {
       websocketConnections.dec()
+      const reason = reasonBuffer.toString('utf8')
       if (WS_AUTH_ENABLED && extWs.user) {
-        logger.info('Client disconnected', { userId: extWs.user.id })
+        logger.info('Client disconnected', {
+          userId: extWs.user.id,
+          code,
+          ...(reason ? { reason } : {}),
+        })
       } else {
-        logger.info('Client disconnected')
+        logger.info('Client disconnected', {
+          code,
+          ...(reason ? { reason } : {}),
+        })
       }
     })
 
@@ -349,7 +516,12 @@ export function startWSServer(server: http.Server): WebSocketServer {
     clearInterval(heartbeat)
   })
 
+  wss.on('error', (err) => {
+    logger.error('WebSocket server error', { error: err.message })
+  })
+
   logger.info('WebSocket server attached to HTTP server')
+  logger.info('WebSocket endpoint', { path: WS_PATH })
 
   void scheduler.init().then(() => {
     scheduler.start()

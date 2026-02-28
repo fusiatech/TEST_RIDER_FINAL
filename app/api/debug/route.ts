@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDebugAdapter, type DebugConfig } from '@/server/debug-adapter'
+import { getDebugAdapter } from '@/server/debug-adapter'
+import type { DebugConfig } from '@/lib/debug-types'
 import { resolvePathWithinWorkspace } from '@/server/workspace-path'
 import { z } from 'zod'
 import path from 'node:path'

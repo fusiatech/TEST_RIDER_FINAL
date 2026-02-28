@@ -166,7 +166,7 @@ Results are saved to `tests/performance/results/`:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BASE_URL` | `http://localhost:3000` | Server base URL |
-| `WS_URL` | `ws://localhost:3000` | WebSocket URL |
+| `WS_URL` | `ws://localhost:3000/api/ws` | WebSocket URL |
 | `PERF_ENV` | `default` | Benchmark environment (default/stress/ci) |
 
 ## Writing New Tests

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { jobQueue } from '@/server/job-queue'
 import { detectInstalledCLIs } from '@/server/cli-detect'
 import { getLastPipelineRunTime } from '@/server/orchestrator'
 import { getCacheStats } from '@/server/output-cache'
 import { getRateLimitStats } from '@/lib/rate-limit'
 import { registry } from '@/lib/metrics'
+import { getSettings } from '@/server/storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,12 +99,111 @@ interface DashboardMetrics {
     avgConfidenceScore: number
     byMode: Record<string, { runs: number; avgConfidence: number }>
   }
+  subscription: {
+    tier: 'free' | 'pro' | 'team'
+    freeOnlyMode: boolean
+    creditsBalance: number
+    weeklyCap: number
+    autoStop: boolean
+  }
   timeSeries: {
     requestRate: TimeSeriesPoint[]
     errorRate: TimeSeriesPoint[]
     latency: TimeSeriesPoint[]
     memoryUsage: TimeSeriesPoint[]
     jobThroughput: TimeSeriesPoint[]
+  }
+}
+
+type DashboardScenario =
+  | 'idle'
+  | 'active-queue'
+  | 'degraded-provider'
+  | 'failover-active'
+  | 'free-only'
+  | 'quota-near'
+  | 'quota-exhausted'
+  | 'long-running-jobs'
+
+function applyScenario(metrics: DashboardMetrics, scenario: DashboardScenario): DashboardMetrics {
+  const clone: DashboardMetrics = {
+    ...metrics,
+    system: { ...metrics.system, memoryUsage: { ...metrics.system.memoryUsage }, systemMemory: { ...metrics.system.systemMemory } },
+    requests: { ...metrics.requests, byMethod: { ...metrics.requests.byMethod }, byStatus: { ...metrics.requests.byStatus } },
+    errors: { ...metrics.errors, byType: { ...metrics.errors.byType }, recent: [...metrics.errors.recent] },
+    websocket: { ...metrics.websocket },
+    jobs: { ...metrics.jobs },
+    agents: { ...metrics.agents, installed: [...metrics.agents.installed], byProvider: { ...metrics.agents.byProvider } },
+    cache: { ...metrics.cache },
+    rateLimit: { ...metrics.rateLimit, limiters: metrics.rateLimit.limiters ? [...metrics.rateLimit.limiters] : undefined },
+    pipeline: { ...metrics.pipeline, byMode: { ...metrics.pipeline.byMode } },
+    timeSeries: {
+      requestRate: [...metrics.timeSeries.requestRate],
+      errorRate: [...metrics.timeSeries.errorRate],
+      latency: [...metrics.timeSeries.latency],
+      memoryUsage: [...metrics.timeSeries.memoryUsage],
+      jobThroughput: [...metrics.timeSeries.jobThroughput],
+    },
+  }
+
+  switch (scenario) {
+    case 'idle':
+      clone.jobs.active = 0
+      clone.jobs.queued = 0
+      clone.requests.ratePerMinute = 0
+      clone.errors.ratePerMinute = 0
+      clone.websocket.activeConnections = 0
+      return clone
+    case 'active-queue':
+      clone.jobs.active = Math.max(clone.jobs.active, 2)
+      clone.jobs.queued = Math.max(clone.jobs.queued, 8)
+      clone.requests.ratePerMinute = Math.max(clone.requests.ratePerMinute, 25)
+      clone.websocket.activeConnections = Math.max(clone.websocket.activeConnections, 3)
+      return clone
+    case 'degraded-provider':
+      clone.errors.byType.provider = Math.max(clone.errors.byType.provider ?? 0, 3)
+      clone.errors.ratePerMinute = Math.max(clone.errors.ratePerMinute, 3)
+      clone.agents.byProvider.cursor = {
+        spawns: 10,
+        failures: 4,
+        avgTime: 2200,
+      }
+      return clone
+    case 'failover-active':
+      clone.errors.byType.failover = Math.max(clone.errors.byType.failover ?? 0, 1)
+      clone.pipeline.byMode.swarm = {
+        runs: Math.max(clone.pipeline.byMode.swarm?.runs ?? 0, 4),
+        avgConfidence: Math.max(clone.pipeline.byMode.swarm?.avgConfidence ?? 0, 62),
+      }
+      clone.agents.byProvider.cursor = { spawns: 6, failures: 2, avgTime: 1800 }
+      clone.agents.byProvider.codex = { spawns: 5, failures: 0, avgTime: 1400 }
+      return clone
+    case 'free-only':
+      clone.agents.installed = clone.agents.installed.filter(
+        (agent) => agent.id === 'cursor' || agent.id === 'gemini' || agent.id === 'custom'
+      )
+      clone.subscription.freeOnlyMode = true
+      clone.subscription.tier = 'free'
+      return clone
+    case 'quota-near':
+      clone.rateLimit.throttleRate = Math.max(clone.rateLimit.throttleRate, 0.8)
+      clone.rateLimit.throttledRequests = Math.max(clone.rateLimit.throttledRequests, 8)
+      clone.rateLimit.totalRequests = Math.max(clone.rateLimit.totalRequests, 100)
+      clone.subscription.creditsBalance = Math.max(0, Math.min(clone.subscription.creditsBalance, 10))
+      return clone
+    case 'quota-exhausted':
+      clone.rateLimit.throttleRate = 1
+      clone.rateLimit.throttledRequests = Math.max(clone.rateLimit.throttledRequests, 40)
+      clone.rateLimit.totalRequests = Math.max(clone.rateLimit.totalRequests, 40)
+      clone.jobs.queued = Math.max(clone.jobs.queued, 12)
+      clone.subscription.creditsBalance = 0
+      return clone
+    case 'long-running-jobs':
+      clone.jobs.active = Math.max(clone.jobs.active, 3)
+      clone.jobs.avgDurationMs = Math.max(clone.jobs.avgDurationMs, 480000)
+      clone.requests.p95LatencyMs = Math.max(clone.requests.p95LatencyMs, 1800)
+      clone.system.eventLoopLatency = Math.max(clone.system.eventLoopLatency, 120)
+      return clone
   }
 }
 
@@ -191,16 +291,41 @@ function calculatePercentile(values: number[], percentile: number): number {
   return sorted[Math.max(0, index)]
 }
 
-export async function GET(): Promise<NextResponse<DashboardMetrics>> {
+function safeMemoryUsage(): {
+  heapUsed: number
+  heapTotal: number
+  rss: number
+  external: number
+} {
+  try {
+    const mem = process.memoryUsage()
+    return {
+      heapUsed: Number.isFinite(mem.heapUsed) ? mem.heapUsed : 0,
+      heapTotal: Number.isFinite(mem.heapTotal) ? mem.heapTotal : 0,
+      rss: Number.isFinite(mem.rss) ? mem.rss : 0,
+      external: Number.isFinite(mem.external) ? mem.external : 0,
+    }
+  } catch {
+    return {
+      heapUsed: 0,
+      heapTotal: 0,
+      rss: 0,
+      external: 0,
+    }
+  }
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse<DashboardMetrics>> {
   const startTime = Date.now()
   
   const [clis, prometheusMetrics] = await Promise.all([
     getInstalledCLIs(),
     parsePrometheusMetrics(),
   ])
+  const settings = await getSettings()
   
-  const mem = process.memoryUsage()
-  const heapUsagePercent = (mem.heapUsed / mem.heapTotal) * 100
+  const mem = safeMemoryUsage()
+  const heapUsagePercent = mem.heapTotal > 0 ? (mem.heapUsed / mem.heapTotal) * 100 : 0
   
   const eventLoopStart = Date.now()
   await new Promise<void>((resolve) => setImmediate(resolve))
@@ -361,6 +486,13 @@ export async function GET(): Promise<NextResponse<DashboardMetrics>> {
       avgConfidenceScore: 0,
       byMode: {},
     },
+    subscription: {
+      tier: settings.subscriptionTier ?? 'free',
+      freeOnlyMode: settings.freeOnlyMode ?? false,
+      creditsBalance: settings.credits?.balance ?? 0,
+      weeklyCap: settings.credits?.weeklyCap ?? 0,
+      autoStop: settings.credits?.autoStop ?? true,
+    },
     timeSeries: {
       requestRate: generateTimeSeries(requestRateData, intervalMs, timeSeriesCount),
       errorRate: generateTimeSeries(errorRateData, intervalMs, timeSeriesCount),
@@ -381,10 +513,29 @@ export async function GET(): Promise<NextResponse<DashboardMetrics>> {
     requestHistory.splice(0, requestHistory.length - MAX_HISTORY)
   }
   
-  return NextResponse.json(metrics)
+  const scenario = request.nextUrl.searchParams.get('scenario') as DashboardScenario | null
+  const scenarioSet = scenario
+    ? new Set<DashboardScenario>([
+        'idle',
+        'active-queue',
+        'degraded-provider',
+        'failover-active',
+        'free-only',
+        'quota-near',
+        'quota-exhausted',
+        'long-running-jobs',
+      ])
+    : null
+
+  const payload =
+    scenario && scenarioSet?.has(scenario)
+      ? applyScenario(metrics, scenario)
+      : metrics
+
+  return NextResponse.json(payload)
 }
 
-export function recordRequest(method: string, status: number, durationMs: number): void {
+function recordRequest(method: string, status: number, durationMs: number): void {
   requestHistory.push({
     timestamp: Date.now(),
     duration: durationMs,
@@ -397,7 +548,7 @@ export function recordRequest(method: string, status: number, durationMs: number
   }
 }
 
-export function recordError(type: string, message: string, path?: string): void {
+function recordError(type: string, message: string, path?: string): void {
   errorHistory.push({
     timestamp: Date.now(),
     type,

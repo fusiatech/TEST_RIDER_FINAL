@@ -43,6 +43,9 @@ jobs:
       - name: Run type checking
         run: npm run typecheck
 
+      - name: Validate requirements trace matrix
+        run: npm run trace:validate
+
   test:
     name: Test with Coverage
     runs-on: ubuntu-latest

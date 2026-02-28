@@ -460,6 +460,22 @@ export function computeFactCheckPenalty(result: FactCheckResult): number {
   return 35
 }
 
+export function shouldEscalateForInsufficientEvidence(
+  result: FactCheckResult,
+  minScore: number = 50,
+): boolean {
+  if (result.errors.length > 0) {
+    return true
+  }
+  if (result.score < minScore) {
+    return true
+  }
+  if (result.verifiedFacts.length === 0 && result.unverifiedFacts.length > 0) {
+    return true
+  }
+  return false
+}
+
 /* ── GAP-013: Tool-Backed Verification Enhancement ────────────────── */
 
 export interface APIVerificationResult {

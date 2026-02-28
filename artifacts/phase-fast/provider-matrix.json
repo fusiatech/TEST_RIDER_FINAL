@@ -1,0 +1,85 @@
+{
+  "timestamp": "2026-02-28T03:18:33.523Z",
+  "executionRuntime": "server_managed",
+  "defaultOrder": [
+    "gemini",
+    "codex",
+    "claude",
+    "cursor",
+    "copilot"
+  ],
+  "matrix": [
+    {
+      "userId": "2b39fda9-0652-4d29-a2c3-2c20621162d5",
+      "email": "user1772229031673@example.com",
+      "providers": [
+        {
+          "provider": "gemini",
+          "configured": false,
+          "runtimeAvailable": true,
+          "ready": false
+        },
+        {
+          "provider": "codex",
+          "configured": false,
+          "runtimeAvailable": true,
+          "ready": false
+        },
+        {
+          "provider": "claude",
+          "configured": false,
+          "runtimeAvailable": true,
+          "ready": false
+        },
+        {
+          "provider": "cursor",
+          "configured": false,
+          "runtimeAvailable": true,
+          "ready": false
+        },
+        {
+          "provider": "copilot",
+          "configured": false,
+          "runtimeAvailable": false,
+          "ready": false
+        }
+      ]
+    },
+    {
+      "userId": "69f39c52-7b3e-4db7-8b04-eeb14fe8aade",
+      "email": "rorybrowne@mail.com",
+      "providers": [
+        {
+          "provider": "gemini",
+          "configured": true,
+          "runtimeAvailable": true,
+          "ready": true
+        },
+        {
+          "provider": "codex",
+          "configured": true,
+          "runtimeAvailable": true,
+          "ready": true
+        },
+        {
+          "provider": "claude",
+          "configured": true,
+          "runtimeAvailable": true,
+          "ready": true
+        },
+        {
+          "provider": "cursor",
+          "configured": true,
+          "runtimeAvailable": true,
+          "ready": true
+        },
+        {
+          "provider": "copilot",
+          "configured": true,
+          "runtimeAvailable": false,
+          "ready": false
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useSwarmStore } from '@/lib/store'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
-import type { AgentRole, CLIProvider, Settings as SettingsType, GitHubConfig, UserRole } from '@/lib/types'
+import type { AgentRole, CLIProvider, Settings as SettingsType, GitHubConfig, UserRole, ApiKeys } from '@/lib/types'
 import { ROLE_LABELS, ROLE_COLORS, ROLE_PERMISSIONS } from '@/lib/types'
 import {
   Dialog,
@@ -48,10 +48,9 @@ import {
   Video,
   Download,
   Trash2,
-  Search,
-  X,
   FileJson,
   ExternalLink,
+  Save,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -62,12 +61,19 @@ import { UserManagement } from '@/components/user-management'
 const DEPTH_OPTIONS = ['shallow', 'medium', 'deep'] as const
 
 const API_PROVIDERS: { id: string; label: string; defaultEndpoint: string }[] = [
-  { id: 'openai', label: 'OpenAI', defaultEndpoint: 'https://api.openai.com/v1' },
+  { id: 'openai', label: 'OpenAI (Codex)', defaultEndpoint: 'https://api.openai.com/v1' },
   { id: 'anthropic', label: 'Anthropic (Claude)', defaultEndpoint: 'https://api.anthropic.com/v1' },
   { id: 'google', label: 'Google (Gemini)', defaultEndpoint: 'https://generativelanguage.googleapis.com/v1' },
   { id: 'github', label: 'GitHub (Copilot)', defaultEndpoint: 'https://api.github.com' },
   { id: 'huggingface', label: 'HuggingFace', defaultEndpoint: 'https://api-inference.huggingface.co' },
 ]
+
+const CLI_KEY_REQUIREMENTS: Partial<Record<CLIProvider, { key: keyof ApiKeys; label: string }>> = {
+  codex: { key: 'openai', label: 'OpenAI key' },
+  gemini: { key: 'google', label: 'Google key' },
+  claude: { key: 'anthropic', label: 'Anthropic key' },
+  copilot: { key: 'github', label: 'GitHub token' },
+}
 
 const DEFAULT_GITHUB_CONFIG: GitHubConfig = {
   enabled: false,
@@ -210,40 +216,30 @@ function GitHubSection({
 
 interface SettingsSection {
   id: string
-  title: string
-  keywords: string[]
 }
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: 'user-management', title: 'User Management', keywords: ['user', 'role', 'admin', 'editor', 'viewer', 'permission', 'rbac'] },
-  { id: 'cli-agents', title: 'CLI Agents', keywords: ['cli', 'agent', 'cursor', 'gemini', 'claude', 'copilot', 'codex', 'rovo'] },
-  { id: 'api-config', title: 'API Configuration', keywords: ['api', 'key', 'openai', 'anthropic', 'google', 'github', 'huggingface', 'endpoint'] },
-  { id: 'chats-per-agent', title: 'Chats per Agent', keywords: ['chat', 'parallel', 'session'] },
-  { id: 'parallel-counts', title: 'Parallel Counts', keywords: ['parallel', 'researcher', 'planner', 'coder', 'validator', 'security', 'synthesizer'] },
-  { id: 'testing-config', title: 'Testing Configuration', keywords: ['test', 'typescript', 'eslint', 'npm', 'audit'] },
-  { id: 'automation', title: 'Automation', keywords: ['automation', 'continuous', 'auto', 'approve', 'background', 'job', 'ideation'] },
-  { id: 'guardrails', title: 'Guardrails', keywords: ['guardrail', 'file', 'write', 'confirmation', 'commit', 'safety'] },
-  { id: 'worktree', title: 'Worktree Isolation', keywords: ['worktree', 'isolation', 'git', 'branch'] },
-  { id: 'max-runtime', title: 'Max Runtime', keywords: ['runtime', 'timeout', 'seconds', 'time'] },
-  { id: 'research-depth', title: 'Research Depth', keywords: ['research', 'depth', 'shallow', 'medium', 'deep'] },
-  { id: 'auto-rerun', title: 'Auto-Rerun Threshold', keywords: ['rerun', 'threshold', 'confidence', 'validator'] },
-  { id: 'semantic', title: 'Semantic Validation', keywords: ['semantic', 'validation', 'embedding', 'openai', 'similarity'] },
-  { id: 'custom-cli', title: 'Custom CLI Command', keywords: ['custom', 'cli', 'command'] },
-  { id: 'project-path', title: 'Project Path', keywords: ['project', 'path', 'directory', 'folder'] },
-  { id: 'github', title: 'GitHub Integration', keywords: ['github', 'pr', 'pull request', 'branch', 'integration'] },
-  { id: 'mcp', title: 'MCP Servers', keywords: ['mcp', 'server', 'model', 'context', 'protocol'] },
-  { id: 'session-recording', title: 'Session Recording', keywords: ['session', 'recording', 'replay', 'debug'] },
-  { id: 'api-docs', title: 'API Documentation', keywords: ['api', 'docs', 'documentation', 'swagger', 'openapi', 'rest'] },
+  { id: 'user-management' },
+  { id: 'cli-agents' },
+  { id: 'api-config' },
+  { id: 'chats-per-agent' },
+  { id: 'parallel-counts' },
+  { id: 'testing-config' },
+  { id: 'automation' },
+  { id: 'guardrails' },
+  { id: 'auto-save' },
+  { id: 'worktree' },
+  { id: 'max-runtime' },
+  { id: 'research-depth' },
+  { id: 'auto-rerun' },
+  { id: 'semantic' },
+  { id: 'custom-cli' },
+  { id: 'project-path' },
+  { id: 'github' },
+  { id: 'mcp' },
+  { id: 'session-recording' },
+  { id: 'api-docs' },
 ]
-
-function matchesSearch(section: SettingsSection, query: string): boolean {
-  if (!query.trim()) return true
-  const lowerQuery = query.toLowerCase()
-  return (
-    section.title.toLowerCase().includes(lowerQuery) ||
-    section.keywords.some(k => k.toLowerCase().includes(lowerQuery))
-  )
-}
 
 export function SettingsPanel() {
   const { data: session } = useSession()
@@ -257,14 +253,12 @@ export function SettingsPanel() {
   const [apiEndpoints, setApiEndpoints] = useState<Record<string, string>>(settings.apiEndpoints ?? {})
   const [showKey, setShowKey] = useState<Record<string, boolean>>({})
   const [testingProvider, setTestingProvider] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
   
   const userRole = (session?.user?.role as UserRole) ?? 'viewer'
   const isAdmin = userRole === 'admin'
   const canConfigureSettings = ROLE_PERMISSIONS[userRole]?.canConfigureSettings ?? false
   
   const visibleSections = SETTINGS_SECTIONS.filter(s => {
-    if (!matchesSearch(s, searchQuery)) return false
     if (s.id === 'user-management' && !isAdmin) return false
     return true
   })
@@ -325,41 +319,18 @@ export function SettingsPanel() {
   }
 
   return (
-    <Dialog open={settingsOpen} onOpenChange={(open) => {
+    <Dialog open={settingsOpen} onOpenChange={() => {
       toggleSettings()
-      if (!open) setSearchQuery('')
     }}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden p-0">
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-hidden p-0" data-testid="settings-dialog">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <SettingsIcon className="h-5 w-5" />
             Settings
           </DialogTitle>
           <DialogDescription>
-            Configure CLI agents, API keys, parallel processing, and automation options.
+            Configure your profile API keys and app settings.
           </DialogDescription>
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
-            <Input
-              placeholder="Search settings..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-9"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          {searchQuery && (
-            <p className="text-xs text-muted mt-2">
-              Showing {visibleSections.length} of {SETTINGS_SECTIONS.length} sections
-            </p>
-          )}
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh] px-6 pb-6">
@@ -374,16 +345,6 @@ export function SettingsPanel() {
             </div>
           ) : (
           <div className="space-y-6">
-            {/* View Only Banner for non-admins */}
-            {!canConfigureSettings && (
-              <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                <Eye className="h-4 w-4 text-amber-500" />
-                <span className="text-sm text-amber-500">
-                  View only - You don&apos;t have permission to modify settings
-                </span>
-              </div>
-            )}
-
             {/* User Management (Admin only) */}
             {isSectionVisible('user-management') && isAdmin && (
             <section>
@@ -427,11 +388,16 @@ export function SettingsPanel() {
                           not installed
                         </Badge>
                       )}
+                      {CLI_KEY_REQUIREMENTS[cli.id] && (
+                        <Badge variant="outline" className="text-xs">
+                          {CLI_KEY_REQUIREMENTS[cli.id]?.label}:{' '}
+                          {apiKeys[CLI_KEY_REQUIREMENTS[cli.id]!.key]?.trim() ? 'set' : 'missing'}
+                        </Badge>
+                      )}
                     </div>
                     <Switch
                       checked={settings.enabledCLIs.includes(cli.id)}
                       onCheckedChange={() => toggleCLI(cli.id)}
-                      disabled={!canConfigureSettings}
                     />
                   </div>
                 ))}
@@ -444,7 +410,7 @@ export function SettingsPanel() {
             <section>
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground/80">
                 <Key className="h-4 w-4" />
-                API Configuration
+                Profile API Keys
               </h3>
               <div className="space-y-4">
                 {API_PROVIDERS.map((provider) => (
@@ -461,6 +427,12 @@ export function SettingsPanel() {
                           updateSettings({ apiKeys: newKeys })
                         }}
                         className="pr-10"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        name={`profile_api_key_${provider.id}`}
+                        data-lpignore="true"
                       />
                       <button
                         type="button"
@@ -745,6 +717,64 @@ export function SettingsPanel() {
             </section>
             )}
 
+            {/* Auto-Save */}
+            {isSectionVisible('auto-save') && (
+            <section>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground/80">
+                <Save className="h-4 w-4" />
+                Auto-Save
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Save className="h-4 w-4 text-muted" />
+                    <div>
+                      <span className="text-sm text-foreground/90">Enable Auto-Save</span>
+                      <p className="text-xs text-muted">Automatically save files after changes</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.autoSave ?? false}
+                    onCheckedChange={(v) => updateSettings({ autoSave: v })}
+                    disabled={!canConfigureSettings}
+                  />
+                </div>
+                {settings.autoSave && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-muted">Auto-save delay</span>
+                      <span className="font-mono text-sm text-foreground/90">
+                        {settings.autoSaveDelay ?? 1000}ms
+                      </span>
+                    </div>
+                    <Slider
+                      min={500}
+                      max={10000}
+                      step={500}
+                      value={settings.autoSaveDelay ?? 1000}
+                      onValueChange={(v) => updateSettings({ autoSaveDelay: v })}
+                      disabled={!canConfigureSettings}
+                    />
+                    <p className="text-xs text-muted mt-1">
+                      Time to wait after last keystroke before saving (500ms – 10s)
+                    </p>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <span className="text-sm text-foreground/90">Show Minimap</span>
+                    <p className="text-xs text-muted">Display code minimap in the editor</p>
+                  </div>
+                  <Switch
+                    checked={settings.showMinimap ?? true}
+                    onCheckedChange={(checked) => updateSettings({ showMinimap: checked })}
+                    disabled={!canConfigureSettings}
+                  />
+                </div>
+              </div>
+            </section>
+            )}
+
             {/* Worktree Isolation */}
             {isSectionVisible('worktree') && (
             <section>
@@ -988,19 +1018,6 @@ export function SettingsPanel() {
             </section>
             )}
 
-            {/* No results message */}
-            {visibleSections.length === 0 && searchQuery && (
-              <div className="py-8 text-center">
-                <Search className="h-8 w-8 text-muted mx-auto mb-2" />
-                <p className="text-sm text-muted">No settings found for &quot;{searchQuery}&quot;</p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="text-xs text-primary hover:underline mt-2"
-                >
-                  Clear search
-                </button>
-              </div>
-            )}
           </div>
           )}
         </ScrollArea>

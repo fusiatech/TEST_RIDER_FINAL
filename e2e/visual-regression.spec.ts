@@ -26,6 +26,71 @@ test.describe('Visual Regression Tests', () => {
     })
   })
 
+  test('chat tab visual', async ({ page }) => {
+    await page.goto('/?tab=chat')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('chat-tab.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('chat tab dark mode', async ({ page }) => {
+    await page.goto('/?tab=chat')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('chat-tab-dark.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('dashboard tab agent mode', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=agent')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('dashboard-agent-mode.png', {
+      maxDiffPixels: 150,
+      threshold: 0.2,
+    })
+  })
+
+  test('dashboard tab agent mode dark', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=agent')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('dashboard-agent-mode-dark.png', {
+      maxDiffPixels: 150,
+      threshold: 0.2,
+    })
+  })
+
+  test('dashboard tab project mode with kanban', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=project')
+    await page.waitForLoadState('networkidle')
+    
+    // Wait for kanban board to render if present
+    const kanban = page.locator('[data-testid="kanban-board"]').or(
+      page.locator('.kanban-board')
+    )
+    if (await kanban.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await page.waitForTimeout(500)
+    }
+    
+    await expect(page).toHaveScreenshot('dashboard-project-kanban.png', {
+      maxDiffPixels: 200,
+      threshold: 0.2,
+    })
+  })
+
+  test('dashboard tab project mode kanban dark', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=project')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    
+    await expect(page).toHaveScreenshot('dashboard-project-kanban-dark.png', {
+      maxDiffPixels: 200,
+      threshold: 0.2,
+    })
+  })
+
   test('IDE tab matches snapshot', async ({ page }) => {
     const ideTab = page.getByRole('tab', { name: /ide/i }).or(
       page.getByText(/ide/i).first()
@@ -37,6 +102,36 @@ test.describe('Visual Regression Tests', () => {
     
     await expect(page).toHaveScreenshot('ide-page.png', {
       maxDiffPixels: 200,
+      threshold: 0.2,
+    })
+  })
+
+  test('IDE tab with file open', async ({ page }) => {
+    await page.goto('/?tab=ide')
+    await page.waitForLoadState('networkidle')
+    
+    // Try to open a file from the file browser
+    const fileItem = page.locator('[data-testid="file-item"]').first().or(
+      page.locator('.file-tree-item').first()
+    )
+    if (await fileItem.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await fileItem.click()
+      await page.waitForTimeout(1000)
+    }
+    
+    await expect(page).toHaveScreenshot('ide-tab-file-open.png', {
+      maxDiffPixels: 250,
+      threshold: 0.2,
+    })
+  })
+
+  test('IDE tab dark mode', async ({ page }) => {
+    await page.goto('/?tab=ide')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    
+    await expect(page).toHaveScreenshot('ide-tab-dark.png', {
+      maxDiffPixels: 250,
       threshold: 0.2,
     })
   })
@@ -56,6 +151,108 @@ test.describe('Visual Regression Tests', () => {
     })
   })
 
+  test('settings dialog dark mode', async ({ page }) => {
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    
+    const settingsButton = page.getByRole('button', { name: /settings/i }).or(
+      page.locator('[data-testid="settings-button"]')
+    )
+    if (await settingsButton.isVisible()) {
+      await settingsButton.click()
+      await page.waitForTimeout(500)
+    }
+    
+    await expect(page).toHaveScreenshot('settings-dialog-dark.png', {
+      maxDiffPixels: 100,
+      threshold: 0.2,
+    })
+  })
+
+  test('create ticket dialog', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=project')
+    await page.waitForLoadState('networkidle')
+    
+    // Try to open create ticket dialog
+    const createButton = page.getByRole('button', { name: /create.*ticket/i }).or(
+      page.getByRole('button', { name: /new.*ticket/i }).or(
+        page.locator('[data-testid="create-ticket-button"]')
+      )
+    )
+    if (await createButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createButton.click()
+      await page.waitForTimeout(500)
+    }
+    
+    await expect(page).toHaveScreenshot('create-ticket-dialog.png', {
+      maxDiffPixels: 150,
+      threshold: 0.2,
+    })
+  })
+
+  test('create ticket dialog dark mode', async ({ page }) => {
+    await page.goto('/?tab=dashboard&mode=project')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    
+    const createButton = page.getByRole('button', { name: /create.*ticket/i }).or(
+      page.getByRole('button', { name: /new.*ticket/i }).or(
+        page.locator('[data-testid="create-ticket-button"]')
+      )
+    )
+    if (await createButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await createButton.click()
+      await page.waitForTimeout(500)
+    }
+    
+    await expect(page).toHaveScreenshot('create-ticket-dialog-dark.png', {
+      maxDiffPixels: 150,
+      threshold: 0.2,
+    })
+  })
+
+  test('onboarding modal if visible', async ({ page }) => {
+    // Clear any stored onboarding completion state
+    await page.evaluate(() => {
+      localStorage.removeItem('onboarding-complete')
+      localStorage.removeItem('onboardingComplete')
+    })
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    
+    const onboardingModal = page.locator('[data-testid="onboarding-modal"]').or(
+      page.getByRole('dialog').filter({ hasText: /welcome|get started|onboarding/i })
+    )
+    
+    if (await onboardingModal.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(page).toHaveScreenshot('onboarding-modal.png', {
+        maxDiffPixels: 150,
+        threshold: 0.2,
+      })
+    }
+  })
+
+  test('onboarding modal dark mode', async ({ page }) => {
+    await page.evaluate(() => {
+      localStorage.removeItem('onboarding-complete')
+      localStorage.removeItem('onboardingComplete')
+      document.documentElement.classList.add('dark')
+    })
+    await page.reload()
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    
+    const onboardingModal = page.locator('[data-testid="onboarding-modal"]').or(
+      page.getByRole('dialog').filter({ hasText: /welcome|get started|onboarding/i })
+    )
+    
+    if (await onboardingModal.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(page).toHaveScreenshot('onboarding-modal-dark.png', {
+        maxDiffPixels: 150,
+        threshold: 0.2,
+      })
+    }
+  })
+
   test('testing dashboard matches snapshot', async ({ page }) => {
     const testingTab = page.getByRole('tab', { name: /testing/i }).or(
       page.getByText(/testing/i).first()
@@ -66,6 +263,25 @@ test.describe('Visual Regression Tests', () => {
     }
     
     await expect(page).toHaveScreenshot('testing-dashboard.png', {
+      maxDiffPixels: 200,
+      threshold: 0.2,
+    })
+  })
+
+  test('testing dashboard tab visual', async ({ page }) => {
+    await page.goto('/?tab=testing')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('testing-dashboard-tab.png', {
+      maxDiffPixels: 200,
+      threshold: 0.2,
+    })
+  })
+
+  test('testing dashboard dark mode', async ({ page }) => {
+    await page.goto('/?tab=testing')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('testing-dashboard-dark.png', {
       maxDiffPixels: 200,
       threshold: 0.2,
     })
@@ -151,6 +367,77 @@ test.describe('Responsive Visual Tests', () => {
     await expect(page).toHaveScreenshot('tablet-viewport.png', {
       maxDiffPixels: 150,
       threshold: 0.2,
+    })
+  })
+})
+
+test.describe('Mobile Visual Regression', () => {
+  test.use({ viewport: { width: 375, height: 667 } })
+
+  test('chat tab mobile', async ({ page }) => {
+    await page.goto('/?tab=chat')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('chat-tab-mobile.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('chat tab mobile dark mode', async ({ page }) => {
+    await page.goto('/?tab=chat')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('chat-tab-mobile-dark.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('dashboard tab mobile', async ({ page }) => {
+    await page.goto('/?tab=dashboard')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('dashboard-tab-mobile.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('dashboard tab mobile dark mode', async ({ page }) => {
+    await page.goto('/?tab=dashboard')
+    await page.evaluate(() => document.documentElement.classList.add('dark'))
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('dashboard-tab-mobile-dark.png', {
+      maxDiffPixels: 100,
+    })
+  })
+
+  test('IDE tab mobile', async ({ page }) => {
+    await page.goto('/?tab=ide')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('ide-tab-mobile.png', {
+      maxDiffPixels: 150,
+    })
+  })
+
+  test('testing dashboard mobile', async ({ page }) => {
+    await page.goto('/?tab=testing')
+    await page.waitForLoadState('networkidle')
+    await expect(page).toHaveScreenshot('testing-dashboard-mobile.png', {
+      maxDiffPixels: 150,
+    })
+  })
+
+  test('settings dialog mobile', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    
+    const settingsButton = page.getByRole('button', { name: /settings/i }).or(
+      page.locator('[data-testid="settings-button"]')
+    )
+    if (await settingsButton.isVisible()) {
+      await settingsButton.click()
+      await page.waitForTimeout(500)
+    }
+    
+    await expect(page).toHaveScreenshot('settings-dialog-mobile.png', {
+      maxDiffPixels: 150,
     })
   })
 })

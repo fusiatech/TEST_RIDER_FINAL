@@ -14,10 +14,12 @@ export default defineConfig({
     toHaveScreenshot: {
       maxDiffPixels: 100,
       threshold: 0.2,
+      animations: 'disabled',
     },
   },
   snapshotDir: './e2e/snapshots',
-  updateSnapshots: 'missing',
+  snapshotPathTemplate: '{snapshotDir}/{testFilePath}/{projectName}/{arg}{ext}',
+  updateSnapshots: process.env.UPDATE_SNAPSHOTS === 'true' ? 'all' : 'missing',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
@@ -36,6 +38,14 @@ export default defineConfig({
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 12'] },
     },
   ],
   webServer: {

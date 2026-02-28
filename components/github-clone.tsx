@@ -313,7 +313,7 @@ export function GitHubClone({ open, onOpenChange }: GitHubCloneProps) {
             <div className="space-y-2">
               <span className="text-xs font-medium text-muted">Output</span>
               <ScrollArea className="max-h-32">
-                <pre className="rounded-md bg-[#0d0d0d] p-3 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap">
+                <pre className="rounded-md bg-[#0d0d0d] p-3 font-mono text-xs text-muted overflow-x-auto whitespace-pre-wrap">
                   {output}
                 </pre>
               </ScrollArea>

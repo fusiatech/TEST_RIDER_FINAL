@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import { executeWithCircuitBreakerSync } from '@/server/circuit-breaker'
 
 export interface GitHubConfig {
   enabled: boolean
@@ -57,12 +58,14 @@ export interface GitHubReviewComment {
 }
 
 function run(command: string, cwd?: string): string {
-  return execSync(command, {
-    cwd,
-    encoding: 'utf-8',
-    timeout: 30_000,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  }).trim()
+  return executeWithCircuitBreakerSync('github', `gh:${command}`, () =>
+    execSync(command, {
+      cwd,
+      encoding: 'utf-8',
+      timeout: 30_000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim()
+  )
 }
 
 function shellEscape(str: string): string {

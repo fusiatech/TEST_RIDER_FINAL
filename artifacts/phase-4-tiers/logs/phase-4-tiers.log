@@ -1,0 +1,517 @@
+{
+  "healthFreeOnly": {
+    "status": 200,
+    "ok": true,
+    "json": {
+      "status": "unhealthy",
+      "version": "1.0.0",
+      "apiVersion": "v1",
+      "uptime": 13.5380475,
+      "timestamp": "2026-02-28T00:32:02.648Z",
+      "responseTimeMs": 98,
+      "checks": [
+        {
+          "name": "memory",
+          "status": "unhealthy",
+          "message": "Heap: 90.5% used"
+        },
+        {
+          "name": "job_queue",
+          "status": "healthy",
+          "message": "Queue: 0, Active: 0"
+        },
+        {
+          "name": "event_loop",
+          "status": "healthy",
+          "message": "Latency: 0ms",
+          "latencyMs": 0
+        },
+        {
+          "name": "cli_agents",
+          "status": "degraded",
+          "message": "0/7 CLIs available"
+        },
+        {
+          "name": "database",
+          "status": "healthy",
+          "message": "Sessions: 8, Projects: 2",
+          "latencyMs": 1
+        },
+        {
+          "name": "websocket",
+          "status": "healthy",
+          "message": "Active jobs: 0, Queue: 0",
+          "latencyMs": 0
+        },
+        {
+          "name": "github_cli",
+          "status": "healthy",
+          "message": "gh CLI available",
+          "latencyMs": 61
+        },
+        {
+          "name": "git",
+          "status": "healthy",
+          "message": "git available",
+          "latencyMs": 33
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "database",
+          "status": "healthy",
+          "latencyMs": 1,
+          "message": "Sessions: 8, Projects: 2",
+          "lastChecked": "2026-02-28T00:32:02.553Z"
+        },
+        {
+          "name": "websocket",
+          "status": "healthy",
+          "latencyMs": 0,
+          "message": "Active jobs: 0, Queue: 0",
+          "lastChecked": "2026-02-28T00:32:02.553Z"
+        },
+        {
+          "name": "github_cli",
+          "status": "healthy",
+          "latencyMs": 61,
+          "message": "gh CLI available",
+          "lastChecked": "2026-02-28T00:32:02.614Z"
+        },
+        {
+          "name": "git",
+          "status": "healthy",
+          "latencyMs": 33,
+          "message": "git available",
+          "lastChecked": "2026-02-28T00:32:02.647Z"
+        }
+      ],
+      "details": {
+        "activeJobCount": 0,
+        "activeJobIds": [],
+        "queueDepth": 0,
+        "installedCLIs": [
+          {
+            "id": "cursor",
+            "installed": false
+          },
+          {
+            "id": "gemini",
+            "installed": false
+          },
+          {
+            "id": "claude",
+            "installed": false
+          },
+          {
+            "id": "copilot",
+            "installed": false
+          },
+          {
+            "id": "codex",
+            "installed": false
+          },
+          {
+            "id": "rovo",
+            "installed": false
+          },
+          {
+            "id": "custom",
+            "installed": false
+          }
+        ],
+        "providerReadiness": [
+          {
+            "provider": "cursor",
+            "installed": false
+          },
+          {
+            "provider": "gemini",
+            "installed": false
+          },
+          {
+            "provider": "claude",
+            "installed": false
+          }
+        ],
+        "freeOnlyMode": true,
+        "lastPipelineRunTime": null,
+        "memoryUsage": {
+          "rss": 657801216,
+          "heapTotal": 379531264,
+          "heapUsed": 343640072,
+          "external": 490337391,
+          "heapUsagePercent": 90.5
+        },
+        "systemMemory": {
+          "usagePercent": 81,
+          "freeMemMB": 6229,
+          "totalMemMB": 32660
+        },
+        "cacheStats": {
+          "size": 0,
+          "hits": 0,
+          "misses": 0
+        },
+        "rateLimitStats": {
+          "limiters": []
+        }
+      },
+      "traceId": "ea111c157fe9424d8ad6843e3a05b39e"
+    }
+  },
+  "dashboardFreeOnly": {
+    "status": 200,
+    "ok": true,
+    "json": {
+      "timestamp": "2026-02-28T00:32:03.261Z",
+      "system": {
+        "uptime": 14.1511569,
+        "cpuUsage": 0,
+        "memoryUsage": {
+          "heapUsed": 383356944,
+          "heapTotal": 423931904,
+          "rss": 711258112,
+          "external": 493035880,
+          "heapUsagePercent": 90.4
+        },
+        "systemMemory": {
+          "usagePercent": 81,
+          "freeMemMB": 6171,
+          "totalMemMB": 32660
+        },
+        "eventLoopLatency": 0
+      },
+      "requests": {
+        "total": 0,
+        "ratePerMinute": 0,
+        "avgLatencyMs": 0,
+        "p50LatencyMs": 0,
+        "p95LatencyMs": 0,
+        "p99LatencyMs": 0,
+        "byStatus": {},
+        "byMethod": {}
+      },
+      "errors": {
+        "total": 0,
+        "ratePerMinute": 0,
+        "byType": {},
+        "recent": []
+      },
+      "websocket": {
+        "activeConnections": 0,
+        "messagesPerMinute": 0,
+        "avgMessageSize": 0
+      },
+      "jobs": {
+        "active": 0,
+        "queued": 0,
+        "completed": 0,
+        "failed": 0,
+        "avgDurationMs": 0,
+        "throughputPerHour": 0
+      },
+      "agents": {
+        "installed": [
+          {
+            "id": "cursor",
+            "installed": false,
+            "name": "Cursor"
+          },
+          {
+            "id": "gemini",
+            "installed": false,
+            "name": "Gemini"
+          },
+          {
+            "id": "custom",
+            "installed": false,
+            "name": "Custom"
+          }
+        ],
+        "spawnsTotal": 0,
+        "failuresTotal": 0,
+        "avgResponseTimeMs": 0,
+        "byProvider": {}
+      },
+      "cache": {
+        "hits": 0,
+        "misses": 0,
+        "hitRate": 0,
+        "size": 0,
+        "maxSize": 100
+      },
+      "rateLimit": {
+        "totalRequests": 0,
+        "throttledRequests": 0,
+        "throttleRate": 0,
+        "limiters": []
+      },
+      "pipeline": {
+        "runsTotal": 0,
+        "lastRunTime": null,
+        "avgConfidenceScore": 0,
+        "byMode": {}
+      },
+      "subscription": {
+        "tier": "free",
+        "freeOnlyMode": true,
+        "creditsBalance": 50,
+        "weeklyCap": 100,
+        "autoStop": true
+      },
+      "timeSeries": {
+        "requestRate": [
+          {
+            "timestamp": 1772235423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772235723261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236023261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236323261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236623261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236923261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237223261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237523261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237823261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238123261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238723261,
+            "value": 0
+          }
+        ],
+        "errorRate": [
+          {
+            "timestamp": 1772235423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772235723261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236023261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236323261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236623261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236923261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237223261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237523261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237823261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238123261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238723261,
+            "value": 0
+          }
+        ],
+        "latency": [
+          {
+            "timestamp": 1772235423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772235723261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236023261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236323261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236623261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236923261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237223261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237523261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237823261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238123261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238723261,
+            "value": 0
+          }
+        ],
+        "memoryUsage": [
+          {
+            "timestamp": 1772235423261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772235723261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772236023261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772236323261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772236623261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772236923261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772237223261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772237523261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772237823261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772238123261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772238423261,
+            "value": 90.42889680697398
+          },
+          {
+            "timestamp": 1772238723261,
+            "value": 90.42889680697398
+          }
+        ],
+        "jobThroughput": [
+          {
+            "timestamp": 1772235423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772235723261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236023261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236323261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236623261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772236923261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237223261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237523261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772237823261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238123261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238423261,
+            "value": 0
+          },
+          {
+            "timestamp": 1772238723261,
+            "value": 0
+          }
+        ]
+      }
+    }
+  }
+}

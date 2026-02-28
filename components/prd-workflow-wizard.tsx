@@ -514,7 +514,7 @@ export function PRDWorkflowWizard({
               {/* Empty State */}
               {currentStep.status === 'pending' && !isRunning && (
                 <div className="text-center py-12 text-muted-foreground">
-                  <p>Click "Start Workflow" to begin generating items</p>
+                  <p>Click &quot;Start Workflow&quot; to begin generating items</p>
                 </div>
               )}
 

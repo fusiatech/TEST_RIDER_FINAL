@@ -3,8 +3,8 @@
 ## Connection
 
 Connect to the WebSocket server at:
-- **Development**: `ws://localhost:3000` (attached to HTTP server)
-- **Standalone**: `ws://localhost:3002` (standalone WS server)
+- **Development**: `ws://localhost:3000/api/ws` (attached to HTTP server)
+- **Standalone**: `ws://localhost:3002/api/ws` (standalone WS server)
 
 ## Message Format
 
@@ -182,6 +182,29 @@ Job status update.
 }
 ```
 
+### `run.accepted`
+Acknowledgement that a run request has been accepted and queued.
+
+```typescript
+{
+  type: 'run.accepted',
+  runId: string,
+  sessionId: string,
+  idempotencyKey?: string,
+  queuedAt?: number
+}
+```
+
+### `run.paused` / `run.resumed` / `run.cancelled` / `run.emergency_stopped`
+Run lifecycle control events.
+
+```typescript
+{ type: 'run.paused', runId: string, reason?: string }
+{ type: 'run.resumed', runId: string }
+{ type: 'run.cancelled', runId: string, reason?: string }
+{ type: 'run.emergency_stopped', reason?: string, cancelledQueued?: number, cancelledRunning?: number }
+```
+
 ### `job-queued`
 New job added to queue.
 
@@ -324,7 +347,7 @@ If a message cannot be parsed or is invalid, the server sends:
 ## Example Usage
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000')
+const ws = new WebSocket('ws://localhost:3000/api/ws')
 
 ws.onopen = () => {
   // Start a swarm

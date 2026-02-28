@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-02-28T00:31:27.661Z",
+  "status": "pass",
+  "checks": {
+    "startupConsistency": true,
+    "authRouteCompile": true,
+    "wsReadyAtStartup": true
+  }
+}

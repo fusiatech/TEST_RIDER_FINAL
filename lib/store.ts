@@ -3,9 +3,11 @@ import type {
   AgentInstance,
   AgentRole,
   Attachment,
+  ChatIntent,
   ChatMessage,
   CLIProvider,
   EnqueueAttachment,
+  RunLogEntry,
   Session,
   Settings,
   SwarmResult,
@@ -22,7 +24,17 @@ import type {
 import type { Notification } from '@/lib/notifications'
 import { DEFAULT_SETTINGS, ROLE_LABELS, SessionSchema, SettingsSchema, validateAttachments } from '@/lib/types'
 import { generateId } from '@/lib/utils'
-import { wsClient } from '@/lib/ws-client'
+import { wsClient, type WSConnectionState } from '@/lib/ws-client'
+import { isOutputQualityAcceptable, sanitizeOutputText } from '@/lib/output-sanitize'
+import {
+  CONTEXT_HARD_COMPACT_PERCENT,
+  CONTEXT_SOFT_COMPACT_PERCENT,
+  CONTEXT_WARN_PERCENT,
+  DEFAULT_CONTEXT_WINDOW_TOKENS,
+  compactContextMessages,
+  estimateContextTelemetry,
+  type ContextCompactionStatus,
+} from '@/lib/context-window'
 import { toast } from 'sonner'
 import { getSessionRecorder } from '@/lib/session-recorder'
 
@@ -47,6 +59,20 @@ export interface ClientSecurityCheck {
 
 let wsInitialized = false
 let sidebarHydrated = false
+let lastWsToastAt = 0
+let pendingRunAckTimer: ReturnType<typeof setTimeout> | null = null
+let pendingRunAckIdempotencyKey: string | null = null
+let currentRunId: string | null = null
+let currentRunLogs: RunLogEntry[] = []
+const RUN_ACCEPTED_TIMEOUT_MS = 12000
+
+function clearPendingRunAck(): void {
+  if (pendingRunAckTimer) {
+    clearTimeout(pendingRunAckTimer)
+    pendingRunAckTimer = null
+  }
+  pendingRunAckIdempotencyKey = null
+}
 
 function getPersistedSidebarState(): boolean {
   if (typeof window === 'undefined') return true
@@ -161,9 +187,11 @@ interface SwarmStore {
   settingsOpen: boolean
   activeTab: 'chat' | 'dashboard' | 'ide' | 'testing' | 'eclipse' | 'observability'
   wsConnected: boolean
+  wsConnectionState: WSConnectionState
   securityResults: ClientSecurityCheck[]
   tickets: Ticket[]
   mode: AppMode
+  chatIntent: ChatIntent
   selectedAgent: CLIProvider | null
   projects: Project[]
   currentProjectId: string | null
@@ -194,6 +222,7 @@ interface SwarmStore {
   breakpoints: Map<string, DebugBreakpoint[]>
   currentDebugLine: { file: string; line: number } | null
   notifications: Notification[]
+  runLogs: Record<string, RunLogEntry[]>
   notificationCenterOpen: boolean
   branches: GitBranch[]
   currentBranch: string | null
@@ -201,6 +230,13 @@ interface SwarmStore {
   workspaces: Workspace[]
   currentWorkspaceId: string | null
   workspacesLoading: boolean
+  contextWindowTokens: number
+  contextTokensUsed: number
+  contextTokenPercent: number
+  contextCompactionStatus: ContextCompactionStatus
+  lastContextCompactionAt: number | null
+  contextCompactionCount: number
+  tokenPressureEvents: number
 
   createSession: () => string
   switchSession: (id: string) => void
@@ -234,6 +270,7 @@ interface SwarmStore {
   addTicket: (ticket: Ticket) => void
   getTicketsByStage: (stage: AgentRole) => Ticket[]
   setMode: (mode: AppMode) => void
+  setChatIntent: (intent: ChatIntent) => void
   setSelectedAgent: (agent: CLIProvider | null) => void
   createProject: (name: string, description: string) => string
   updateProject: (id: string, update: Partial<Project>) => void
@@ -251,6 +288,7 @@ interface SwarmStore {
   openFileInIde: (filePath: string, content: string, language: string) => void
   closeFile: (filePath: string) => void
   updateFileContent: (filePath: string, content: string) => void
+  reorderOpenFiles: (oldIndex: number, newIndex: number) => void
   showDiffInIde: (original: string, modified: string, language: string) => void
   closeDiff: () => void
   splitEditor: (direction: SplitDirection) => void
@@ -314,6 +352,8 @@ interface SwarmStore {
   switchWorkspace: (id: string) => void
   deleteWorkspace: (id: string) => Promise<void>
   updateWorkspace: (id: string, update: Partial<Workspace>) => Promise<void>
+  recalculateContextTelemetry: () => void
+  autoCompactContext: () => void
 }
 
 export const useSwarmStore = create<SwarmStore>()((set, get) => ({
@@ -328,9 +368,11 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   confidence: null,
   activeTab: 'chat' as const,
   wsConnected: false,
+  wsConnectionState: 'idle',
   securityResults: [],
   tickets: [],
   mode: 'chat' as AppMode,
+  chatIntent: 'auto',
   selectedAgent: null,
   projects: [],
   currentProjectId: null,
@@ -361,6 +403,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   breakpoints: new Map(),
   currentDebugLine: null,
   notifications: [],
+  runLogs: {},
   notificationCenterOpen: false,
   branches: [],
   currentBranch: null,
@@ -368,6 +411,13 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   workspaces: [],
   currentWorkspaceId: null,
   workspacesLoading: false,
+  contextWindowTokens: DEFAULT_CONTEXT_WINDOW_TOKENS,
+  contextTokensUsed: 0,
+  contextTokenPercent: 0,
+  contextCompactionStatus: 'Idle',
+  lastContextCompactionAt: null,
+  contextCompactionCount: 0,
+  tokenPressureEvents: 0,
 
   createSession: () => {
     const id = generateId()
@@ -377,6 +427,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       createdAt: Date.now(),
       updatedAt: Date.now(),
       messages: [],
+      chatIntent: get().chatIntent,
     }
     set((state) => ({
       sessions: [session, ...state.sessions],
@@ -395,9 +446,11 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     set({
       currentSessionId: id,
       messages: session.messages,
+      chatIntent: session.chatIntent ?? 'auto',
       agents: [],
       isRunning: false,
     })
+    get().recalculateContextTelemetry()
   },
 
   deleteSession: (id: string) => {
@@ -427,6 +480,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
           ? {
               ...s,
               messages: newMessages,
+              chatIntent: state.chatIntent,
               updatedAt: Date.now(),
               title:
                 s.messages.length === 0 && message.role === 'user'
@@ -437,6 +491,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       )
       return { messages: newMessages, sessions }
     })
+    get().recalculateContextTelemetry()
     void get().persistSession()
   },
 
@@ -499,21 +554,65 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     wsInitialized = true
 
     wsClient.onConnect = () => {
-      set({ wsConnected: true })
+      set({ wsConnected: true, wsConnectionState: 'open' })
+    }
+
+    wsClient.onConnectionStateChange = (state) => {
+      set({ wsConnectionState: state, wsConnected: state === 'open' })
+
+      if (state === 'reconnecting') {
+        const now = Date.now()
+        if (now - lastWsToastAt > 10000) {
+          lastWsToastAt = now
+          toast.error('WebSocket disconnected', { description: 'Attempting to reconnect...' })
+        }
+      }
+
+      if (state === 'auth_failed') {
+        const now = Date.now()
+        if (now - lastWsToastAt > 10000) {
+          lastWsToastAt = now
+          toast.error('WebSocket authentication failed', {
+            description: 'Refresh login/session and reconnect.',
+          })
+        }
+      }
     }
 
     wsClient.onMessage = (msg) => {
       switch (msg.type) {
         case 'agent-output': {
-          const existing = get().agents.find((a) => a.id === msg.agentId)
-          if (existing) {
-            get().appendAgentOutput(msg.agentId, msg.data)
+          const sanitized = sanitizeOutputText(msg.data)
+          const entry: RunLogEntry = {
+            timestamp: Date.now(),
+            level: ERROR_PATTERNS.test(msg.data) ? 'error' : 'info',
+            source: 'agent',
+            agentId: msg.agentId,
+            text: sanitized,
           }
-          const lines = msg.data.split('\n')
+          currentRunLogs.push(entry)
+          if (currentRunId) {
+            set((state) => ({
+              runLogs: {
+                ...state.runLogs,
+                [currentRunId as string]: [...(state.runLogs[currentRunId as string] ?? []), entry],
+              },
+            }))
+          }
+
+          const existing = get().agents.find((a) => a.id === msg.agentId)
+          if (existing && sanitized) {
+            get().appendAgentOutput(msg.agentId, `${sanitized}\n`)
+          }
+          const lines = sanitized.split('\n')
           for (const line of lines) {
             if (ERROR_PATTERNS.test(line)) {
               get().addError(msg.agentId, line.trim())
             }
+          }
+          get().recalculateContextTelemetry()
+          if (get().contextTokenPercent >= CONTEXT_HARD_COMPACT_PERCENT) {
+            get().autoCompactContext()
           }
           break
         }
@@ -546,6 +645,13 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
           break
         }
         case 'swarm-error': {
+          clearPendingRunAck()
+          currentRunLogs.push({
+            timestamp: Date.now(),
+            level: 'error',
+            source: 'system',
+            text: sanitizeOutputText(msg.error),
+          })
           set({ isRunning: false })
           get().addMessage({
             id: generateId(),
@@ -553,6 +659,9 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
             content: `Swarm error: ${msg.error}`,
             timestamp: Date.now(),
           })
+          currentRunId = null
+          currentRunLogs = []
+          get().recalculateContextTelemetry()
           toast.error('Swarm failed', { description: msg.error })
           recordSwarmEvent('swarm_error', { error: msg.error })
           break
@@ -578,6 +687,30 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
           }
           break
         }
+        case 'run.accepted': {
+          currentRunId = msg.runId
+          currentRunLogs = []
+          set((state) => ({
+            runLogs: {
+              ...state.runLogs,
+              [msg.runId]: [],
+            },
+          }))
+          if (
+            pendingRunAckIdempotencyKey === null ||
+            msg.idempotencyKey === undefined ||
+            msg.idempotencyKey === pendingRunAckIdempotencyKey
+          ) {
+            clearPendingRunAck()
+          }
+          recordSwarmEvent('run_accepted', {
+            runId: msg.runId,
+            sessionId: msg.sessionId,
+            idempotencyKey: msg.idempotencyKey,
+          })
+          get().recalculateContextTelemetry()
+          break
+        }
         case 'notification': {
           get().addNotification(msg.notification)
           break
@@ -591,7 +724,14 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
     wsClient.onDisconnect = () => {
       set({ wsConnected: false })
-      toast.error('WebSocket disconnected', { description: 'Attempting to reconnect...' })
+    }
+
+    wsClient.onAuthError = (error) => {
+      const now = Date.now()
+      if (now - lastWsToastAt > 10000) {
+        lastWsToastAt = now
+        toast.error('WebSocket authentication failed', { description: error })
+      }
     }
 
     wsClient.onFileChange = (event, path) => {
@@ -607,6 +747,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
   sendMessage: (prompt: string, attachments: Attachment[] = []) => {
     const state = get()
+    const selectedAgent = state.selectedAgent
 
     let sessionId = state.currentSessionId
     if (!sessionId) {
@@ -622,6 +763,8 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       return
     }
 
+    get().autoCompactContext()
+
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -632,6 +775,8 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
     get().addMessage(userMessage)
     set({ isRunning: true, agents: [] })
+    currentRunId = null
+    currentRunLogs = []
 
     get().initWebSocket()
 
@@ -647,23 +792,79 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       prompt,
       sessionId: sessionId,
       mode: get().mode,
+      intent: get().chatIntent,
+      agentSelectionMode: selectedAgent ? 'manual' : 'auto',
+      ...(selectedAgent ? { preferredAgent: selectedAgent } : {}),
       idempotencyKey: userMessage.id,
       ...(enqueueAttachments.length > 0 ? { attachments: enqueueAttachments } : {}),
     })
+
+    clearPendingRunAck()
+    pendingRunAckIdempotencyKey = userMessage.id
+    pendingRunAckTimer = setTimeout(() => {
+      if (pendingRunAckIdempotencyKey !== userMessage.id) {
+        return
+      }
+      pendingRunAckIdempotencyKey = null
+      pendingRunAckTimer = null
+      set({ isRunning: false })
+      currentRunLogs.push({
+        timestamp: Date.now(),
+        level: 'warn',
+        source: 'system',
+        text: 'Run submission timeout: server did not acknowledge this run.',
+      })
+      toast.error('Run submission timed out', {
+        description: 'The server did not acknowledge this run. Please retry.',
+      })
+      recordSwarmEvent('run_ack_timeout', {
+        sessionId,
+        idempotencyKey: userMessage.id,
+      })
+    }, RUN_ACCEPTED_TIMEOUT_MS)
   },
 
   handleSwarmResult: (result: SwarmResult) => {
+    clearPendingRunAck()
+    const sanitizedOutput = sanitizeOutputText(result.finalOutput)
+    const outputQualityPassed = isOutputQualityAcceptable(sanitizedOutput)
+    const finalContent = outputQualityPassed
+      ? sanitizedOutput
+      : 'I could not produce a clean final answer from the latest run. Open Agent logs for diagnostics and retry.'
+
+    if (!outputQualityPassed) {
+      currentRunLogs.push({
+        timestamp: Date.now(),
+        level: 'warn',
+        source: 'orchestrator',
+        text: 'Final output rejected by quality gate (empty/noisy/non-user-readable).',
+      })
+    }
+
+    if (currentRunId) {
+      set((state) => ({
+        runLogs: {
+          ...state.runLogs,
+          [currentRunId as string]: [...currentRunLogs],
+        },
+      }))
+    }
+
     const assistantMessage: ChatMessage = {
       id: generateId(),
       role: 'assistant',
-      content: result.finalOutput,
+      content: finalContent,
       timestamp: Date.now(),
-      confidence: result.confidence,
+      ...(outputQualityPassed ? { confidence: result.confidence } : {}),
       agents: result.agents,
       sources: result.sources,
+      logs: [...currentRunLogs],
+      outputQualityPassed,
     }
     get().addMessage(assistantMessage)
-    set({ isRunning: false, confidence: result.confidence })
+    set({ isRunning: false, confidence: outputQualityPassed ? result.confidence : null })
+    currentRunLogs = []
+    currentRunId = null
 
     recordSwarmEvent('swarm_complete', {
       confidence: result.confidence,
@@ -677,6 +878,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   },
 
   cancelSwarm: () => {
+    clearPendingRunAck()
     const sessionId = get().currentSessionId
     if (sessionId) {
       wsClient.send({ type: 'cancel-swarm', sessionId })
@@ -728,6 +930,18 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
   setMode: (mode: AppMode) => {
     set({ mode })
+  },
+
+  setChatIntent: (intent: ChatIntent) => {
+    set((state) => ({
+      chatIntent: intent,
+      sessions: state.sessions.map((s) =>
+        s.id === state.currentSessionId
+          ? { ...s, chatIntent: intent, updatedAt: Date.now() }
+          : s
+      ),
+    }))
+    void get().persistSession()
   },
 
   setSelectedAgent: (agent: CLIProvider | null) => {
@@ -899,6 +1113,15 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
         f.path === filePath ? { ...f, content } : f
       ),
     }))
+  },
+
+  reorderOpenFiles: (oldIndex: number, newIndex: number) => {
+    set((state) => {
+      const files = [...state.openFiles]
+      const [removed] = files.splice(oldIndex, 1)
+      files.splice(newIndex, 0, removed)
+      return { openFiles: files }
+    })
   },
 
   showDiffInIde: (original: string, modified: string, language: string) => {
@@ -1280,6 +1503,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
         ? data.map((s) => SessionSchema.parse(s))
         : []
       set({ sessions: parsed })
+      get().recalculateContextTelemetry()
     } catch {
       // API may not be available in UI-only dev mode
     } finally {
@@ -1320,17 +1544,26 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     }
   },
 
-  persistSettings: async () => {
-    try {
-      await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(get().settings),
-      })
-    } catch {
-      // API may not be available
-    }
-  },
+    persistSettings: async () => {
+      try {
+        const settings = get().settings
+        if (settings.apiKeys) {
+          await fetch('/api/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings.apiKeys),
+          })
+        }
+        const { apiKeys, ...nonSecretSettings } = settings
+        await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nonSecretSettings),
+        })
+      } catch {
+        // API may not be available
+      }
+    },
 
   loadJobs: async () => {
     try {
@@ -1922,5 +2155,81 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update workspace')
     }
+  },
+
+  recalculateContextTelemetry: () => {
+    const state = get()
+    const telemetry = estimateContextTelemetry(
+      state.messages,
+      currentRunLogs,
+      state.contextWindowTokens
+    )
+
+    set((prev) => {
+      let tokenPressureEvents = prev.tokenPressureEvents
+      if (
+        telemetry.percentUsed >= CONTEXT_WARN_PERCENT &&
+        prev.contextTokenPercent < CONTEXT_WARN_PERCENT
+      ) {
+        tokenPressureEvents += 1
+      }
+
+      const contextCompactionStatus: ContextCompactionStatus =
+        prev.contextCompactionStatus === 'Compacted' &&
+        telemetry.percentUsed < CONTEXT_WARN_PERCENT
+          ? 'Idle'
+          : prev.contextCompactionStatus
+
+      return {
+        contextTokensUsed: telemetry.usedTokens,
+        contextTokenPercent: telemetry.percentUsed,
+        tokenPressureEvents,
+        contextCompactionStatus,
+      }
+    })
+  },
+
+  autoCompactContext: () => {
+    get().recalculateContextTelemetry()
+    const state = get()
+    if (state.contextTokenPercent < CONTEXT_SOFT_COMPACT_PERCENT) {
+      return
+    }
+
+    const startPercent = state.contextTokenPercent
+    set({ contextCompactionStatus: 'Compacting' })
+
+    const compacted = compactContextMessages(
+      state.messages,
+      state.contextWindowTokens,
+      12
+    )
+
+    if (!compacted.summaryInserted) {
+      set({ contextCompactionStatus: 'Idle' })
+      return
+    }
+
+    const now = Date.now()
+    set((prev) => ({
+      messages: compacted.messages,
+      sessions: prev.sessions.map((session) =>
+        session.id === prev.currentSessionId
+          ? { ...session, messages: compacted.messages, updatedAt: now }
+          : session
+      ),
+      contextCompactionStatus: 'Compacted',
+      lastContextCompactionAt: now,
+      contextCompactionCount: prev.contextCompactionCount + 1,
+    }))
+
+    if (startPercent >= CONTEXT_HARD_COMPACT_PERCENT) {
+      toast.warning('Context compacted', {
+        description: `Context pressure was ${Math.round(startPercent)}%; summarized older messages automatically.`,
+      })
+    }
+
+    get().recalculateContextTelemetry()
+    void get().persistSession()
   },
 }))

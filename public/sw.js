@@ -123,6 +123,10 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.includes('_next/webpack-hmr') || url.pathname.includes('__nextjs')) {
     return;
   }
+
+  if (url.pathname.startsWith('/api/lsp/ws')) {
+    return;
+  }
   
   if (isApiRoute(request.url)) {
     event.respondWith(networkFirst(request));
@@ -134,11 +138,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  event.respondWith(
-    fetch(request).catch(() => {
-      return caches.match('/offline.html');
-    })
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => {
+        return caches.match('/offline.html');
+      })
+    );
+    return;
+  }
+
+  event.respondWith(fetch(request));
 });
 
 self.addEventListener('message', (event) => {

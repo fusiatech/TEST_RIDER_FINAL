@@ -1,12 +1,42 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { useSwarmStore, type EditorGroup, type SplitDirection } from '@/lib/store'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { FileBrowser } from '@/components/file-browser'
-import { CodeEditor } from '@/components/code-editor'
+
+const CodeEditor = dynamic(
+  () => import('@/components/code-editor').then(mod => ({ default: mod.CodeEditor })),
+  { 
+    loading: () => (
+      <div className="h-full w-full bg-card animate-pulse flex items-center justify-center">
+        <div className="text-muted text-sm">Loading editor...</div>
+      </div>
+    ),
+    ssr: false 
+  }
+)
 import { TerminalEmulator, type TerminalEmulatorRef } from '@/components/terminal-emulator'
 import { GitPanel } from '@/components/git-panel'
 import { DebuggerPanel } from '@/components/debugger-panel'
+import { ProblemsPanel, ProblemsBadge, type Problem } from '@/components/problems-panel'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -52,6 +82,7 @@ import {
   Pencil,
   RotateCcw,
   Check,
+  AlertCircle,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -227,6 +258,38 @@ function WelcomeScreen({ onOpenFolder, onCloneGitHub, onOpenRecent }: WelcomeScr
 
 const EDITOR_LAYOUT_KEY = 'swarm.ide.editorLayout'
 
+function SortableTab({
+  id,
+  children,
+  isActive,
+}: {
+  id: string
+  children: React.ReactNode
+  isActive: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  )
+}
+
 function saveEditorLayout(editorGroups: EditorGroup[], activeGroupId: string | null, splitDirection: SplitDirection): void {
   if (typeof window === 'undefined') return
   try {
@@ -237,6 +300,9 @@ function saveEditorLayout(editorGroups: EditorGroup[], activeGroupId: string | n
 }
 
 export function DevEnvironment() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
   const settings = useSwarmStore((s) => s.settings)
   const updateSettings = useSwarmStore((s) => s.updateSettings)
   const openFiles = useSwarmStore((s) => s.openFiles)
@@ -244,6 +310,9 @@ export function DevEnvironment() {
   const setActiveFile = useSwarmStore((s) => s.setActiveFile)
   const closeFile = useSwarmStore((s) => s.closeFile)
   const updateFileContent = useSwarmStore((s) => s.updateFileContent)
+  const openFileInIde = useSwarmStore((s) => s.openFileInIde)
+  const setFilesLoading = useSwarmStore((s) => s.setFilesLoading)
+  const reorderOpenFiles = useSwarmStore((s) => s.reorderOpenFiles)
   
   const editorGroups = useSwarmStore((s) => s.editorGroups)
   const activeGroupId = useSwarmStore((s) => s.activeGroupId)
@@ -266,6 +335,8 @@ export function DevEnvironment() {
   const [sidebarTab, setSidebarTab] = useState<'files' | 'git' | 'debug' | 'search'>('files')
   const [originalContents, setOriginalContents] = useState<Map<string, string>>(new Map())
   const [unsavedCloseFile, setUnsavedCloseFile] = useState<string | null>(null)
+  const [problems, setProblems] = useState<Problem[]>([])
+  const [showProblemsPanel, setShowProblemsPanel] = useState(false)
   const [tabsOverflow, setTabsOverflow] = useState(false)
   const [allFilesMenuOpen, setAllFilesMenuOpen] = useState(false)
   const tabsContainerRef = useRef<HTMLDivElement>(null)
@@ -273,6 +344,68 @@ export function DevEnvironment() {
   const fileLoading = useSwarmStore((s) => s.filesLoading)
 
   const hasProjectPath = Boolean(settings.projectPath)
+
+  // G-IA-01: Update URL when file changes
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    }
+    router.push(`?${params.toString()}`, { scroll: false })
+  }, [searchParams, router])
+
+  // G-IA-01: Update URL when active file changes
+  useEffect(() => {
+    const currentFileParam = searchParams.get('file')
+    if (activeFilePath && activeFilePath !== currentFileParam) {
+      updateUrlParams({ file: activeFilePath })
+    } else if (!activeFilePath && currentFileParam) {
+      updateUrlParams({ file: null })
+    }
+  }, [activeFilePath, searchParams, updateUrlParams])
+
+  // G-IA-01: Restore file from URL on mount
+  useEffect(() => {
+    const fileParam = searchParams.get('file')
+    if (fileParam && hasProjectPath && !activeFilePath) {
+      const loadFileFromUrl = async () => {
+        setFilesLoading(true)
+        try {
+          const res = await fetch(`/api/files/${encodeURIComponent(fileParam)}`)
+          if (!res.ok) return
+          const content = await res.text()
+          const ext = fileParam.split('.').pop()?.toLowerCase() ?? ''
+          const langMap: Record<string, string> = {
+            ts: 'typescript',
+            tsx: 'typescriptreact',
+            js: 'javascript',
+            jsx: 'javascriptreact',
+            json: 'json',
+            css: 'css',
+            html: 'html',
+            md: 'markdown',
+            py: 'python',
+            rs: 'rust',
+            go: 'go',
+            sh: 'shell',
+            yaml: 'yaml',
+            yml: 'yaml',
+          }
+          const language = langMap[ext] ?? 'plaintext'
+          openFileInIde(fileParam, content, language)
+        } catch {
+          // Failed to load file from URL
+        } finally {
+          setFilesLoading(false)
+        }
+      }
+      void loadFileFromUrl()
+    }
+  }, [searchParams, hasProjectPath, activeFilePath, openFileInIde, setFilesLoading])
 
   useEffect(() => {
     if (settings.projectPath) {
@@ -294,6 +427,8 @@ export function DevEnvironment() {
   const [terminalHeight, setTerminalHeight] = useState(200)
   const [previewWidth, setPreviewWidth] = useState(350)
   const [splitSizes, setSplitSizes] = useState<number[]>([50, 50])
+  const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [terminalSessions, setTerminalSessions] = useState<TerminalSession[]>([])
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null)
@@ -310,6 +445,23 @@ export function DevEnvironment() {
   const terminalEmulatorRef = useRef<TerminalEmulatorRef>(null)
 
   const activeFile = openFiles.find((f) => f.path === activeFilePath)
+
+  // G-IDE-01: Drag-and-drop sensors for tab reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleTabDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      const oldIndex = openFiles.findIndex((f) => f.path === active.id)
+      const newIndex = openFiles.findIndex((f) => f.path === over.id)
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderOpenFiles(oldIndex, newIndex)
+      }
+    }
+  }, [openFiles, reorderOpenFiles])
 
   const handleClearTerminal = useCallback(() => {
     terminalEmulatorRef.current?.clear()
@@ -435,13 +587,44 @@ export function DevEnvironment() {
     })
   }, [activeTerminalId, previewVisible, previewWidth, sidebarVisible, sidebarWidth, terminalHeight, terminalVisible])
 
+  const handleAutoSave = useCallback(async (filePath: string, content: string) => {
+    setIsAutoSaving(true)
+    try {
+      const res = await fetch(`/api/files/${encodeURIComponent(filePath)}`, {
+        method: 'PUT',
+        body: content,
+      })
+      if (res.ok) {
+        setOriginalContents((prev) => {
+          const next = new Map(prev)
+          next.set(filePath, content)
+          return next
+        })
+      }
+    } catch {
+      // Silent fail for auto-save
+    } finally {
+      setIsAutoSaving(false)
+    }
+  }, [])
+
   const handleEditorChange = useCallback(
     (value: string) => {
       if (activeFilePath) {
         updateFileContent(activeFilePath, value)
+
+        if (settings.autoSave) {
+          if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current)
+          }
+          const filePath = activeFilePath
+          autoSaveTimeoutRef.current = setTimeout(() => {
+            void handleAutoSave(filePath, value)
+          }, settings.autoSaveDelay ?? 1000)
+        }
       }
     },
-    [activeFilePath, updateFileContent]
+    [activeFilePath, updateFileContent, settings.autoSave, settings.autoSaveDelay, handleAutoSave]
   )
 
   const isFileDirty = useCallback((filePath: string): boolean => {
@@ -518,6 +701,14 @@ export function DevEnvironment() {
     }
     void init()
   }, [refreshSessions])
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     openFiles.forEach((file) => {
@@ -646,6 +837,14 @@ export function DevEnvironment() {
     return 'Terminal'
   }, [activeTerminal])
 
+  const [navigateToPath, setNavigateToPath] = useState<string | null>(null)
+
+  const handleBreadcrumbNavigate = useCallback((targetPath: string) => {
+    setNavigateToPath(targetPath)
+    setSidebarVisible(true)
+    setSidebarTab('files')
+  }, [])
+
   // G-IA-02: Compute breadcrumb items from project path and active file
   const breadcrumbItems = useMemo((): BreadcrumbItem[] => {
     const items: BreadcrumbItem[] = []
@@ -655,9 +854,8 @@ export function DevEnvironment() {
     const projectName = settings.projectPath.split(/[/\\]/).pop() || 'Project'
     items.push({
       label: projectName,
-      onClick: () => {
-        // Clear active file to show project root
-      },
+      path: settings.projectPath,
+      onClick: () => settings.projectPath && handleBreadcrumbNavigate(settings.projectPath),
     })
     
     if (activeFilePath) {
@@ -669,23 +867,43 @@ export function DevEnvironment() {
       const fileName = parts.pop() || ''
       
       if (parts.length > 0) {
-        if (parts.length > 2) {
+        let currentPath = settings.projectPath
+        
+        if (parts.length > 3) {
           items.push({ label: '...' })
-          items.push({ label: parts[parts.length - 1] })
+          const lastTwoParts = parts.slice(-2)
+          const pathBeforeLastTwo = parts.slice(0, -2)
+          currentPath = settings.projectPath + '/' + pathBeforeLastTwo.join('/')
+          
+          lastTwoParts.forEach((part) => {
+            currentPath = currentPath + '/' + part
+            const fullPath = currentPath
+            items.push({
+              label: part,
+              path: fullPath,
+              onClick: () => handleBreadcrumbNavigate(fullPath),
+            })
+          })
         } else {
           parts.forEach((part) => {
-            items.push({ label: part })
+            currentPath = currentPath + '/' + part
+            const fullPath = currentPath
+            items.push({
+              label: part,
+              path: fullPath,
+              onClick: () => handleBreadcrumbNavigate(fullPath),
+            })
           })
         }
       }
       
       if (fileName) {
-        items.push({ label: fileName })
+        items.push({ label: fileName, path: activeFilePath })
       }
     }
     
     return items
-  }, [settings.projectPath, activeFilePath])
+  }, [settings.projectPath, activeFilePath, handleBreadcrumbNavigate])
 
   // G-IDE-02: Keyboard shortcuts handler
   const handleNextTab = useCallback(() => {
@@ -903,15 +1121,22 @@ export function DevEnvironment() {
         {/* G-IA-02: Breadcrumb navigation */}
         <Breadcrumb items={breadcrumbItems} className="flex-1 min-w-0" />
         {activeFile && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={handleSaveFile}
-          >
-            <Save className="h-3 w-3" />
-            Save
-          </Button>
+          <div className="flex items-center gap-1">
+            {isAutoSaving && (
+              <span className="text-[10px] text-muted animate-pulse" aria-live="polite">
+                Auto-saving...
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleSaveFile}
+            >
+              <Save className="h-3 w-3" />
+              Save
+            </Button>
+          </div>
         )}
         {/* G-IDE-05: Keyboard shortcuts discovery */}
         <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
@@ -1012,7 +1237,13 @@ export function DevEnvironment() {
               </div>
               <div className="flex-1 overflow-hidden">
                 {sidebarTab === 'files' && (
-                  <FileBrowser rootPath={settings.projectPath} />
+                  <div data-testid="file-tree">
+                    <FileBrowser
+                      rootPath={settings.projectPath}
+                      navigateToPath={navigateToPath}
+                      onNavigateComplete={() => setNavigateToPath(null)}
+                    />
+                  </div>
                 )}
                 {sidebarTab === 'search' && (
                   <div className="flex flex-col h-full p-2">
@@ -1039,14 +1270,16 @@ export function DevEnvironment() {
               </div>
             </div>
             <div
-              className="w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors"
+              className="w-2 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors flex items-center justify-center group"
               onMouseDown={(e) => {
                 e.preventDefault()
                 sidebarDragRef.current = true
                 document.body.style.cursor = 'col-resize'
                 document.body.style.userSelect = 'none'
               }}
-            />
+            >
+              <GripVertical className="h-4 w-3 text-muted/30 group-hover:text-muted/60 transition-colors" />
+            </div>
           </>
         )}
 
@@ -1099,43 +1332,60 @@ export function DevEnvironment() {
                 {openFiles.length > 0 && (
                   <div className="flex flex-col flex-1 min-w-0 min-h-0">
                     <div className="flex items-center border-b border-border bg-card/30 shrink-0">
-                      <div
-                        ref={tabsContainerRef}
-                        className="flex flex-1 overflow-x-auto scrollbar-hide"
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleTabDragEnd}
                       >
-                        {openFiles.map((file) => {
-                          const isDirty = isFileDirty(file.path)
-                          return (
-                            <div
-                              key={file.path}
-                              className={cn(
-                                'flex items-center gap-1.5 border-r border-border px-3 py-1.5 text-xs cursor-pointer shrink-0',
-                                file.path === activeFilePath
-                                  ? 'bg-background text-foreground'
-                                  : 'bg-card/50 text-muted hover:text-foreground'
-                              )}
-                              onClick={() => setActiveFile(file.path)}
-                            >
-                              {isDirty && (
-                                <span className="h-2 w-2 rounded-full bg-primary shrink-0" title="Unsaved changes" />
-                              )}
-                              <span className="font-mono truncate max-w-[120px]">
-                                {file.path.split('/').pop()}
-                              </span>
-                              <button
-                                className="ml-1 rounded p-0.5 hover:bg-secondary"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleCloseFileWithCheck(file.path)
-                                }}
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
+                        <SortableContext
+                          items={openFiles.map((f) => f.path)}
+                          strategy={horizontalListSortingStrategy}
+                        >
+                          <div
+                            ref={tabsContainerRef}
+                            className="flex flex-1 overflow-x-auto scrollbar-hide"
+                            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                          >
+                            {openFiles.map((file, index) => {
+                              const isDirty = isFileDirty(file.path)
+                              return (
+                                <SortableTab
+                                  key={file.path}
+                                  id={file.path}
+                                  isActive={file.path === activeFilePath}
+                                >
+                                  <div
+                                    className={cn(
+                                      'flex items-center gap-1.5 border-r border-border px-3 py-1.5 text-xs cursor-pointer shrink-0',
+                                      file.path === activeFilePath
+                                        ? 'bg-background text-foreground'
+                                        : 'bg-card/50 text-muted hover:text-foreground'
+                                    )}
+                                    onClick={() => setActiveFile(file.path)}
+                                    data-testid={`editor-tab-${index}`}
+                                  >
+                                    {isDirty && (
+                                      <span className="h-2 w-2 rounded-full bg-primary shrink-0" title="Unsaved changes" />
+                                    )}
+                                    <span className="font-mono truncate max-w-[120px]">
+                                      {file.path.split('/').pop()}
+                                    </span>
+                                    <button
+                                      className="ml-1 rounded p-0.5 hover:bg-secondary"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleCloseFileWithCheck(file.path)
+                                      }}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </SortableTab>
+                              )
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                       {tabsOverflow && (
                         <DropdownMenu open={allFilesMenuOpen} onOpenChange={setAllFilesMenuOpen}>
                           <DropdownMenuTrigger asChild>
@@ -1305,10 +1555,10 @@ export function DevEnvironment() {
                     {index < editorGroups.length - 1 && (
                       <div
                         className={cn(
-                          'shrink-0 bg-transparent hover:bg-primary/20 transition-colors flex items-center justify-center',
+                          'shrink-0 bg-transparent hover:bg-primary/20 transition-colors flex items-center justify-center group',
                           splitDirection === 'horizontal'
-                            ? 'w-1 cursor-col-resize'
-                            : 'h-1 cursor-row-resize'
+                            ? 'w-2 cursor-col-resize'
+                            : 'h-2 cursor-row-resize'
                         )}
                         onMouseDown={(e) => {
                           e.preventDefault()
@@ -1318,9 +1568,9 @@ export function DevEnvironment() {
                         }}
                       >
                         {splitDirection === 'horizontal' ? (
-                          <GripVertical className="h-4 w-4 text-muted opacity-0 hover:opacity-100" />
+                          <GripVertical className="h-4 w-3 text-muted/30 group-hover:text-muted/60 transition-colors" />
                         ) : (
-                          <GripHorizontal className="h-4 w-4 text-muted opacity-0 hover:opacity-100" />
+                          <GripHorizontal className="h-3 w-4 text-muted/30 group-hover:text-muted/60 transition-colors" />
                         )}
                       </div>
                     )}
@@ -1332,14 +1582,16 @@ export function DevEnvironment() {
 
           {terminalVisible && (
             <div
-              className="h-1 cursor-row-resize bg-transparent hover:bg-primary/20 transition-colors"
+              className="h-2 cursor-row-resize bg-transparent hover:bg-primary/20 transition-colors flex items-center justify-center group"
               onMouseDown={(e) => {
                 e.preventDefault()
                 terminalDragRef.current = true
                 document.body.style.cursor = 'row-resize'
                 document.body.style.userSelect = 'none'
               }}
-            />
+            >
+              <GripHorizontal className="h-3 w-4 text-muted/30 group-hover:text-muted/60 transition-colors" />
+            </div>
           )}
 
           {terminalVisible && (
@@ -1348,8 +1600,31 @@ export function DevEnvironment() {
               style={{ height: terminalHeight }}
             >
               <div className="flex items-center gap-2 border-b border-border px-3 py-1">
-                <Terminal className="h-3.5 w-3.5 text-muted" />
-                <span className="text-xs font-medium text-muted">{terminalLabel}</span>
+                <button
+                  className={cn(
+                    'flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-colors',
+                    !showProblemsPanel
+                      ? 'bg-primary/20 text-foreground'
+                      : 'text-muted hover:text-foreground'
+                  )}
+                  onClick={() => setShowProblemsPanel(false)}
+                >
+                  <Terminal className="h-3.5 w-3.5" />
+                  <span>{terminalLabel}</span>
+                </button>
+                <button
+                  className={cn(
+                    'flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium transition-colors',
+                    showProblemsPanel
+                      ? 'bg-primary/20 text-foreground'
+                      : 'text-muted hover:text-foreground'
+                  )}
+                  onClick={() => setShowProblemsPanel(true)}
+                >
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>Problems</span>
+                  <ProblemsBadge problems={problems} />
+                </button>
                 <div className="mx-2 h-4 w-px bg-border" />
                 <div className="flex items-center gap-1 overflow-x-auto flex-1">
                   {terminalSessions.map((session) => (
@@ -1461,22 +1736,37 @@ export function DevEnvironment() {
                   </Button>
                 )}
               </div>
-              <div className="h-[calc(100%-28px)]">
-                <TerminalEmulator
-                  ref={terminalEmulatorRef}
-                  sessionId={activeTerminalId}
-                  terminated={activeTerminal?.terminated}
-                  onInput={(data) => void sendToTerminal(data)}
-                  onResize={(cols, rows) => {
-                    if (activeTerminalId) {
-                      void fetch(`/api/terminal/${activeTerminalId}/resize`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ cols, rows }),
-                      })
-                    }
-                  }}
-                />
+              <div className="h-[calc(100%-28px)]" data-testid="terminal">
+                {showProblemsPanel ? (
+                  <ProblemsPanel
+                    problems={problems}
+                    onProblemClick={(problem) => {
+                      if (settings.projectPath) {
+                        const fullPath = problem.file.startsWith(settings.projectPath)
+                          ? problem.file
+                          : `${settings.projectPath}/${problem.file}`
+                        openFileInIde(fullPath, '', 'plaintext')
+                      }
+                      setShowProblemsPanel(false)
+                    }}
+                  />
+                ) : (
+                  <TerminalEmulator
+                    ref={terminalEmulatorRef}
+                    sessionId={activeTerminalId}
+                    terminated={activeTerminal?.terminated}
+                    onInput={(data) => void sendToTerminal(data)}
+                    onResize={(cols, rows) => {
+                      if (activeTerminalId) {
+                        void fetch(`/api/terminal/${activeTerminalId}/resize`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ cols, rows }),
+                        })
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1485,14 +1775,16 @@ export function DevEnvironment() {
         {previewVisible && (
           <>
             <div
-              className="w-1 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors"
+              className="w-2 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors flex items-center justify-center group"
               onMouseDown={(e) => {
                 e.preventDefault()
                 previewDragRef.current = true
                 document.body.style.cursor = 'col-resize'
                 document.body.style.userSelect = 'none'
               }}
-            />
+            >
+              <GripVertical className="h-4 w-3 text-muted/30 group-hover:text-muted/60 transition-colors" />
+            </div>
             <div
               className="shrink-0 border-l border-border bg-card/30 overflow-hidden"
               style={{ width: previewWidth }}

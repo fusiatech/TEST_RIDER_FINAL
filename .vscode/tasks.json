@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SwarmUI: Dev (4100)",
+      "type": "shell",
+      "command": "powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -Command \"Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; $env:HOST='127.0.0.1'; $env:PORT='4100'; fnm exec --using v22.22.0 npm.cmd run dev:local\"",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "SwarmUI: Dev (4200)",
+      "type": "shell",
+      "command": "powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -Command \"Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; $env:HOST='127.0.0.1'; $env:PORT='4200'; fnm exec --using v22.22.0 npm.cmd run dev:local\"",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

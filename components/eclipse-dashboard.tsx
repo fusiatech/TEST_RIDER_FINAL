@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSwarmStore } from '@/lib/store'
+import { normalizeHealthData, type HealthViewData } from '@/lib/health-view'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Activity,
@@ -35,31 +37,7 @@ import {
   Info,
 } from 'lucide-react'
 
-interface HealthData {
-  status: string
-  version: string
-  uptime: number
-  activeJobCount: number
-  queueDepth: number
-  installedCLIs: { id: string; installed: boolean }[]
-  lastPipelineRunTime: number | null
-  memoryUsage: {
-    rss: number
-    heapTotal: number
-    heapUsed: number
-    external: number
-  }
-  systemMemory?: {
-    usagePercent: number
-    freeMemMB: number
-    totalMemMB: number
-  }
-  cacheStats?: {
-    hits: number
-    misses: number
-    size: number
-  }
-}
+type HealthData = HealthViewData
 
 interface ActivityEvent {
   id: string
@@ -695,11 +673,11 @@ const agentFriendlyNames: Record<string, string> = {
 }
 
 export function EclipseDashboard() {
+  const router = useRouter()
   const [health, setHealth] = useState<HealthData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activities, setActivities] = useState<ActivityEvent[]>([])
-  const toggleSettings = useSwarmStore((s) => s.toggleSettings)
   const jobs = useSwarmStore((s) => s.jobs)
   const isRunning = useSwarmStore((s) => s.isRunning)
 
@@ -708,7 +686,7 @@ export function EclipseDashboard() {
       const res = await fetch('/api/health')
       if (res.ok) {
         const data = await res.json()
-        setHealth(data)
+        setHealth(normalizeHealthData(data))
       }
     } catch {
       // API may not be available
@@ -750,12 +728,15 @@ export function EclipseDashboard() {
   const getHealthStatus = (): HealthStatus => {
     if (loading) return 'loading'
     if (!health) return 'warning'
-    
-    const memoryPercent = health.systemMemory?.usagePercent || 
-      (health.memoryUsage.heapUsed / health.memoryUsage.heapTotal) * 100
-    
-    if (memoryPercent > 90 || health.status !== 'ok') return 'critical'
-    if (memoryPercent > 70 || health.queueDepth > 5) return 'warning'
+
+    const fallbackMemoryPercent =
+      health.memoryUsage.heapTotal > 0
+        ? (health.memoryUsage.heapUsed / health.memoryUsage.heapTotal) * 100
+        : 0
+    const memoryPercent = health.systemMemory?.usagePercent ?? fallbackMemoryPercent
+
+    if (memoryPercent > 90 || health.status === 'unhealthy') return 'critical'
+    if (memoryPercent > 70 || health.queueDepth > 5 || health.status === 'degraded') return 'warning'
     return 'healthy'
   }
 
@@ -779,7 +760,7 @@ export function EclipseDashboard() {
   const memoryTotal = health?.memoryUsage 
     ? health.memoryUsage.heapTotal / (1024 * 1024) 
     : 1
-  const memoryPercent = (memoryUsed / memoryTotal) * 100
+  const memoryPercent = memoryTotal > 0 ? (memoryUsed / memoryTotal) * 100 : 0
 
   const installedAgents = health?.installedCLIs?.filter(c => c.installed) || []
   const totalAgents = health?.installedCLIs?.length || 0
@@ -978,7 +959,7 @@ export function EclipseDashboard() {
                     variant="outline" 
                     size="sm" 
                     className="mt-4 gap-2"
-                    onClick={toggleSettings}
+                    onClick={() => router.push('/settings')}
                   >
                     <Settings className="h-4 w-4" />
                     Open Settings
@@ -1027,7 +1008,7 @@ export function EclipseDashboard() {
                   icon={Settings}
                   label="Settings"
                   description="Customize your setup"
-                  onClick={toggleSettings}
+                  onClick={() => router.push('/settings')}
                 />
               </div>
             </CardContent>

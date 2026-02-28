@@ -5,6 +5,7 @@ import type { AgentInstance, AgentRole } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { Card } from '@/components/ui/card'
 import { Bot, Activity, TrendingUp, Clock, Layers } from 'lucide-react'
+import { InfoTooltip, TERM_DEFINITIONS } from '@/components/ui/tooltip'
 
 const PIPELINE_STAGES: AgentRole[] = [
   'researcher',
@@ -97,6 +98,7 @@ export function MonitoringStats({
         value={confidence != null ? `${confidence}%` : '—'}
         label="Avg Confidence"
         valueClassName={confidenceColor}
+        tooltip={TERM_DEFINITIONS.Confidence}
       />
       <StatCard
         icon={<Clock className="h-4 w-4 text-muted" />}
@@ -118,9 +120,10 @@ interface StatCardProps {
   label: string
   pulse?: boolean
   valueClassName?: string
+  tooltip?: string
 }
 
-function StatCard({ icon, value, label, pulse, valueClassName }: StatCardProps) {
+function StatCard({ icon, value, label, pulse, valueClassName, tooltip }: StatCardProps) {
   return (
     <Card className="flex items-center gap-3 px-4 py-3">
       <div className={pulse ? 'animate-pulse' : ''}>{icon}</div>
@@ -128,7 +131,11 @@ function StatCard({ icon, value, label, pulse, valueClassName }: StatCardProps) 
         <p className={`text-lg font-semibold leading-tight ${valueClassName ?? 'text-foreground'}`}>
           {value}
         </p>
-        <p className="text-[11px] text-muted truncate">{label}</p>
+        {tooltip ? (
+          <InfoTooltip term={label} description={tooltip} className="text-[11px] text-muted truncate" />
+        ) : (
+          <p className="text-[11px] text-muted truncate">{label}</p>
+        )}
       </div>
     </Card>
   )

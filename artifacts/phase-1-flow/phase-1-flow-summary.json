@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-02-28T00:31:04.325Z",
+  "status": "pass",
+  "checks": {
+    "modeChat": true,
+    "modeSwarm": true,
+    "modeProject": true,
+    "ticketingFlow": true,
+    "prdFlow": true,
+    "realAgentPresenceChecked": true
+  },
+  "realAgents": {
+    "mode": "in-app-only",
+    "configuredCount": 0,
+    "total": 3,
+    "matrix": [
+      {
+        "provider": "codex",
+        "inAppConfigured": false
+      },
+      {
+        "provider": "gemini",
+        "inAppConfigured": false
+      },
+      {
+        "provider": "claude",
+        "inAppConfigured": false
+      }
+    ]
+  }
+}

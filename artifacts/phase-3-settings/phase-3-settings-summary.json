@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-02-28T00:31:48.546Z",
+  "status": "pass",
+  "checks": [
+    {
+      "name": "settings-persisted",
+      "pass": true
+    },
+    {
+      "name": "settings-consumed-health",
+      "pass": true
+    }
+  ]
+}

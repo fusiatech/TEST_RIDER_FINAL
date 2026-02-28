@@ -4,8 +4,8 @@ export const CLI_REGISTRY: CLIDefinition[] = [
   {
     id: 'cursor',
     name: 'Cursor CLI',
-    command: 'cursor',
-    args: ['-p', '--force'],
+    command: 'cursor-agent',
+    args: ['-p', '--output-format', 'text', '--trust'],
     promptFlag: '',
     enabled: true,
     description: 'Cursor AI-powered code editor CLI',
@@ -199,7 +199,10 @@ export function getCLICommandFromFile(
   customTemplate?: string
 ): string {
   const sanitizedPromptFile = sanitizePath(promptFile)
-  const fileRef = `"$(cat ${shellEscape(sanitizedPromptFile)})"`
+  const fileRef =
+    process.platform === 'win32'
+      ? `"$(Get-Content -Raw ${shellEscape(sanitizedPromptFile)})"`
+      : `"$(cat ${shellEscape(sanitizedPromptFile)})"`
 
   if (provider === 'custom') {
     validateCustomTemplate(customTemplate!)
@@ -225,4 +228,3 @@ export function getCLICommandFromFile(
 
   return parts.join(' ')
 }
-

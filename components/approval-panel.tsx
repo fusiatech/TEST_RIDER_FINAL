@@ -361,7 +361,7 @@ function ApprovalHistoryEntry({ approval }: { approval: ApprovalEntry }) {
           <span className="text-muted-foreground">Level {approval.levelOrder}</span>
         </div>
         {approval.comment && (
-          <div className="text-muted-foreground mt-1 italic">"{approval.comment}"</div>
+          <div className="text-muted-foreground mt-1 italic">&quot;{approval.comment}&quot;</div>
         )}
         <div className="text-muted-foreground mt-0.5">
           {formatRelativeTime(approval.timestamp)}

@@ -130,7 +130,8 @@ export function NotificationCenter() {
         {unreadCount > 0 && (
           <span
             className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
-            aria-hidden="true"
+            role="status"
+            aria-label={`${unreadCount} unread notifications`}
           >
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -198,7 +199,7 @@ export function NotificationCenter() {
                   </p>
                 </div>
               ) : (
-                <div>
+                <div aria-live="polite" role="list" aria-label="Notification list">
                   {notifications.map((notification) => (
                     <NotificationItem
                       key={notification.id}

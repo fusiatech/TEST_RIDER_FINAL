@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm'
 import type { ChatMessage } from '@/lib/types'
 import { ROLE_LABELS } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { sanitizeOutputText } from '@/lib/output-sanitize'
 import { markdownComponents } from '@/components/code-block'
 import { ConfidenceBadge } from '@/components/confidence-badge'
 import { Badge } from '@/components/ui/badge'
@@ -32,14 +33,14 @@ function formatRelativeTime(timestamp: number): string {
 const extendedMarkdownComponents: Components = {
   ...markdownComponents,
   table: ({ children, ...props }) => (
-    <div className="my-3 overflow-x-auto rounded-lg border border-zinc-800">
+    <div className="my-3 overflow-x-auto rounded-lg border border-border">
       <table className="min-w-full text-sm" {...props}>
         {children}
       </table>
     </div>
   ),
   thead: ({ children, ...props }) => (
-    <thead className="bg-zinc-900/50 text-xs text-zinc-400" {...props}>
+    <thead className="bg-card/50 text-xs text-muted" {...props}>
       {children}
     </thead>
   ),
@@ -49,7 +50,7 @@ const extendedMarkdownComponents: Components = {
     </th>
   ),
   td: ({ children, ...props }) => (
-    <td className="border-t border-zinc-800 px-3 py-2 text-zinc-300" {...props}>
+    <td className="border-t border-border px-3 py-2 text-muted" {...props}>
       {children}
     </td>
   ),
@@ -60,7 +61,7 @@ const extendedMarkdownComponents: Components = {
   ),
   blockquote: ({ children, ...props }) => (
     <blockquote
-      className="my-3 border-l-2 border-primary/50 pl-4 italic text-zinc-400"
+      className="my-3 border-l-2 border-primary/50 pl-4 italic text-muted"
       {...props}
     >
       {children}
@@ -78,14 +79,16 @@ const extendedMarkdownComponents: Components = {
     </a>
   ),
   hr: (props) => (
-    <hr className="my-4 border-zinc-800" {...props} />
+    <hr className="my-4 border-border" {...props} />
   ),
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const [agentSummaryOpen, setAgentSummaryOpen] = useState(false)
+  const [logsOpen, setLogsOpen] = useState(false)
 
   const relativeTime = useMemo(() => formatRelativeTime(message.timestamp), [message.timestamp])
+  const safeContent = useMemo(() => sanitizeOutputText(message.content), [message.content])
 
   if (message.role === 'system') {
     return (
@@ -126,17 +129,44 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 remarkPlugins={[remarkGfm]}
                 components={extendedMarkdownComponents}
               >
-                {message.content}
+                {safeContent}
               </ReactMarkdown>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="text-[10px] text-muted/60">{relativeTime}</span>
-            {message.confidence !== undefined && (
+            {message.outputQualityPassed !== false && message.confidence !== undefined && (
               <ConfidenceBadge score={message.confidence} sources={message.sources} />
             )}
           </div>
+
+          {message.logs && message.logs.length > 0 && (
+            <Collapsible open={logsOpen} onOpenChange={setLogsOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 text-xs text-muted hover:text-foreground transition-colors">
+                  <ChevronDown
+                    className={cn(
+                      'h-3 w-3 transition-transform',
+                      logsOpen && 'rotate-180'
+                    )}
+                  />
+                  Agent logs ({message.logs.length})
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-border bg-background/70 p-2 text-xs">
+                  {message.logs.map((entry, index) => (
+                    <div key={`${entry.timestamp}-${index}`} className="mb-1 last:mb-0">
+                      <span className="text-muted">[{entry.level}]</span>{' '}
+                      {entry.agentId ? <span className="text-muted">{entry.agentId}: </span> : null}
+                      <span className="whitespace-pre-wrap text-foreground/90">{sanitizeOutputText(entry.text)}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
 
           {message.agents && message.agents.length > 0 && (
             <Collapsible open={agentSummaryOpen} onOpenChange={setAgentSummaryOpen}>

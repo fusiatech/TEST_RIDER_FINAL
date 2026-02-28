@@ -1,4 +1,4 @@
-import type { AgentInstance, SwarmResult } from '@/lib/types'
+import type { AgentInstance, EvidenceLedgerEntry, SwarmResult } from '@/lib/types'
 import {
   computeConfidence,
   computeConfidenceWithOptions,
@@ -12,6 +12,7 @@ import { validateOutputsSemantically } from '@/server/semantic-validator'
 import {
   factCheckOutput,
   computeFactCheckPenalty,
+  shouldEscalateForInsufficientEvidence,
   type FactCheckResult,
 } from '@/server/fact-checker'
 
@@ -35,6 +36,7 @@ export interface StageAnalysis {
   confidenceMethod?: 'jaccard' | 'semantic' | 'hybrid'
   factCheckResult?: FactCheckResult
   factCheckScore?: number
+  evidenceInsufficient?: boolean
 }
 
 export interface StageAnalysisOptions extends ConfidenceOptions {
@@ -47,6 +49,14 @@ export interface SecurityValidation {
   passed: boolean
   issues: string[]
   details: Array<{ check: string; passed: boolean; output: string }>
+}
+
+export interface RefusalDecision {
+  refuse: boolean
+  reason?: string
+  requiredEvidence: string[]
+  references: number
+  traceId?: string
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
@@ -200,6 +210,7 @@ export async function analyzeStageOutputsWithOptions(
   let factCheckResult: FactCheckResult | undefined
   let factCheckScore: number | undefined
   let adjustedConfidence = confidenceResult.score
+  let evidenceInsufficient = false
 
   if (enableFactChecking && projectPath && bestOutput.trim().length > 20) {
     try {
@@ -208,8 +219,14 @@ export async function analyzeStageOutputsWithOptions(
 
       const penalty = computeFactCheckPenalty(factCheckResult)
       adjustedConfidence = Math.max(0, confidenceResult.score - penalty)
+      evidenceInsufficient = shouldEscalateForInsufficientEvidence(factCheckResult)
+      if (evidenceInsufficient) {
+        adjustedConfidence = Math.min(adjustedConfidence, 25)
+      }
     } catch {
       // Fact checking failed, continue without it
+      evidenceInsufficient = true
+      adjustedConfidence = Math.min(adjustedConfidence, 25)
     }
   }
 
@@ -227,6 +244,7 @@ export async function analyzeStageOutputsWithOptions(
     confidenceMethod: confidenceResult.method,
     factCheckResult,
     factCheckScore,
+    evidenceInsufficient,
   }
 }
 
@@ -297,6 +315,45 @@ export function computeFinalConfidence(stageAnalyses: StageAnalysis[]): number {
 
   if (anyBelowFloor) return Math.min(result, 50)
   return result
+}
+
+export function evaluateEvidenceSufficiency(params: {
+  confidence: number
+  sourceCount: number
+  evidence?: EvidenceLedgerEntry
+}): RefusalDecision {
+  const logRefs = params.evidence?.logRefs?.length ?? 0
+  const diffRefs = params.evidence?.diffRefs?.length ?? 0
+  const testIds = params.evidence?.testIds?.length ?? 0
+  const artifactRefs = params.evidence?.artifactRefs?.length ?? 0
+  const references = logRefs + diffRefs + testIds + artifactRefs
+  const requiredEvidence = ['log_refs', 'diff_refs_or_test_ids', 'source_provenance']
+
+  if (params.confidence >= 40 && (params.sourceCount > 0 || references >= 2)) {
+    return {
+      refuse: false,
+      requiredEvidence,
+      references,
+      traceId: params.evidence?.traceId,
+    }
+  }
+
+  if (references >= 3) {
+    return {
+      refuse: false,
+      requiredEvidence,
+      references,
+      traceId: params.evidence?.traceId,
+    }
+  }
+
+  return {
+    refuse: true,
+    reason: 'Insufficient evidence for a reliable response',
+    requiredEvidence,
+    references,
+    traceId: params.evidence?.traceId,
+  }
 }
 
 /**

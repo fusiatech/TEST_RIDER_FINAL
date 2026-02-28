@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'node:crypto'
+import crypto from 'crypto'
 
 const CSRF_TOKEN_HEADER = 'x-csrf-token'
 const CSRF_COOKIE_NAME = '__Host-csrf-token'

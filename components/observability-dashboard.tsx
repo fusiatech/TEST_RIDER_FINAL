@@ -570,11 +570,25 @@ export function ObservabilityDashboard() {
     setRefreshing(true)
     fetchMetrics()
   }
+
+  const memoryUsage = metrics?.system?.memoryUsage ?? {
+    heapUsed: 0,
+    heapTotal: 0,
+    rss: 0,
+    external: 0,
+    heapUsagePercent: 0,
+  }
+
+  const systemMemory = metrics?.system?.systemMemory ?? {
+    usagePercent: 0,
+    freeMemMB: 0,
+    totalMemMB: 0,
+  }
   
   const getHealthStatus = (): HealthStatus => {
     if (loading || !metrics) return 'loading'
     
-    const memPercent = metrics.system.memoryUsage.heapUsagePercent
+    const memPercent = memoryUsage.heapUsagePercent
     const errorRate = metrics.errors.ratePerMinute
     const eventLoopLatency = metrics.system.eventLoopLatency
     
@@ -655,12 +669,12 @@ export function ObservabilityDashboard() {
         />
         <MetricCard
           title="Memory Usage"
-          value={`${metrics?.system.memoryUsage.heapUsagePercent.toFixed(1) || 0}%`}
-          subtitle={metrics ? formatBytes(metrics.system.memoryUsage.heapUsed) : '-'}
+          value={`${memoryUsage.heapUsagePercent.toFixed(1)}%`}
+          subtitle={metrics ? formatBytes(memoryUsage.heapUsed) : '-'}
           icon={Cpu}
           status={
-            (metrics?.system.memoryUsage.heapUsagePercent || 0) > 90 ? 'error' :
-            (metrics?.system.memoryUsage.heapUsagePercent || 0) > 70 ? 'warning' : 'success'
+            memoryUsage.heapUsagePercent > 90 ? 'error' :
+            memoryUsage.heapUsagePercent > 70 ? 'warning' : 'success'
           }
         />
         <MetricCard
@@ -832,17 +846,17 @@ export function ObservabilityDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Heap Used"
-              value={metrics ? formatBytes(metrics.system.memoryUsage.heapUsed) : '-'}
-              subtitle={`of ${metrics ? formatBytes(metrics.system.memoryUsage.heapTotal) : '-'}`}
+              value={metrics ? formatBytes(memoryUsage.heapUsed) : '-'}
+              subtitle={`of ${metrics ? formatBytes(memoryUsage.heapTotal) : '-'}`}
               icon={Database}
               status={
-                (metrics?.system.memoryUsage.heapUsagePercent || 0) > 90 ? 'error' :
-                (metrics?.system.memoryUsage.heapUsagePercent || 0) > 70 ? 'warning' : 'success'
+                memoryUsage.heapUsagePercent > 90 ? 'error' :
+                memoryUsage.heapUsagePercent > 70 ? 'warning' : 'success'
               }
             />
             <MetricCard
               title="RSS Memory"
-              value={metrics ? formatBytes(metrics.system.memoryUsage.rss) : '-'}
+              value={metrics ? formatBytes(memoryUsage.rss) : '-'}
               subtitle="Resident Set Size"
               icon={HardDrive}
             />
@@ -858,12 +872,12 @@ export function ObservabilityDashboard() {
             />
             <MetricCard
               title="System Memory"
-              value={`${metrics?.system.systemMemory.usagePercent.toFixed(1) || 0}%`}
-              subtitle={`${metrics?.system.systemMemory.freeMemMB.toFixed(0) || 0} MB free`}
+              value={`${systemMemory.usagePercent.toFixed(1)}%`}
+              subtitle={`${systemMemory.freeMemMB.toFixed(0)} MB free`}
               icon={Server}
               status={
-                (metrics?.system.systemMemory.usagePercent || 0) > 90 ? 'error' :
-                (metrics?.system.systemMemory.usagePercent || 0) > 70 ? 'warning' : 'success'
+                systemMemory.usagePercent > 90 ? 'error' :
+                systemMemory.usagePercent > 70 ? 'warning' : 'success'
               }
             />
           </div>
@@ -876,8 +890,8 @@ export function ObservabilityDashboard() {
               <CardContent>
                 {metrics && (
                   <MemoryGauge
-                    used={metrics.system.memoryUsage.heapUsed}
-                    total={metrics.system.memoryUsage.heapTotal}
+                    used={memoryUsage.heapUsed}
+                    total={memoryUsage.heapTotal}
                   />
                 )}
               </CardContent>

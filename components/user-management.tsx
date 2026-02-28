@@ -10,6 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +69,8 @@ export function UserManagement({ trigger }: UserManagementProps) {
   const [newUserRole, setNewUserRole] = useState<UserRole>('editor')
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [savingRole, setSavingRole] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const isAdmin = session?.user?.role === 'admin'
 
@@ -154,11 +166,16 @@ export function UserManagement({ trigger }: UserManagementProps) {
     }
   }
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return
+  const handleDeleteUserClick = (userId: string) => {
+    setPendingDeleteId(userId)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteUserConfirm = async () => {
+    if (!pendingDeleteId) return
 
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${pendingDeleteId}`, {
         method: 'DELETE',
       })
 
@@ -167,11 +184,14 @@ export function UserManagement({ trigger }: UserManagementProps) {
         throw new Error(data.error || 'Failed to delete user')
       }
 
-      setUsers((prev) => prev.filter((u) => u.id !== userId))
+      setUsers((prev) => prev.filter((u) => u.id !== pendingDeleteId))
       toast.success('User deleted successfully')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete user'
       toast.error(message)
+    } finally {
+      setPendingDeleteId(null)
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -390,7 +410,7 @@ export function UserManagement({ trigger }: UserManagementProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => handleDeleteUserClick(user.id)}
                             className="text-red-500 hover:text-red-400"
                             title="Delete user"
                           >
@@ -406,6 +426,23 @@ export function UserManagement({ trigger }: UserManagementProps) {
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDeleteUserConfirm}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

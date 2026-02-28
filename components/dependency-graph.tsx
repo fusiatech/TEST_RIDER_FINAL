@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import type { Ticket } from '@/lib/types'
+import type { Ticket, TicketStatus, TicketLevel } from '@/lib/types'
 import { buildDependencyGraph, type DependencyNode } from '@/lib/dependency-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   GitBranch,
   AlertTriangle,
   CheckCircle2,
@@ -21,6 +28,10 @@ import {
   Zap,
   ArrowRight,
   Info,
+  HelpCircle,
+  MousePointer,
+  Circle,
+  ArrowDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +41,7 @@ interface DependencyGraphProps {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  backlog: { bg: 'bg-zinc-500/20', border: 'border-zinc-500', text: 'text-zinc-400' },
+  backlog: { bg: 'bg-zinc-500/20', border: 'border-zinc-500', text: 'text-muted' },
   in_progress: { bg: 'bg-blue-500/20', border: 'border-blue-500', text: 'text-blue-400' },
   review: { bg: 'bg-yellow-500/20', border: 'border-yellow-500', text: 'text-yellow-400' },
   done: { bg: 'bg-green-500/20', border: 'border-green-500', text: 'text-green-400' },
@@ -212,6 +223,113 @@ function GraphEdgeComponent({
   )
 }
 
+function DependencyGraphHelp({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-primary" />
+            How to Read This Graph
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 py-4">
+          <div>
+            <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <Circle className="h-4 w-4 text-primary" />
+              What Nodes Represent
+            </h4>
+            <p className="text-sm text-muted">
+              Each box (node) represents a ticket in your project. The node shows the ticket title, complexity, and current status.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <ArrowDown className="h-4 w-4 text-primary" />
+              What Edges (Lines) Represent
+            </h4>
+            <p className="text-sm text-muted">
+              Lines connecting nodes show dependencies. An arrow from ticket A to ticket B means B depends on A — ticket A must be completed before B can start.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-foreground mb-3">
+              Color Legend
+            </h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-green-500" />
+                <span className="text-sm text-muted">Done/Approved - Ticket is complete</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-blue-500" />
+                <span className="text-sm text-muted">In Progress - Currently being worked on</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-yellow-500" />
+                <span className="text-sm text-muted">Review - Awaiting approval</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-zinc-500" />
+                <span className="text-sm text-muted">Backlog - Not yet started</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-3 rounded-full bg-red-500" />
+                <span className="text-sm text-muted">Rejected/Blocked - Needs attention</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-6 rounded border-2 border-orange-500" />
+                <span className="text-sm text-muted">Critical Path - Longest chain of dependencies</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+              <MousePointer className="h-4 w-4 text-primary" />
+              How to Interact
+            </h4>
+            <ul className="text-sm text-muted space-y-1.5">
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>Click</strong> on any ticket to view its details and dependencies</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>Scroll</strong> horizontally/vertically to navigate large graphs</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                <span><strong>Hover</strong> over nodes to highlight them</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-lg bg-orange-500/10 border border-orange-500/30 p-3">
+            <div className="flex items-start gap-2">
+              <Zap className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-orange-400">About the Critical Path</div>
+                <p className="text-xs text-orange-400/80 mt-1">
+                  The critical path (highlighted in orange) shows the longest chain of dependent tickets. Delays on this path directly impact your project timeline.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function TicketDetailDialog({
   ticket,
   allTickets,
@@ -334,10 +452,43 @@ function TicketDetailDialog({
   )
 }
 
+function isTicketBlocked(ticket: Ticket, allTickets: Ticket[]): boolean {
+  const ticketMap = new Map(allTickets.map((t) => [t.id, t]))
+  
+  if (ticket.blockedBy && ticket.blockedBy.length > 0) {
+    return ticket.blockedBy.some((id) => {
+      const blocker = ticketMap.get(id)
+      return blocker && blocker.status !== 'done' && blocker.status !== 'approved'
+    })
+  }
+  
+  if (ticket.dependencies.length > 0) {
+    return ticket.dependencies.some((id) => {
+      const dep = ticketMap.get(id)
+      return dep && dep.status !== 'done' && dep.status !== 'approved'
+    })
+  }
+  
+  return false
+}
+
 export function DependencyGraph({ tickets, onTicketClick }: DependencyGraphProps) {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all')
+  const [levelFilter, setLevelFilter] = useState<TicketLevel | 'all'>('all')
+  const [showBlockedOnly, setShowBlockedOnly] = useState(false)
 
-  const graph = useMemo(() => buildDependencyGraph(tickets), [tickets])
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      if (statusFilter !== 'all' && t.status !== statusFilter) return false
+      if (levelFilter !== 'all' && t.level !== levelFilter) return false
+      if (showBlockedOnly && !isTicketBlocked(t, tickets)) return false
+      return true
+    })
+  }, [tickets, statusFilter, levelFilter, showBlockedOnly])
+
+  const graph = useMemo(() => buildDependencyGraph(filteredTickets), [filteredTickets])
   const { graphNodes, graphEdges } = useMemo(
     () => calculateLayout(graph.nodes, graph.criticalPath),
     [graph]
@@ -401,6 +552,70 @@ export function DependencyGraph({ tickets, onTicketClick }: DependencyGraphProps
     )
   }
 
+  if (filteredTickets.length === 0 && tickets.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Dependency Graph</h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TicketStatus | 'all')}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="backlog">Backlog</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="review">Review</SelectItem>
+                <SelectItem value="done">Done</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as TicketLevel | 'all')}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="feature">Feature</SelectItem>
+                <SelectItem value="epic">Epic</SelectItem>
+                <SelectItem value="story">Story</SelectItem>
+                <SelectItem value="task">Task</SelectItem>
+                <SelectItem value="subtask">Subtask</SelectItem>
+                <SelectItem value="subatomic">Subatomic</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showBlockedOnly}
+                onChange={(e) => setShowBlockedOnly(e.target.checked)}
+                className="rounded"
+              />
+              Blocked only
+            </label>
+          </div>
+        </div>
+        <Card className="border-border">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <GitBranch className="h-10 w-10 text-muted mb-3" />
+            <h4 className="text-sm font-medium text-foreground">No tickets match the current filters</h4>
+            <p className="text-xs text-muted mt-1">
+              Try adjusting your filter criteria to see more tickets
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -428,6 +643,55 @@ export function DependencyGraph({ tickets, onTicketClick }: DependencyGraphProps
             </span>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TicketStatus | 'all')}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="backlog">Backlog</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as TicketLevel | 'all')}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Levels</SelectItem>
+              <SelectItem value="feature">Feature</SelectItem>
+              <SelectItem value="epic">Epic</SelectItem>
+              <SelectItem value="story">Story</SelectItem>
+              <SelectItem value="task">Task</SelectItem>
+              <SelectItem value="subtask">Subtask</SelectItem>
+              <SelectItem value="subatomic">Subatomic</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showBlockedOnly}
+              onChange={(e) => setShowBlockedOnly(e.target.checked)}
+              className="rounded"
+            />
+            Blocked only
+          </label>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => setShowHelp(true)}
+        >
+          <HelpCircle className="h-4 w-4" />
+          How to read this graph
+        </Button>
       </div>
 
       {graph.hasCircularDependency && (
@@ -532,6 +796,11 @@ export function DependencyGraph({ tickets, onTicketClick }: DependencyGraphProps
         allTickets={tickets}
         open={!!selectedTicket}
         onClose={() => setSelectedTicketId(null)}
+      />
+
+      <DependencyGraphHelp
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
       />
     </div>
   )

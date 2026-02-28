@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSwarmStore } from '@/lib/store'
 import type { AppMode } from '@/lib/store'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
@@ -17,6 +18,7 @@ import { IdeationBot } from '@/components/ideation-bot'
 import { PromptLibrary } from '@/components/prompt-library'
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog'
 import { NotificationCenter } from '@/components/notification-center'
+import { Tooltip } from '@/components/ui/tooltip'
 import {
   Plus,
   Trash2,
@@ -32,6 +34,7 @@ import {
   Lightbulb,
   Inbox,
   BookOpen,
+  Gauge,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -55,6 +58,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function Sidebar() {
+  const router = useRouter()
   const sessions = useSwarmStore((s) => s.sessions)
   const currentSessionId = useSwarmStore((s) => s.currentSessionId)
   const sidebarOpen = useSwarmStore((s) => s.sidebarOpen)
@@ -63,7 +67,6 @@ export function Sidebar() {
   const switchSession = useSwarmStore((s) => s.switchSession)
   const deleteSession = useSwarmStore((s) => s.deleteSession)
   const toggleSidebar = useSwarmStore((s) => s.toggleSidebar)
-  const toggleSettings = useSwarmStore((s) => s.toggleSettings)
   const mode = useSwarmStore((s) => s.mode)
   const setMode = useSwarmStore((s) => s.setMode)
   const sessionsLoading = useSwarmStore((s) => s.sessionsLoading)
@@ -76,6 +79,13 @@ export function Sidebar() {
   const activePanel = useSwarmStore((s) => s.activePanel)
   const setActivePanel = useSwarmStore((s) => s.setActivePanel)
   const hydrateSidebar = useSwarmStore((s) => s.hydrateSidebar)
+  const contextTokensUsed = useSwarmStore((s) => s.contextTokensUsed)
+  const contextWindowTokens = useSwarmStore((s) => s.contextWindowTokens)
+  const contextTokenPercent = useSwarmStore((s) => s.contextTokenPercent)
+  const contextCompactionStatus = useSwarmStore((s) => s.contextCompactionStatus)
+  const lastContextCompactionAt = useSwarmStore((s) => s.lastContextCompactionAt)
+  const contextCompactionCount = useSwarmStore((s) => s.contextCompactionCount)
+  const tokenPressureEvents = useSwarmStore((s) => s.tokenPressureEvents)
   
   const [showPromptLibrary, setShowPromptLibrary] = useState(false)
 
@@ -93,6 +103,28 @@ export function Sidebar() {
 
   const jobCount = jobs.filter((j) => j.status === 'queued' || j.status === 'running').length
   const enabledTaskCount = scheduledTasks.filter((t) => t.enabled).length
+  const contextPercentRounded = Math.round(contextTokenPercent)
+  const contextStatusTone =
+    contextTokenPercent >= 95
+      ? 'text-red-400 border-red-500/40 bg-red-500/10'
+      : contextTokenPercent >= 85
+        ? 'text-amber-300 border-amber-500/40 bg-amber-500/10'
+        : contextTokenPercent >= 70
+          ? 'text-yellow-300 border-yellow-500/40 bg-yellow-500/10'
+          : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+  const lastCompactionLabel = lastContextCompactionAt
+    ? new Date(lastContextCompactionAt).toLocaleTimeString()
+    : 'Never'
+  const contextTooltip = [
+    'Codex Context',
+    `Window: ${contextWindowTokens.toLocaleString()} tokens`,
+    `Used: ${contextTokensUsed.toLocaleString()} (${contextPercentRounded}%)`,
+    `Status: ${contextCompactionStatus}`,
+    'Auto-compact: 70% warn · 85% soft · 95% hard',
+    `Compactions: ${contextCompactionCount}`,
+    `Pressure events: ${tokenPressureEvents}`,
+    `Last compacted: ${lastCompactionLabel}`,
+  ].join('\n')
 
   const handleDeleteSession = useCallback((id: string, title: string) => {
     setPendingDeletion({ type: 'session', id, name: title })
@@ -148,6 +180,7 @@ export function Sidebar() {
                     ? 'bg-primary text-background shadow-sm'
                     : 'text-muted hover:text-foreground'
                 )}
+                data-testid={`mode-${opt.value}`}
               >
                 <opt.Icon className="h-3.5 w-3.5" />
                 {opt.label}
@@ -164,6 +197,7 @@ export function Sidebar() {
               variant="outline"
               className="w-full justify-start gap-2"
               onClick={() => createSession()}
+              data-testid="new-session-button"
             >
               <Plus className="h-4 w-4" />
               New Chat
@@ -300,6 +334,25 @@ export function Sidebar() {
             ))}
           </div>
 
+          <Tooltip content={contextTooltip} contentClassName="whitespace-pre-line max-w-sm" side="top">
+            <button
+              type="button"
+              className={cn(
+                'w-full rounded-md border px-2 py-1.5 text-left transition-colors',
+                contextStatusTone
+              )}
+              aria-label={`Codex Context ${contextPercentRounded}% used, status ${contextCompactionStatus}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+                  <Gauge className="h-3.5 w-3.5" />
+                  Codex Context
+                </span>
+                <span className="text-xs font-semibold">{contextPercentRounded}%</span>
+              </div>
+            </button>
+          </Tooltip>
+
           <div className="flex items-center gap-1 px-1">
             <Button
               variant={activePanel === 'queue' ? 'default' : 'ghost'}
@@ -360,8 +413,9 @@ export function Sidebar() {
           <Button
             variant="ghost"
             className="w-full justify-start gap-2 text-muted hover:text-foreground"
-            onClick={toggleSettings}
+            onClick={() => router.push('/settings')}
             aria-label="Open settings"
+            data-testid="settings-button"
           >
             <Settings className="h-4 w-4" />
             Settings

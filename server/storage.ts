@@ -1,6 +1,6 @@
 import { Low } from 'lowdb'
 import { JSONFile } from 'lowdb/node'
-import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, TestRunSummary, ApiKeys, User, Workspace, AuditLogEntry, AuditLogFilter, Prompt, PromptVersion, Tenant, PersistedTerminalSession, TicketTemplate } from '@/lib/types'
+import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, TestRunSummary, ApiKeys, User, Workspace, AuditLogEntry, AuditLogFilter, Prompt, PromptVersion, Tenant, PersistedTerminalSession, TicketTemplate, RunRecord, ArtifactRecord } from '@/lib/types'
 import { DEFAULT_SETTINGS } from '@/lib/types'
 import type { Extension, ExtensionConfig } from '@/lib/extensions'
 import path from 'node:path'
@@ -14,12 +14,16 @@ interface DbSchema {
   settings: Settings
   projects: Project[]
   jobs: SwarmJob[]
+  runs: RunRecord[]
+  artifacts: ArtifactRecord[]
   scheduledTasks: ScheduledTask[]
   evidence: EvidenceLedgerEntry[]
   testRuns: TestRunSummary[]
   extensions: Extension[]
   extensionConfigs: ExtensionConfig[]
   users: User[]
+  userCredentials: Record<string, string>
+  userApiKeys: Record<string, ApiKeys>
   workspaces: Workspace[]
   auditLog: AuditLogEntry[]
   prompts: Prompt[]
@@ -33,12 +37,16 @@ const DEFAULT_DATA: DbSchema = {
   settings: DEFAULT_SETTINGS,
   projects: [],
   jobs: [],
+  runs: [],
+  artifacts: [],
   scheduledTasks: [],
   evidence: [],
   testRuns: [],
   extensions: [],
   extensionConfigs: [],
   users: [],
+  userCredentials: {},
+  userApiKeys: {},
   workspaces: [],
   auditLog: [],
   prompts: [],
@@ -67,11 +75,15 @@ export async function getDb(): Promise<Low<DbSchema>> {
     if (!db.data.extensions) db.data.extensions = []
     if (!db.data.extensionConfigs) db.data.extensionConfigs = []
     if (!db.data.users) db.data.users = []
+    if (!db.data.userCredentials) db.data.userCredentials = {}
+    if (!db.data.userApiKeys) db.data.userApiKeys = {}
     if (!db.data.auditLog) db.data.auditLog = []
     if (!db.data.prompts) db.data.prompts = []
     if (!db.data.tenants) db.data.tenants = []
     if (!db.data.terminalSessions) db.data.terminalSessions = []
     if (!db.data.ticketTemplates) db.data.ticketTemplates = []
+    if (!db.data.runs) db.data.runs = []
+    if (!db.data.artifacts) db.data.artifacts = []
 
     dbInstance = db
     return db
@@ -178,6 +190,26 @@ async function migrateApiKeysIfNeeded(db: Low<DbSchema>): Promise<boolean> {
   return false
 }
 
+function readApiKeysFromEnv(): ApiKeys | undefined {
+  const mapped: ApiKeys = {
+    openai: process.env.OPENAI_API_KEY || process.env.CHATGPT || process.env.CODEX,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    google: process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY,
+    github: process.env.GITHUB_TOKEN,
+    huggingface: process.env.HUGGINGFACE_API_KEY,
+    codex: process.env.CODEX || process.env.OPENAI_API_KEY || process.env.CHATGPT,
+    gemini: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+    claude: process.env.ANTHROPIC_API_KEY,
+    cursor: process.env.CURSOR_API_KEY,
+    copilot: process.env.GITHUB_TOKEN,
+    rovo: process.env.ROVO_DEV,
+    custom: process.env.CUSTOM_API_KEY,
+  }
+  const hasAny = Object.values(mapped).some((v) => Boolean(v && v.trim()))
+  if (!hasAny) return undefined
+  return mapped
+}
+
 export async function getSettings(): Promise<Settings> {
   const db = await getDb()
   
@@ -197,6 +229,66 @@ export async function saveSettings(settings: Settings): Promise<void> {
   
   db.data.settings = settingsToSave
   await db.write()
+}
+
+export async function getUserApiKeys(userId: string): Promise<ApiKeys | undefined> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return undefined
+  const db = await getDb()
+  if (!db.data.userApiKeys) {
+    db.data.userApiKeys = {}
+  }
+  if (db.data.userApiKeys[''] && !db.data.userApiKeys[normalizedUserId]) {
+    db.data.userApiKeys[normalizedUserId] = db.data.userApiKeys['']
+    delete db.data.userApiKeys['']
+    await db.write()
+  }
+  let encrypted = db.data.userApiKeys[normalizedUserId]
+  if (!encrypted) {
+    await migrateApiKeysIfNeeded(db)
+    const legacyApiKeys = db.data.settings.apiKeys
+    const hasLegacy = legacyApiKeys && Object.values(legacyApiKeys).some(Boolean)
+    if (hasLegacy) {
+      encrypted = legacyApiKeys
+      db.data.userApiKeys[normalizedUserId] = legacyApiKeys
+      db.data.settings.apiKeys = {}
+      await db.write()
+      logger.info('Migrated legacy global API keys to user profile', { userId: normalizedUserId })
+    } else {
+      const envApiKeys = readApiKeysFromEnv()
+      if (envApiKeys) {
+        const encryptedEnvKeys = encryptApiKeys(envApiKeys) ?? {}
+        db.data.userApiKeys[normalizedUserId] = encryptedEnvKeys
+        await db.write()
+        encrypted = encryptedEnvKeys
+        logger.info('Imported runtime env API keys into user profile', { userId: normalizedUserId })
+      }
+    }
+  }
+  return decryptApiKeys(encrypted)
+}
+
+export async function saveUserApiKeys(userId: string, apiKeys: ApiKeys): Promise<void> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return
+  const db = await getDb()
+  if (!db.data.userApiKeys) {
+    db.data.userApiKeys = {}
+  }
+  db.data.userApiKeys[normalizedUserId] = encryptApiKeys(apiKeys) ?? {}
+  if (db.data.userApiKeys['']) {
+    delete db.data.userApiKeys['']
+  }
+  await db.write()
+}
+
+export async function getEffectiveSettingsForUser(userId: string): Promise<Settings> {
+  const settings = await getSettings()
+  const userApiKeys = await getUserApiKeys(userId)
+  return {
+    ...settings,
+    apiKeys: userApiKeys,
+  }
 }
 
 /* ── Projects ─────────────────────────────────────────────────── */
@@ -262,6 +354,67 @@ export async function saveJob(job: SwarmJob): Promise<void> {
 export async function deleteJob(id: string): Promise<void> {
   const db = await getDb()
   db.data.jobs = db.data.jobs.filter((j) => j.id !== id)
+  await db.write()
+}
+
+export async function getRuns(): Promise<RunRecord[]> {
+  const db = await getDb()
+  if (!db.data.runs) {
+    db.data.runs = []
+  }
+  return db.data.runs
+}
+
+export async function getRun(id: string): Promise<RunRecord | undefined> {
+  const db = await getDb()
+  if (!db.data.runs) {
+    db.data.runs = []
+  }
+  return db.data.runs.find((r) => r.id === id)
+}
+
+export async function saveRun(run: RunRecord): Promise<void> {
+  const db = await getDb()
+  if (!db.data.runs) {
+    db.data.runs = []
+  }
+  const idx = db.data.runs.findIndex((r) => r.id === run.id)
+  if (idx >= 0) {
+    db.data.runs[idx] = run
+  } else {
+    db.data.runs.push(run)
+  }
+  await db.write()
+}
+
+export async function deleteRun(id: string): Promise<void> {
+  const db = await getDb()
+  if (!db.data.runs) {
+    db.data.runs = []
+  }
+  db.data.runs = db.data.runs.filter((r) => r.id !== id)
+  await db.write()
+}
+
+export async function getArtifactsByRun(runId: string): Promise<ArtifactRecord[]> {
+  const db = await getDb()
+  if (!db.data.artifacts) {
+    db.data.artifacts = []
+  }
+  return db.data.artifacts.filter((a) => a.runId === runId)
+}
+
+export async function saveArtifact(artifact: ArtifactRecord): Promise<void> {
+  const db = await getDb()
+  if (!db.data.artifacts) {
+    db.data.artifacts = []
+  }
+  const idx = db.data.artifacts.findIndex((a) => a.id === artifact.id)
+  if (idx >= 0) {
+    db.data.artifacts[idx] = artifact
+  } else {
+    db.data.artifacts.push(artifact)
+  }
   await db.write()
 }
 
@@ -340,6 +493,19 @@ export async function updateEvidence(
     fileSnapshots: update.fileSnapshots ?? existing.fileSnapshots,
     testResults: update.testResults ?? existing.testResults,
     screenshots: update.screenshots ?? existing.screenshots,
+    logRefs: update.logRefs
+      ? [...(existing.logRefs ?? []), ...update.logRefs]
+      : existing.logRefs,
+    diffRefs: update.diffRefs
+      ? [...(existing.diffRefs ?? []), ...update.diffRefs]
+      : existing.diffRefs,
+    testIds: update.testIds
+      ? [...(existing.testIds ?? []), ...update.testIds]
+      : existing.testIds,
+    artifactRefs: update.artifactRefs
+      ? [...(existing.artifactRefs ?? []), ...update.artifactRefs]
+      : existing.artifactRefs,
+    traceId: update.traceId ?? existing.traceId,
   }
   db.data.evidence[idx] = merged
   await db.write()
@@ -472,9 +638,29 @@ export async function saveUser(user: User): Promise<void> {
   await db.write()
 }
 
+export async function getUserPasswordHash(userId: string): Promise<string | undefined> {
+  const db = await getDb()
+  if (!db.data.userCredentials) {
+    db.data.userCredentials = {}
+  }
+  return db.data.userCredentials[userId]
+}
+
+export async function saveUserPasswordHash(userId: string, passwordHash: string): Promise<void> {
+  const db = await getDb()
+  if (!db.data.userCredentials) {
+    db.data.userCredentials = {}
+  }
+  db.data.userCredentials[userId] = passwordHash
+  await db.write()
+}
+
 export async function deleteUser(id: string): Promise<void> {
   const db = await getDb()
   db.data.users = db.data.users.filter((u) => u.id !== id)
+  if (db.data.userCredentials) {
+    delete db.data.userCredentials[id]
+  }
   await db.write()
 }
 

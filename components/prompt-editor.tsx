@@ -21,6 +21,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -69,6 +79,7 @@ export function PromptEditor({ className }: PromptEditorProps) {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false)
   const [showDiffDialog, setShowDiffDialog] = useState(false)
   const [diffVersions, setDiffVersions] = useState<{ v1: PromptVersion | null; v2: PromptVersion | null }>({ v1: null, v2: null })
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   
   const [newPrompt, setNewPrompt] = useState({
     name: '',
@@ -210,12 +221,13 @@ export function PromptEditor({ className }: PromptEditorProps) {
     }
   }
 
-  const deletePrompt = async () => {
+  const handleDeleteClick = () => {
     if (!selectedPrompt) return
-    
-    if (!confirm(`Are you sure you want to delete "${selectedPrompt.name}"?`)) {
-      return
-    }
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedPrompt) return
     
     setSaving(true)
     try {
@@ -236,6 +248,7 @@ export function PromptEditor({ className }: PromptEditorProps) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete prompt')
     } finally {
       setSaving(false)
+      setDeleteDialogOpen(false)
     }
   }
 
@@ -508,7 +521,7 @@ export function PromptEditor({ className }: PromptEditorProps) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={deletePrompt}
+                  onClick={handleDeleteClick}
                   disabled={saving}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -609,6 +622,23 @@ export function PromptEditor({ className }: PromptEditorProps) {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{selectedPrompt?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

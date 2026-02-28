@@ -1,0 +1,40 @@
+[2026-02-27T23:25:48.146Z] [dev] [dev-local] Starting SwarmUI at http://127.0.0.1:4100 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+[2026-02-27T23:25:54.412Z] [dev]  ○ Compiling /instrumentation ...
+[2026-02-27T23:25:54.465Z] [dev]  ✓ Compiled /instrumentation in 1017ms (290 modules)
+[2026-02-27T23:25:54.806Z] [dev] [telemetry] OpenTelemetry initialized for swarm-ui
+[2026-02-27T23:25:54.806Z] [dev] [telemetry] Exporting traces to http://localhost:4318/v1/traces
+[2026-02-27T23:25:54.827Z] [dev] [36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[2026-02-27T23:25:54.828Z] [dev] [36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[2026-02-27T23:25:54.829Z] [dev] [36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[2026-02-27T23:25:54.831Z] [dev] [36mINFO [0m [server] SwarmUI ready on http://127.0.0.1:4100
+[2026-02-27T23:25:54.832Z] [dev] [36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[2026-02-27T23:25:54.832Z] [dev] [36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[2026-02-27T23:25:54.833Z] [dev] [36mINFO [0m [server] Mode: development
+[2026-02-27T23:25:54.834Z] [dev] [36mINFO [0m [ws-server] Scheduler initialized and started
+[2026-02-27T23:25:55.363Z] [dev]  ✓ Compiled /middleware in 161ms (160 modules)
+[2026-02-27T23:25:55.483Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:25:55.483Z","requestId":"8f50fef0-7346-4318-853d-0486cdb212ef","method":"GET","path":"/api/health/live","durationMs":1,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:25:55.997Z] [dev]  ○ Compiling /api/health/live ...
+[2026-02-27T23:25:57.407Z] [dev]  ✓ Compiled /api/health/live in 1910ms (612 modules)
+[2026-02-27T23:25:57.631Z] [dev]  GET /api/health/live 200 in 2140ms
+[2026-02-27T23:25:57.645Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:25:57.645Z","requestId":"1fc51c3c-8a65-405d-b6b7-0080512d2584","method":"GET","path":"/api/health/ready","durationMs":0,"userAgent":"node","ip":"127.0.0.1"}}
+[2026-02-27T23:25:58.162Z] [dev]  ○ Compiling /api/health/ready ...
+[2026-02-27T23:25:58.970Z] [dev]  ✓ Compiled /api/health/ready in 1310ms (1095 modules)
+[2026-02-27T23:25:59.344Z] Server ready at http://127.0.0.1:4100
+[2026-02-27T23:25:59.344Z] Running mode case: chat
+[2026-02-27T23:25:59.348Z] [dev]  GET /api/health/ready 200 in 1697ms
+[2026-02-27T23:25:59.351Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:25:59.354Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-1772234759344-session","mode":"chat","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Answer in one concise sentence: what does this cha"}
+[2026-02-27T23:26:01.666Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:26:01.665Z","requestId":"5d531a8e-e350-4be0-bf85-6671e9106209","method":"GET","path":"/api/ws","durationMs":1,"ip":"127.0.0.1"}}
+[2026-02-27T23:26:04.431Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-1772234759344-session","mode":"chat","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Answer in one concise sentence: what does this cha"}
+[2026-02-27T23:26:07.653Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-27T23:26:08.064Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:26:08.065Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"chat-1772234759344-session","mode":"chat","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Answer in one concise sentence: what does this cha"}
+[2026-02-27T23:26:08.298Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:26:08.297Z","requestId":"65ed99f6-71a7-430c-b723-d6181d84a563","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-27T23:26:11.231Z] Mode chat passed
+[2026-02-27T23:26:11.232Z] Running mode case: swarm
+[2026-02-27T23:26:11.236Z] [dev] [36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[2026-02-27T23:26:11.238Z] [dev] [36mINFO [0m [ws-server] start-swarm received {"sessionId":"swarm-1772234771232-session","mode":"swarm","agentSelectionMode":"auto","traceModeValidation":true,"prompt":"Perform a multi-step code quality task: inspect, p"}
+[2026-02-27T23:26:11.347Z] [dev] [36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[2026-02-27T23:26:11.501Z] [dev] {"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-27T23:26:11.501Z","requestId":"bd06f0b1-4288-4d7d-b054-4382034953bf","method":"GET","path":"/api/ws","durationMs":0,"ip":"127.0.0.1"}}
+[2026-02-27T23:27:26.712Z] [dev]  ✓ Compiled in 357ms (278 modules)
+[2026-02-27T23:28:11.716Z] Fatal mode smoke error: Timed out waiting for websocket message

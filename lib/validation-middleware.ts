@@ -74,6 +74,15 @@ export interface ValidationSchemas<TBody = unknown, TQuery = unknown, TParams = 
   params?: ZodSchema<TParams>
 }
 
+type RouteParams = Record<string, string | string[]>
+type RouteContext = { params: Promise<RouteParams> }
+
+type ValidatedRouteHandlerNoParams = (request: NextRequest) => Promise<NextResponse>
+type ValidatedRouteHandlerWithParams = (
+  request: NextRequest,
+  context: RouteContext
+) => Promise<NextResponse>
+
 /**
  * Parse query parameters from URL search params
  */
@@ -121,13 +130,36 @@ export function withValidation<
   TQuery = unknown,
   TParams = unknown
 >(
+  schemas: ValidationSchemas<TBody, TQuery, TParams> & { params: ZodSchema<TParams> },
+  handler: ValidatedHandler<TBody, TQuery, TParams>,
+  options?: ValidationOptions
+): ValidatedRouteHandlerWithParams
+
+export function withValidation<
+  TBody = unknown,
+  TQuery = unknown,
+  TParams = unknown
+>(
+  schemas: ValidationSchemas<TBody, TQuery, TParams>,
+  handler: ValidatedHandler<TBody, TQuery, TParams>,
+  options?: ValidationOptions
+): ValidatedRouteHandlerNoParams
+
+export function withValidation<
+  TBody = unknown,
+  TQuery = unknown,
+  TParams = unknown
+>(
   schemas: ValidationSchemas<TBody, TQuery, TParams>,
   handler: ValidatedHandler<TBody, TQuery, TParams>,
   options: ValidationOptions = {}
-): (request: NextRequest, context?: { params?: Promise<Record<string, string>> }) => Promise<NextResponse> {
+): ValidatedRouteHandlerNoParams | ValidatedRouteHandlerWithParams {
   const { stripUnknown = true, errorStatus = 400 } = options
 
-  return async (request: NextRequest, context?: { params?: Promise<Record<string, string>> }): Promise<NextResponse> => {
+  const routeHandler = async (
+    request: NextRequest,
+    context?: RouteContext
+  ): Promise<NextResponse> => {
     try {
       let validatedBody: TBody = undefined as TBody
       let validatedQuery: TQuery = undefined as TQuery
@@ -173,7 +205,7 @@ export function withValidation<
 
       // Validate route params if schema provided
       if (schemas.params) {
-        const rawParams = context?.params ? await context.params : {}
+        const rawParams = context ? await context.params : {}
         const paramsResult = schemas.params.safeParse(rawParams)
         if (!paramsResult.success) {
           return NextResponse.json(formatZodError(paramsResult.error), { status: errorStatus })
@@ -194,6 +226,12 @@ export function withValidation<
       return NextResponse.json({ error: message }, { status: 500 })
     }
   }
+
+  if (schemas.params) {
+    return routeHandler as ValidatedRouteHandlerWithParams
+  }
+
+  return ((request: NextRequest) => routeHandler(request)) as ValidatedRouteHandlerNoParams
 }
 
 /**

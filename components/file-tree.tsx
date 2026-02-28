@@ -45,6 +45,8 @@ interface FileTreeProps {
   onSelect: (path: string) => void
   selectedPath?: string
   onRefresh?: () => void
+  expandPaths?: string[]
+  onExpandPathsHandled?: () => void
 }
 
 interface FileTreeNodeProps {
@@ -58,6 +60,7 @@ interface FileTreeNodeProps {
   onRenameEnd?: () => void
   onNewItem?: (parentPath: string, type: 'file' | 'directory') => void
   onDelete?: (node: FileNode) => void
+  isFocused?: boolean
 }
 
 interface NewItemInputProps {
@@ -272,6 +275,7 @@ function FileTreeNodeRow({
   onRenameEnd,
   onNewItem,
   onDelete,
+  isFocused = false,
 }: FileTreeNodeProps) {
   const { node, depth, isExpanded, hasChildren, isLoading } = flatNode
   const isSelected = selectedPath === node.path
@@ -306,11 +310,16 @@ function FileTreeNodeRow({
       <ContextMenuTrigger asChild>
         <button
           onClick={handleClick}
+          role="treeitem"
+          aria-selected={isSelected}
+          aria-expanded={isDir ? isExpanded : undefined}
+          tabIndex={isFocused ? 0 : -1}
           className={cn(
             'flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-xs transition-colors h-[26px]',
             isSelected
               ? 'bg-primary/15 text-primary'
-              : 'text-muted hover:bg-secondary/50 hover:text-foreground'
+              : 'text-muted hover:bg-secondary/50 hover:text-foreground',
+            isFocused && 'ring-1 ring-primary/50 ring-inset'
           )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -373,13 +382,16 @@ function FileTreeNodeRow({
   )
 }
 
-export function FileTree({ files, onSelect, selectedPath, onRefresh }: FileTreeProps) {
+const TREE_INSTRUCTIONS_ID = 'file-tree-keyboard-instructions'
+
+export function FileTree({ files, onSelect, selectedPath, onRefresh, expandPaths, onExpandPathsHandled }: FileTreeProps) {
   const [renamingPath, setRenamingPath] = useState<string | null>(null)
   const [newItemState, setNewItemState] = useState<{ parentPath: string; type: 'file' | 'directory' } | null>(null)
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [loadedChildren, setLoadedChildren] = useState<Map<string, FileNode[]>>(new Map())
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set())
   const [deleteNode, setDeleteNode] = useState<FileNode | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
   const parentRef = useRef<HTMLDivElement>(null)
   const scrollPositionRef = useRef<number>(0)
 
@@ -393,6 +405,35 @@ export function FileTree({ files, onSelect, selectedPath, onRefresh }: FileTreeP
       isLazyLoaded: true,
     }))
   }, [])
+
+  useEffect(() => {
+    if (expandPaths && expandPaths.length > 0) {
+      const expandPathsSequentially = async () => {
+        for (const path of expandPaths) {
+          if (!expandedPaths.has(path)) {
+            if (!loadedChildren.has(path)) {
+              setLoadingPaths(prev => new Set(prev).add(path))
+              try {
+                const children = await loadDirectory(path)
+                setLoadedChildren(prev => new Map(prev).set(path, children))
+              } catch {
+                setLoadedChildren(prev => new Map(prev).set(path, []))
+              } finally {
+                setLoadingPaths(prev => {
+                  const next = new Set(prev)
+                  next.delete(path)
+                  return next
+                })
+              }
+            }
+            setExpandedPaths(prev => new Set(prev).add(path))
+          }
+        }
+        onExpandPathsHandled?.()
+      }
+      void expandPathsSequentially()
+    }
+  }, [expandPaths, onExpandPathsHandled, expandedPaths, loadedChildren, loadDirectory])
 
   const handleToggle = useCallback(async (path: string) => {
     const isExpanded = expandedPaths.has(path)
@@ -516,8 +557,65 @@ export function FileTree({ files, onSelect, selectedPath, onRefresh }: FileTreeP
 
   const virtualItems = rowVirtualizer.getVirtualItems()
 
+  const handleTreeKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (flattenedNodes.length === 0) return
+
+    const currentIndex = focusedIndex >= 0 ? focusedIndex : 0
+    const currentNode = flattenedNodes[currentIndex]
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusedIndex(Math.min(currentIndex + 1, flattenedNodes.length - 1))
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusedIndex(Math.max(currentIndex - 1, 0))
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        if (currentNode?.node.type === 'directory' && !currentNode.isExpanded) {
+          void handleToggle(currentNode.node.path)
+        }
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        if (currentNode?.node.type === 'directory' && currentNode.isExpanded) {
+          void handleToggle(currentNode.node.path)
+        }
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (currentNode) {
+          if (currentNode.node.type === 'directory') {
+            void handleToggle(currentNode.node.path)
+          } else {
+            onSelect(currentNode.node.path)
+          }
+        }
+        break
+      case 'Home':
+        e.preventDefault()
+        setFocusedIndex(0)
+        break
+      case 'End':
+        e.preventDefault()
+        setFocusedIndex(flattenedNodes.length - 1)
+        break
+    }
+  }, [flattenedNodes, focusedIndex, handleToggle, onSelect])
+
   return (
     <div className="flex flex-col h-full overflow-hidden text-sm">
+      {/* Visually hidden keyboard instructions for screen readers */}
+      <div id={TREE_INSTRUCTIONS_ID} className="sr-only">
+        Use Arrow Up and Arrow Down to navigate between files and folders.
+        Use Arrow Right to expand a folder.
+        Use Arrow Left to collapse a folder.
+        Press Enter to open a file or toggle a folder.
+        Press Home to go to the first item.
+        Press End to go to the last item.
+      </div>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="px-3 py-2 border-b border-border flex items-center justify-between shrink-0">
@@ -562,6 +660,12 @@ export function FileTree({ files, onSelect, selectedPath, onRefresh }: FileTreeP
         ref={parentRef} 
         className="flex-1 overflow-auto py-1"
         onScroll={handleScroll}
+        onKeyDown={handleTreeKeyDown}
+        tabIndex={0}
+        role="tree"
+        aria-label="File explorer"
+        aria-describedby={TREE_INSTRUCTIONS_ID}
+        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Enter Home End"
       >
         <div
           style={{
@@ -630,6 +734,7 @@ export function FileTree({ files, onSelect, selectedPath, onRefresh }: FileTreeP
                   onRenameEnd={() => setRenamingPath(null)}
                   onNewItem={handleNewItem}
                   onDelete={setDeleteNode}
+                  isFocused={nodeIndex === focusedIndex}
                 />
               </div>
             )

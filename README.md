@@ -39,11 +39,15 @@ npm ci
 # Copy environment file
 cp .env.example .env
 
-# Start development server
-npm run dev
+# Start development server on a safe non-monitoring port (macOS/Linux)
+PORT=4100 HOST=127.0.0.1 npm run dev
+
+# PowerShell (recommended)
+$env:PORT='4100'; $env:HOST='127.0.0.1'; powershell -NoProfile -NoLogo -ExecutionPolicy Bypass -File .\scripts\dev.ps1
 ```
 
-The application will be available at `http://localhost:3000`.
+The application will be available at `http://127.0.0.1:4100`.
+If you run the monitoring stack, Grafana is at `http://127.0.0.1:3001` (not the app UI).
 
 ### Docker
 
@@ -60,10 +64,13 @@ docker-compose up -d
 
 ```bash
 # Full dev server (Next.js + WebSocket)
-npm run dev
+PORT=4100 HOST=127.0.0.1 npm run dev
 
 # Next.js only (UI work)
-npm run dev:next
+PORT=4100 HOST=127.0.0.1 npm run dev:next
+
+# Recommended local launcher (always binds HOST/PORT defaults)
+npm run dev:local
 
 # Linting
 npm run lint
@@ -74,6 +81,15 @@ npm run typecheck
 # Build for production
 npm run build
 ```
+
+### Cursor / VS Code troubleshooting
+
+- Do not run `.vscode/launch.json` with Python (`debugpy`). That file is editor configuration, not executable code.
+- Use one of these instead:
+  - Run and Debug -> `SwarmUI: Full Dev Server`
+  - Terminal task -> `SwarmUI: Dev (4100)`
+  - PowerShell command:
+    - `Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue; $env:HOST='127.0.0.1'; $env:PORT='4100'; fnm exec --using v22.22.0 npm.cmd run dev:local`
 
 ## Architecture
 

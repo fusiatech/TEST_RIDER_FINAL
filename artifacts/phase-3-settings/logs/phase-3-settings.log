@@ -1,0 +1,38 @@
+{
+  "enabledCLIs": [
+    "cursor",
+    "gemini",
+    "claude"
+  ],
+  "parallelCounts": {
+    "researcher": 1,
+    "planner": 2,
+    "coder": 3,
+    "validator": 2,
+    "security": 1,
+    "synthesizer": 1
+  },
+  "worktreeIsolation": true,
+  "maxRuntimeSeconds": 120,
+  "researchDepth": "medium",
+  "autoRerunThreshold": 80,
+  "freeOnlyMode": false,
+  "providerFailoverPolicy": {
+    "enabled": true,
+    "cooldownMs": 30000,
+    "maxSwitchesPerRun": 6
+  },
+  "testingMode": "manual",
+  "onboardingState": {
+    "completed": true,
+    "entryMode": "free",
+    "setupLevel": "basic",
+    "completedAt": 1772238697422
+  },
+  "subscriptionTier": "free",
+  "credits": {
+    "balance": 50,
+    "weeklyCap": 100,
+    "autoStop": true
+  }
+}

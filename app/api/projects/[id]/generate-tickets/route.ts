@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateTicketPrompt, parseGeneratedTickets, buildTicketHierarchy, estimateTotalEffort, type GeneratedTicket } from '@/lib/prd-parser'
-import { getProject, saveProject, getSettings } from '@/server/storage'
+import { getProject, saveProject, getEffectiveSettingsForUser } from '@/server/storage'
 import { runAPIAgent } from '@/server/api-runner'
 import type { Ticket, TicketLevel } from '@/lib/types'
 import { z } from 'zod'
+import { auth } from '@/auth'
 
 const GenerateTicketsOptionsSchema = z.object({
   preview: z.boolean().optional(),
@@ -15,6 +16,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const project = await getProject(id)
     
@@ -32,8 +38,8 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const options = GenerateTicketsOptionsSchema.parse(body)
     
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
+    const settings = await getEffectiveSettingsForUser(session.user.id)
+    const apiKey = settings.apiKeys?.openai
     
     if (!apiKey) {
       return NextResponse.json(

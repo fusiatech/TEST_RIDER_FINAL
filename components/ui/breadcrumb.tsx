@@ -7,6 +7,7 @@ export interface BreadcrumbItem {
   label: string
   href?: string
   onClick?: () => void
+  path?: string
 }
 
 export interface BreadcrumbProps {
@@ -24,15 +25,20 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
     >
       {items.map((item, index) => {
         const isLast = index === items.length - 1
-        const isClickable = !isLast && (item.href || item.onClick)
+        const isClickable = item.href || item.onClick
 
         return (
           <div key={`${item.label}-${index}`} className="flex items-center gap-1">
             {isClickable ? (
               <button
                 onClick={item.onClick}
-                className="max-w-[120px] truncate hover:text-foreground transition-colors"
-                title={item.label}
+                className={cn(
+                  'max-w-[120px] truncate transition-colors rounded px-1 -mx-1',
+                  'hover:text-foreground hover:bg-secondary/50',
+                  'cursor-pointer',
+                  isLast && 'text-foreground font-medium'
+                )}
+                title={item.path || item.label}
               >
                 {item.label}
               </button>
@@ -42,7 +48,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
                   'max-w-[120px] truncate',
                   isLast && 'text-foreground font-medium'
                 )}
-                title={item.label}
+                title={item.path || item.label}
               >
                 {item.label}
               </span>

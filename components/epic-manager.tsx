@@ -46,7 +46,7 @@ interface EpicManagerProps {
 }
 
 const STATUS_COLORS: Record<EpicStatus, { bg: string; text: string; border: string }> = {
-  draft: { bg: 'bg-zinc-500/10', text: 'text-zinc-400', border: 'border-zinc-500/30' },
+  draft: { bg: 'bg-zinc-500/10', text: 'text-muted', border: 'border-zinc-500/30' },
   active: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
   completed: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/30' },
 }

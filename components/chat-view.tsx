@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { useSession, signOut } from 'next-auth/react'
 import { useSwarmStore } from '@/lib/store'
 import { CLI_REGISTRY } from '@/lib/cli-registry'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -9,23 +11,57 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MessageBubble } from '@/components/message-bubble'
 import { AgentCard } from '@/components/agent-card'
-import { AgentDashboard } from '@/components/agent-dashboard'
-import { ProjectDashboard } from '@/components/project-dashboard'
-import { TestingDashboard } from '@/components/testing-dashboard'
-import { EclipseDashboard } from '@/components/eclipse-dashboard'
-import { ObservabilityDashboard } from '@/components/observability-dashboard'
 import { LivePreview } from '@/components/live-preview'
-import { DevEnvironment } from '@/components/dev-environment'
 import { FileUpload } from '@/components/file-upload'
 import { VoiceInputButton, VoiceInputIndicator } from '@/components/voice-input-button'
 import { SpellCheckInput } from '@/components/spell-check-input'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { MinimalErrorFallback } from '@/components/error-fallback'
 import { ROLE_LABELS } from '@/lib/types'
-import type { Attachment } from '@/lib/types'
+import type { Attachment, ChatIntent } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AnimatePresence, motion } from 'framer-motion'
+
+function TabLoadingSkeleton() {
+  return (
+    <div className="flex-1 p-6 space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  )
+}
+
+const AgentDashboard = dynamic(
+  () => import('@/components/agent-dashboard').then(mod => ({ default: mod.AgentDashboard })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+
+const ProjectDashboard = dynamic(
+  () => import('@/components/project-dashboard').then(mod => ({ default: mod.ProjectDashboard })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+
+const TestingDashboard = dynamic(
+  () => import('@/components/testing-dashboard').then(mod => ({ default: mod.TestingDashboard })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+
+const EclipseDashboard = dynamic(
+  () => import('@/components/eclipse-dashboard').then(mod => ({ default: mod.EclipseDashboard })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+
+const ObservabilityDashboard = dynamic(
+  () => import('@/components/observability-dashboard').then(mod => ({ default: mod.ObservabilityDashboard })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
+
+const DevEnvironment = dynamic(
+  () => import('@/components/dev-environment').then(mod => ({ default: mod.DevEnvironment })),
+  { loading: () => <TabLoadingSkeleton />, ssr: false }
+)
 import {
   Send,
   Square,
@@ -47,29 +83,32 @@ import {
   CircleHelp,
   Cpu,
   BarChart3,
+  User,
+  LogOut,
+  Settings,
 } from 'lucide-react'
 
 import type { AppMode } from '@/lib/store'
 
 const CHAT_PROMPTS = [
-  { icon: Globe, text: 'What is the best way to handle auth?', color: '#60a5fa' },
-  { icon: Bug, text: 'Explain this error and how to fix it', color: '#fbbf24' },
-  { icon: Code2, text: 'How do I optimize this React component?', color: '#34d399' },
-  { icon: Shield, text: 'What security best practices should I follow?', color: '#f87171' },
+  { icon: Globe, text: 'What is the best way to handle auth?', color: 'var(--color-role-researcher)' },
+  { icon: Bug, text: 'Explain this error and how to fix it', color: 'var(--color-role-validator)' },
+  { icon: Code2, text: 'How do I optimize this React component?', color: 'var(--color-role-coder)' },
+  { icon: Shield, text: 'What security best practices should I follow?', color: 'var(--color-role-security)' },
 ]
 
 const SWARM_PROMPTS = [
-  { icon: Code2, text: 'Refactor the auth module', color: '#34d399' },
-  { icon: TestTube2, text: 'Add unit tests for the data layer', color: '#60a5fa' },
-  { icon: Bug, text: 'Fix the performance issue in the data table', color: '#fbbf24' },
-  { icon: Shield, text: 'Review security of the API endpoints', color: '#f87171' },
+  { icon: Code2, text: 'Refactor the auth module', color: 'var(--color-role-coder)' },
+  { icon: TestTube2, text: 'Add unit tests for the data layer', color: 'var(--color-role-researcher)' },
+  { icon: Bug, text: 'Fix the performance issue in the data table', color: 'var(--color-role-validator)' },
+  { icon: Shield, text: 'Review security of the API endpoints', color: 'var(--color-role-security)' },
 ]
 
 const PROJECT_PROMPTS = [
-  { icon: Rocket, text: 'Build a SaaS dashboard with auth and billing', color: '#a78bfa' },
-  { icon: Hammer, text: 'Create a CLI tool that generates boilerplate', color: '#34d399' },
-  { icon: Zap, text: 'Build an API for real-time notifications', color: '#fbbf24' },
-  { icon: FolderKanban, text: 'Create a project management app', color: '#60a5fa' },
+  { icon: Rocket, text: 'Build a SaaS dashboard with auth and billing', color: 'var(--color-role-planner)' },
+  { icon: Hammer, text: 'Create a CLI tool that generates boilerplate', color: 'var(--color-role-coder)' },
+  { icon: Zap, text: 'Build an API for real-time notifications', color: 'var(--color-role-validator)' },
+  { icon: FolderKanban, text: 'Create a project management app', color: 'var(--color-role-researcher)' },
 ]
 
 const MODE_PROMPTS: Record<AppMode, typeof CHAT_PROMPTS> = {
@@ -84,6 +123,16 @@ const MODE_LABELS: Record<AppMode, string> = {
   project: 'Project',
 }
 
+const CHAT_INTENT_OPTIONS: Array<{ value: ChatIntent; label: string }> = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'plan', label: 'Plan' },
+  { value: 'one_line_fix', label: 'One-line' },
+  { value: 'code_implementation', label: 'Implement' },
+  { value: 'code_review', label: 'Review' },
+  { value: 'explain', label: 'Explain' },
+  { value: 'debug', label: 'Debug' },
+]
+
 const VALID_TABS = ['chat', 'dashboard', 'ide', 'testing', 'eclipse', 'observability'] as const
 type TabType = typeof VALID_TABS[number]
 
@@ -94,10 +143,13 @@ function isValidTab(tab: string | null): tab is TabType {
 export function ChatView() {
   const [input, setInput] = useState('')
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isVoiceListening, setIsVoiceListening] = useState(false)
   const agentDropdownRef = useRef<HTMLDivElement>(null)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const { data: session } = useSession()
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -112,10 +164,29 @@ export function ChatView() {
   const wsConnected = useSwarmStore((s) => s.wsConnected)
   const mode = useSwarmStore((s) => s.mode)
   const settings = useSwarmStore((s) => s.settings)
+  const chatIntent = useSwarmStore((s) => s.chatIntent)
+  const setChatIntent = useSwarmStore((s) => s.setChatIntent)
   const selectedAgent = useSwarmStore((s) => s.selectedAgent)
   const setSelectedAgent = useSwarmStore((s) => s.setSelectedAgent)
   const showPreview = useSwarmStore((s) => s.showPreview)
   const togglePreview = useSwarmStore((s) => s.togglePreview)
+  const currentProjectId = useSwarmStore((s) => s.currentProjectId)
+  const switchProject = useSwarmStore((s) => s.switchProject)
+
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+
+  // G-IA-01: Update URL when params change
+  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString())
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value)
+      } else {
+        params.delete(key)
+      }
+    }
+    router.push(`?${params.toString()}`, { scroll: false })
+  }, [searchParams, router])
 
   // G-IA-01: Sync tab state with URL on mount
   useEffect(() => {
@@ -125,13 +196,38 @@ export function ChatView() {
     }
   }, [searchParams, activeTab, setActiveTab])
 
+  // G-IA-01: Sync project and ticket state from URL on mount
+  useEffect(() => {
+    const projectId = searchParams.get('project')
+    const ticketId = searchParams.get('ticket')
+    
+    if (projectId && projectId !== currentProjectId) {
+      switchProject(projectId)
+    }
+    if (ticketId && ticketId !== selectedTicketId) {
+      setSelectedTicketId(ticketId)
+    }
+  }, [searchParams, currentProjectId, switchProject, selectedTicketId])
+
   // G-IA-01: Update URL when tab changes
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', tab)
-    router.push(`?${params.toString()}`, { scroll: false })
-  }, [setActiveTab, searchParams, router])
+    updateUrlParams({ tab })
+  }, [setActiveTab, updateUrlParams])
+
+  // G-IA-01: Callback for project selection from dashboard
+  const handleProjectSelect = useCallback((projectId: string | null) => {
+    if (projectId) {
+      switchProject(projectId)
+    }
+    updateUrlParams({ project: projectId, ticket: null })
+  }, [switchProject, updateUrlParams])
+
+  // G-IA-01: Callback for ticket selection from dashboard
+  const handleTicketSelect = useCallback((ticketId: string | null) => {
+    setSelectedTicketId(ticketId)
+    updateUrlParams({ ticket: ticketId })
+  }, [updateUrlParams])
 
   const enabledCLIs = CLI_REGISTRY.filter((cli) => settings.enabledCLIs.includes(cli.id))
   const currentAgent = enabledCLIs.find((c) => c.id === selectedAgent) ?? enabledCLIs[0] ?? CLI_REGISTRY[0]
@@ -148,6 +244,9 @@ export function ChatView() {
     function handleClickOutside(e: MouseEvent) {
       if (agentDropdownRef.current && !agentDropdownRef.current.contains(e.target as Node)) {
         setAgentDropdownOpen(false)
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -217,6 +316,7 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-chat"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               Chat
@@ -231,6 +331,7 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-dashboard"
             >
               <LayoutDashboard className="h-3.5 w-3.5" />
               Dashboard
@@ -250,6 +351,7 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-testing"
             >
               <TestTube2 className="h-3.5 w-3.5" />
               Testing
@@ -264,6 +366,7 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-eclipse"
             >
               <Cpu className="h-3.5 w-3.5" />
               Eclipse
@@ -278,6 +381,7 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-ide"
             >
               <Code2 className="h-3.5 w-3.5" />
               IDE
@@ -292,10 +396,64 @@ export function ChatView() {
                   ? 'bg-primary text-background shadow-sm tab-active-indicator'
                   : 'text-muted hover:text-foreground'
               )}
+              data-testid="tab-observability"
             >
               <BarChart3 className="h-3.5 w-3.5" />
               Observability
             </button>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => router.push('/settings')}
+            data-testid="header-settings-button"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Settings
+          </Button>
+          <div className="relative" ref={profileMenuRef}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setProfileMenuOpen((v) => !v)}
+              aria-label="Open profile menu"
+              data-testid="profile-menu-button"
+            >
+              <User className="h-4 w-4" />
+            </Button>
+            {profileMenuOpen && (
+              <div className="absolute right-0 top-10 z-50 min-w-56 rounded-md border border-border bg-background p-2 shadow-xl">
+                <div className="mb-2 border-b border-border px-2 pb-2">
+                  <p className="text-xs text-muted">Signed in as</p>
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {session?.user?.email ?? 'Unknown user'}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    setProfileMenuOpen(false)
+                    router.push('/settings')
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                  Profile & API Keys
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-red-400 hover:text-red-300"
+                  onClick={() => {
+                    setProfileMenuOpen(false)
+                    void signOut({ callbackUrl: '/login' })
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </Button>
+              </div>
+            )}
           </div>
           {isRunning && (
             <div className="flex items-center gap-2">
@@ -463,7 +621,11 @@ export function ChatView() {
             className="flex-1 min-h-0"
           >
             <ScrollArea className="h-full">
-              <ProjectDashboard />
+              <ProjectDashboard
+                onProjectSelect={handleProjectSelect}
+                onTicketSelect={handleTicketSelect}
+                initialTicketId={selectedTicketId}
+              />
               <div ref={bottomRef} />
             </ScrollArea>
           </motion.div>
@@ -508,6 +670,13 @@ export function ChatView() {
 
       <div className="border-t border-border p-4">
         <div className="mx-auto max-w-3xl space-y-2">
+          {chatIntent !== 'auto' && (
+            <div className="px-1">
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                Intent: {CHAT_INTENT_OPTIONS.find((option) => option.value === chatIntent)?.label ?? 'Auto'}
+              </Badge>
+            </div>
+          )}
           {(input.length > 500 || isVoiceListening) && (
             <div className="flex items-center justify-between px-1">
               {isVoiceListening ? (
@@ -548,7 +717,7 @@ export function ChatView() {
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: currentAgent.installed !== false ? '#22c55e' : '#ef4444' }}
+                  style={{ backgroundColor: currentAgent.installed !== false ? 'var(--color-success)' : 'var(--color-error)' }}
                 />
                 <span className="max-w-[80px] truncate">{currentAgent.name.split(' ')[0]}</span>
                 <ChevronDown className={cn(
@@ -579,7 +748,7 @@ export function ChatView() {
                     >
                       <span
                         className="h-2.5 w-2.5 rounded-full ring-2 ring-background"
-                        style={{ backgroundColor: cli.installed !== false ? '#22c55e' : '#ef4444' }}
+                        style={{ backgroundColor: cli.installed !== false ? 'var(--color-success)' : 'var(--color-error)' }}
                       />
                       <span className="flex-1 text-left">{cli.name}</span>
                       {cli.installed === false && (
@@ -589,6 +758,23 @@ export function ChatView() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="shrink-0">
+              <label className="sr-only" htmlFor="chat-intent-select">Response intent</label>
+              <select
+                id="chat-intent-select"
+                value={chatIntent}
+                onChange={(e) => setChatIntent(e.target.value as ChatIntent)}
+                className="h-11 rounded-xl border border-border bg-card px-3 text-xs text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                title="Select response intent"
+              >
+                {CHAT_INTENT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="relative flex-1">
@@ -605,6 +791,7 @@ export function ChatView() {
                 minHeight={44}
                 showInlineErrors={true}
                 className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-shadow [&_textarea]:bg-transparent [&_textarea]:border-0 [&_textarea]:p-0 [&_textarea]:focus:ring-0 [&_textarea]:focus:ring-offset-0"
+                data-testid="chat-input"
               />
             </div>
 
@@ -646,6 +833,7 @@ export function ChatView() {
                   input.trim() ? 'bg-primary hover:bg-primary/90' : 'bg-muted/50'
                 )}
                 aria-label="Send message"
+                data-testid="send-button"
               >
                 <Send className="h-4 w-4" />
               </Button>

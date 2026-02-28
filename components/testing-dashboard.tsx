@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   XCircle,
   MinusCircle,
@@ -40,6 +41,10 @@ import {
   Search,
   GitCompare,
   ArrowRightLeft,
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  Globe,
 } from 'lucide-react'
 import { useSwarmStore } from '@/lib/store'
 import { wsClient } from '@/lib/ws-client'
@@ -48,6 +53,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart,
 import { cn } from '@/lib/utils'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadingState } from '@/components/ui/loading-state'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 type StatusFilter = 'all' | 'passed' | 'failed' | 'skipped'
 type DashboardTab = 'results' | 'coverage' | 'trends' | 'compare'
@@ -59,6 +66,14 @@ interface ComparisonResult {
   fixedTests: TestResult[]
   unchangedFailures: TestResult[]
   unchangedPasses: TestResult[]
+}
+
+interface FlakyTestInfo {
+  name: string
+  file?: string
+  passCount: number
+  failCount: number
+  flakyScore: number
 }
 
 interface TestFile {
@@ -161,6 +176,25 @@ function getCoverageBadgeVariant(pct: number): 'default' | 'secondary' | 'destru
   return 'destructive'
 }
 
+function InlineError({ 
+  error, 
+  onRetry 
+}: { 
+  error: string
+  onRetry: () => void 
+}) {
+  return (
+    <div className="flex items-center gap-2 p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+      <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+      <span className="text-sm text-foreground flex-1">{error}</span>
+      <Button variant="outline" size="sm" onClick={onRetry} className="shrink-0">
+        <RefreshCw className="h-4 w-4 mr-1" />
+        Retry
+      </Button>
+    </div>
+  )
+}
+
 export function TestingDashboard() {
   const { settings, initWebSocket } = useSwarmStore()
   
@@ -186,25 +220,34 @@ export function TestingDashboard() {
   
   // Task 6: Enhanced search/filter for test output
   const [outputSearchQuery, setOutputSearchQuery] = useState('')
+
+  // Task 4.1.2: File path filtering
+  const [fileFilter, setFileFilter] = useState<string | null>(null)
+
+  // Error state handling
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
   
   const outputRef = useRef<HTMLPreElement>(null)
   const wsInitialized = useRef(false)
 
   const loadTestData = useCallback(async () => {
+    setLoadError(null)
     try {
       const res = await fetch('/api/tests')
-      if (res.ok) {
-        const data = await res.json()
-        setHistory(data.history || [])
-        const jobs = data.jobs || []
-        const runningJob = jobs.find((j: TestJob) => j.status === 'running' || j.status === 'queued')
-        if (runningJob) {
-          setCurrentJob(runningJob)
-          setIsRunning(runningJob.status === 'running')
-        }
+      if (!res.ok) {
+        throw new Error(`Failed to load test data: ${res.status} ${res.statusText}`)
       }
-    } catch {
-      // API may not be available
+      const data = await res.json()
+      setHistory(data.history || [])
+      const jobs = data.jobs || []
+      const runningJob = jobs.find((j: TestJob) => j.status === 'running' || j.status === 'queued')
+      if (runningJob) {
+        setCurrentJob(runningJob)
+        setIsRunning(runningJob.status === 'running')
+      }
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load test data. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -269,6 +312,7 @@ export function TestingDashboard() {
   const runTests = async (filter?: string) => {
     setIsRunning(true)
     setLiveOutput('')
+    setRunError(null)
     
     try {
       const res = await fetch('/api/tests', {
@@ -280,15 +324,17 @@ export function TestingDashboard() {
         }),
       })
       
-      if (res.ok) {
-        const data = await res.json()
-        setCurrentJob({ id: data.jobId, status: 'running' } as TestJob)
-        setFramework(data.framework)
-      } else {
-        setIsRunning(false)
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to start tests: ${res.status} ${res.statusText}`)
       }
-    } catch {
+      
+      const data = await res.json()
+      setCurrentJob({ id: data.jobId, status: 'running' } as TestJob)
+      setFramework(data.framework)
+    } catch (err) {
       setIsRunning(false)
+      setRunError(err instanceof Error ? err.message : 'Failed to run tests. Please try again.')
     }
   }
 
@@ -296,11 +342,14 @@ export function TestingDashboard() {
     if (!currentJob) return
     
     try {
-      await fetch(`/api/tests?jobId=${currentJob.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/tests?jobId=${currentJob.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        throw new Error('Failed to cancel tests')
+      }
       setIsRunning(false)
       setCurrentJob(null)
-    } catch {
-      // Ignore
+    } catch (err) {
+      setRunError(err instanceof Error ? err.message : 'Failed to cancel tests.')
     }
   }
 
@@ -317,6 +366,8 @@ export function TestingDashboard() {
 
   const getFilteredResults = (results: TestResult[]) => {
     return results.filter(r => {
+      // Task 4.1.2: Apply file filter
+      if (fileFilter && r.file !== fileFilter) return false
       if (statusFilter !== 'all' && r.status !== statusFilter) return false
       if (searchFilter && !r.name.toLowerCase().includes(searchFilter.toLowerCase())) return false
       return true
@@ -515,6 +566,185 @@ export function TestingDashboard() {
     return liveOutput.split('\n').filter(line => line.toLowerCase().includes(query)).length
   }, [liveOutput, outputSearchQuery])
 
+  // Task 4.1.2: Get unique file paths from test results
+  const uniqueFiles = useMemo(() => {
+    if (!latestRun?.results) return []
+    const files = new Set(latestRun.results.map(r => r.file).filter(Boolean))
+    return Array.from(files).sort() as string[]
+  }, [latestRun?.results])
+
+  // Task 4.1.2: Filter results by selected file
+  const filteredByFileResults = useMemo(() => {
+    if (!latestRun?.results) return []
+    if (!fileFilter) return latestRun.results
+    return latestRun.results.filter(r => r.file === fileFilter)
+  }, [latestRun?.results, fileFilter])
+
+  // Task 4.1.1: Export helper function
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Task 4.1.1: Export to JSON
+  const exportToJSON = () => {
+    if (!latestRun) return
+    const data = {
+      timestamp: new Date().toISOString(),
+      framework,
+      results: filteredByFileResults,
+      coverage: latestCoverage,
+      summary: {
+        total: filteredByFileResults.length,
+        passed: filteredByFileResults.filter(r => r.status === 'passed').length,
+        failed: filteredByFileResults.filter(r => r.status === 'failed').length,
+        skipped: filteredByFileResults.filter(r => r.status === 'skipped').length,
+      }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    downloadBlob(blob, `test-results-${Date.now()}.json`)
+  }
+
+  // Task 4.1.1: Export to CSV
+  const exportToCSV = () => {
+    if (!latestRun) return
+    const headers = ['Name', 'File', 'Status', 'Duration (ms)', 'Error']
+    const rows = filteredByFileResults.map(r => [
+      `"${r.name.replace(/"/g, '""')}"`,
+      `"${(r.file || '').replace(/"/g, '""')}"`,
+      r.status,
+      r.duration?.toString() || '',
+      `"${(r.error?.replace(/"/g, '""').replace(/\n/g, ' ') || '')}"`
+    ])
+    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    downloadBlob(blob, `test-results-${Date.now()}.csv`)
+  }
+
+  // Task 4.1.1: Export to HTML
+  const exportToHTML = () => {
+    if (!latestRun) return
+    const passed = filteredByFileResults.filter(r => r.status === 'passed').length
+    const failed = filteredByFileResults.filter(r => r.status === 'failed').length
+    const skipped = filteredByFileResults.filter(r => r.status === 'skipped').length
+    
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Results - ${new Date().toLocaleDateString()}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+    h1 { color: #333; }
+    .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+    .stat { background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .stat-value { font-size: 24px; font-weight: bold; }
+    .stat-label { font-size: 12px; color: #666; text-transform: uppercase; }
+    .passed { color: #22c55e; }
+    .failed { color: #ef4444; }
+    .skipped { color: #eab308; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th { background: #f8f8f8; text-align: left; padding: 12px; font-weight: 600; border-bottom: 2px solid #eee; }
+    td { padding: 12px; border-bottom: 1px solid #eee; }
+    tr:hover { background: #fafafa; }
+    .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+    .status-passed { background: #dcfce7; color: #166534; }
+    .status-failed { background: #fee2e2; color: #991b1b; }
+    .status-skipped { background: #fef9c3; color: #854d0e; }
+    .error { font-family: monospace; font-size: 12px; color: #991b1b; white-space: pre-wrap; max-width: 400px; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+  <h1>Test Results Report</h1>
+  <p>Generated: ${new Date().toLocaleString()} | Framework: ${framework}</p>
+  
+  <div class="summary">
+    <div class="stat">
+      <div class="stat-value">${filteredByFileResults.length}</div>
+      <div class="stat-label">Total Tests</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value passed">${passed}</div>
+      <div class="stat-label">Passed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value failed">${failed}</div>
+      <div class="stat-label">Failed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value skipped">${skipped}</div>
+      <div class="stat-label">Skipped</div>
+    </div>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Test Name</th>
+        <th>File</th>
+        <th>Duration</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filteredByFileResults.map(r => `
+      <tr>
+        <td><span class="status-badge status-${r.status}">${r.status.toUpperCase()}</span></td>
+        <td>${r.name}</td>
+        <td>${r.file || '-'}</td>
+        <td>${r.duration ? `${r.duration}ms` : '-'}</td>
+        <td class="error">${r.error ? r.error.slice(0, 200) + (r.error.length > 200 ? '...' : '') : '-'}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+</body>
+</html>`
+    const blob = new Blob([html], { type: 'text/html' })
+    downloadBlob(blob, `test-results-${Date.now()}.html`)
+  }
+
+  // Task 4.2.1: Analyze flaky tests across runs
+  const analyzeFlakyTests = useCallback((testHistory: TestRunSummary[]): FlakyTestInfo[] => {
+    const testStats = new Map<string, { passes: number; fails: number; file?: string }>()
+    
+    // Analyze last 10 runs
+    const recentRuns = testHistory.slice(0, 10)
+    
+    for (const run of recentRuns) {
+      for (const result of run.results) {
+        const key = `${result.file}:${result.name}`
+        const stats = testStats.get(key) || { passes: 0, fails: 0, file: result.file }
+        if (result.status === 'passed') stats.passes++
+        else if (result.status === 'failed') stats.fails++
+        testStats.set(key, stats)
+      }
+    }
+    
+    return Array.from(testStats.entries())
+      .filter(([_, stats]) => stats.passes > 0 && stats.fails > 0) // Only tests that both passed and failed
+      .map(([name, stats]) => ({
+        name: name.split(':')[1] || name,
+        file: stats.file,
+        passCount: stats.passes,
+        failCount: stats.fails,
+        flakyScore: Math.round((Math.min(stats.passes, stats.fails) / (stats.passes + stats.fails)) * 100),
+      }))
+      .sort((a, b) => b.flakyScore - a.flakyScore)
+  }, [])
+
+  const flakyTests = useMemo(() => analyzeFlakyTests(history), [analyzeFlakyTests, history])
+
+  // Create a set of flaky test names for quick lookup
+  const flakyTestNames = useMemo(() => {
+    return new Set(flakyTests.map(t => t.name))
+  }, [flakyTests])
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (coverageSortField !== field) {
       return <ArrowUpDown className="h-3 w-3 text-muted" />
@@ -534,6 +764,14 @@ export function TestingDashboard() {
 
   return (
     <div className="space-y-6 p-6">
+      {/* Error States */}
+      {loadError && (
+        <InlineError error={loadError} onRetry={loadTestData} />
+      )}
+      {runError && (
+        <InlineError error={runError} onRetry={() => runTests()} />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -547,6 +785,34 @@ export function TestingDashboard() {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Task 4.1.1: Export dropdown */}
+          {latestRun && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4" />
+                  Export
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportToJSON}>
+                  <FileJson className="h-4 w-4 text-blue-500" />
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <FileSpreadsheet className="h-4 w-4 text-green-500" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportToHTML}>
+                  <Globe className="h-4 w-4 text-purple-500" />
+                  Export as HTML Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          
           {isRunning ? (
             <Button variant="destructive" size="sm" onClick={cancelTests}>
               <Square className="h-4 w-4" />
@@ -554,7 +820,7 @@ export function TestingDashboard() {
             </Button>
           ) : (
             <>
-              <Button variant="default" size="sm" onClick={() => runTests()}>
+              <Button variant="default" size="sm" onClick={() => runTests()} data-testid="run-tests-button">
                 <Play className="h-4 w-4" />
                 Run Tests
               </Button>
@@ -731,6 +997,9 @@ export function TestingDashboard() {
             <pre
               ref={outputRef}
               className="bg-secondary/50 rounded-lg p-4 text-xs font-mono text-foreground overflow-auto max-h-64 whitespace-pre-wrap"
+              aria-live="polite"
+              role="log"
+              aria-label="Test output"
             >
               {outputSearchQuery ? highlightedOutput : (liveOutput || 'Waiting for output...')}
             </pre>
@@ -1023,6 +1292,29 @@ export function TestingDashboard() {
                 Test Results
               </CardTitle>
               <div className="flex items-center gap-2">
+                {/* Task 4.1.2: File filter dropdown */}
+                {uniqueFiles.length > 0 && (
+                  <Select
+                    value={fileFilter || 'all'}
+                    onValueChange={(value) => {
+                      setFileFilter(value === 'all' ? null : value)
+                      setCurrentPage(1)
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-36 text-xs">
+                      <Filter className="h-3 w-3 mr-1" />
+                      <SelectValue placeholder="All files" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All files</SelectItem>
+                      {uniqueFiles.map((file) => (
+                        <SelectItem key={file} value={file} className="text-xs">
+                          {file.split('/').pop() || file}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Input
                   placeholder="Search tests..."
                   value={searchFilter}
@@ -1082,7 +1374,7 @@ export function TestingDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[300px]" data-testid="test-results">
               {!latestRun ? (
                 <EmptyState
                   icon={<TestTube2 />}
@@ -1117,12 +1409,19 @@ export function TestingDashboard() {
                                     result.status === 'failed' && 'bg-red-500/5'
                                   )}
                                 >
-                                  {result.status === 'passed' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
-                                  {result.status === 'failed' && <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
-                                  {result.status === 'skipped' && <MinusCircle className="h-4 w-4 text-yellow-500 shrink-0" />}
+                                  {result.status === 'passed' && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" aria-label="Test passed" />}
+                                  {result.status === 'failed' && <XCircle className="h-4 w-4 text-red-500 shrink-0" aria-label="Test failed" />}
+                                  {result.status === 'skipped' && <MinusCircle className="h-4 w-4 text-yellow-500 shrink-0" aria-label="Test skipped" />}
                                   
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate">{result.name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium text-foreground truncate">{result.name}</p>
+                                      {flakyTestNames.has(result.name) && (
+                                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-yellow-500 text-yellow-950 hover:bg-yellow-500 shrink-0">
+                                          Flaky
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted truncate">{result.file}</p>
                                   </div>
                                   
@@ -1292,6 +1591,54 @@ export function TestingDashboard() {
         </Card>
       </div>
 
+      {/* Task 4.2.2: Flaky Tests Section */}
+      {flakyTests.length > 0 && (
+        <Card className="border-yellow-500/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              Flaky Tests ({flakyTests.length})
+            </CardTitle>
+            <p className="text-xs text-muted mt-1">
+              Tests that pass and fail inconsistently across the last 10 runs
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="max-h-[250px]">
+              <div className="space-y-2">
+                {flakyTests.map(test => (
+                  <div 
+                    key={`${test.file}:${test.name}`} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20 hover:bg-yellow-500/10 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                        <span className="font-medium text-sm text-foreground truncate">{test.name}</span>
+                      </div>
+                      {test.file && (
+                        <span className="text-xs text-muted ml-5 block truncate">{test.file}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">
+                        {test.passCount} passed
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] text-red-500 border-red-500/30">
+                        {test.failCount} failed
+                      </Badge>
+                      <Badge className="text-[10px] bg-yellow-500 text-yellow-950 hover:bg-yellow-500">
+                        {test.flakyScore}% flaky
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Test History - shown in Results tab */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Test History */}
@@ -1366,9 +1713,9 @@ export function TestingDashboard() {
                         <div className="ml-7 mt-2 mb-2 space-y-1">
                           {run.results.slice(0, 10).map((result) => (
                             <div key={result.id} className="flex items-center gap-2 text-xs py-1">
-                              {result.status === 'passed' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                              {result.status === 'failed' && <XCircle className="h-3 w-3 text-red-500" />}
-                              {result.status === 'skipped' && <MinusCircle className="h-3 w-3 text-yellow-500" />}
+                              {result.status === 'passed' && <CheckCircle2 className="h-3 w-3 text-green-500" aria-label="Test passed" />}
+                              {result.status === 'failed' && <XCircle className="h-3 w-3 text-red-500" aria-label="Test failed" />}
+                              {result.status === 'skipped' && <MinusCircle className="h-3 w-3 text-yellow-500" aria-label="Test skipped" />}
                               <span className="text-muted truncate">{result.name}</span>
                             </div>
                           ))}
@@ -1475,7 +1822,7 @@ export function TestingDashboard() {
                     className="p-3 rounded-lg bg-red-500/5 border border-red-500/20"
                   >
                     <div className="flex items-start gap-2">
-                      <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                      <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" aria-label="Test failed" />
                       <div className="flex-1 min-w-0 space-y-2">
                         <div>
                           <p className="text-sm font-medium text-foreground">{test.name}</p>
@@ -1915,7 +2262,7 @@ export function TestingDashboard() {
                             className="p-3 rounded-lg bg-red-500/10 border border-red-500/20"
                           >
                             <div className="flex items-start gap-2">
-                              <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                              <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" aria-label="Test failed" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-foreground">{test.name}</p>
                                 <p className="text-xs text-muted">{test.file}</p>
@@ -1952,7 +2299,7 @@ export function TestingDashboard() {
                             key={test.id}
                             className="p-2 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2"
                           >
-                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" aria-label="Test passed" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-foreground truncate">{test.name}</p>
                               <p className="text-xs text-muted truncate">{test.file}</p>
@@ -1985,7 +2332,7 @@ export function TestingDashboard() {
                             key={test.id}
                             className="p-2 rounded-lg bg-yellow-500/5 border border-yellow-500/20 flex items-center gap-2"
                           >
-                            <XCircle className="h-4 w-4 text-yellow-500 shrink-0" />
+                            <XCircle className="h-4 w-4 text-yellow-500 shrink-0" aria-label="Test still failing" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-foreground truncate">{test.name}</p>
                               <p className="text-xs text-muted truncate">{test.file}</p>

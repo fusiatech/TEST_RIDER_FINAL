@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { History, RotateCcw, GitCompare, ChevronDown, ChevronRight, Clock, User } from 'lucide-react'
 import type { PRDVersion } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -38,6 +48,8 @@ export function PRDVersionHistory({
   const [diff, setDiff] = useState<VersionDiff | null>(null)
   const [showDiff, setShowDiff] = useState(false)
   const [expandedVersions, setExpandedVersions] = useState<Set<number>>(new Set())
+  const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false)
+  const [pendingRollbackVersion, setPendingRollbackVersion] = useState<number | null>(null)
 
   const fetchVersions = useCallback(async () => {
     try {
@@ -73,20 +85,28 @@ export function PRDVersionHistory({
     }
   }
 
-  const handleRollback = async (version: number) => {
-    if (!confirm(`Are you sure you want to rollback to version ${version}?`)) return
+  const handleRollbackClick = (version: number) => {
+    setPendingRollbackVersion(version)
+    setRollbackDialogOpen(true)
+  }
+
+  const handleRollbackConfirm = async () => {
+    if (pendingRollbackVersion === null) return
     
     try {
       const res = await fetch(`/api/projects/${projectId}/prd/versions/rollback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version }),
+        body: JSON.stringify({ version: pendingRollbackVersion }),
       })
       if (!res.ok) throw new Error('Failed to rollback')
       await fetchVersions()
-      onRollback?.(version)
+      onRollback?.(pendingRollbackVersion)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to rollback')
+    } finally {
+      setPendingRollbackVersion(null)
+      setRollbackDialogOpen(false)
     }
   }
 
@@ -311,13 +331,13 @@ export function PRDVersionHistory({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!isLatest && (
+                        {!isLatest && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleRollback(version.version)
+                            handleRollbackClick(version.version)
                           }}
                         >
                           <RotateCcw className="h-3 w-3 mr-1" />
@@ -372,6 +392,23 @@ export function PRDVersionHistory({
             })
         )}
       </div>
+
+      <AlertDialog open={rollbackDialogOpen} onOpenChange={setRollbackDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rollback to Version {pendingRollbackVersion}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to rollback to version {pendingRollbackVersion}? This will restore the PRD to that version&apos;s state.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRollbackConfirm}>
+              Rollback
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

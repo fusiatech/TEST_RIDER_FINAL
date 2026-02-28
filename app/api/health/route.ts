@@ -5,7 +5,7 @@ import { getLastPipelineRunTime } from '@/server/orchestrator'
 import { getCacheStats } from '@/server/output-cache'
 import { getRateLimitStats } from '@/lib/rate-limit'
 import { startRequestMetrics, endRequestMetrics, getTraceId } from '@/lib/api-metrics'
-import { getDb } from '@/server/storage'
+import { getDb, getSettings } from '@/server/storage'
 import { getApiVersion, addVersionHeaders } from '@/lib/api-version'
 
 let cachedCLIs: { id: string; installed: boolean }[] | null = null
@@ -228,6 +228,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const cacheStats = getCacheStats()
   const rateLimitStats = getRateLimitStats()
   const systemMemory = jobQueue.getMemoryStats()
+  const settings = await getSettings()
+  const executionRuntime = settings.executionRuntime ?? 'server_managed'
+  const providerPriority = settings.providerPriority ?? settings.enabledCLIs
+  const apiKeys = settings.apiKeys ?? {}
+  const providerReadiness = providerPriority.map((provider) => {
+    const installed = clis.find((c) => c.id === provider)?.installed ?? false
+    const configured = (() => {
+      if (provider === 'cursor' || provider === 'codex') return Boolean(apiKeys.openai || apiKeys.codex)
+      if (provider === 'gemini') return Boolean(apiKeys.gemini || apiKeys.google)
+      if (provider === 'claude') return Boolean(apiKeys.claude || apiKeys.anthropic)
+      if (provider === 'copilot') return Boolean(apiKeys.copilot || apiKeys.github)
+      return Boolean(apiKeys.custom)
+    })()
+    const runtimeAvailable =
+      executionRuntime === 'server_managed'
+        ? ['cursor', 'codex', 'gemini', 'claude'].includes(provider)
+        : installed
+    return {
+      provider,
+      installed,
+      configured,
+      authValid: null,
+      quotaOk: null,
+      runtimeAvailable,
+      lastFailureCode: null,
+    }
+  })
 
   const response = NextResponse.json({
     status: overallStatus,
@@ -243,6 +270,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       activeJobIds: jobQueue.getActiveJobIds(),
       queueDepth,
       installedCLIs: clis,
+      providerReadiness,
+      executionRuntime,
+      freeOnlyMode: settings.freeOnlyMode ?? false,
       lastPipelineRunTime: getLastPipelineRunTime(),
       memoryUsage: {
         rss: mem.rss,

@@ -132,6 +132,16 @@ export interface OutputValidationResult {
 const JSON_BLOCK_PATTERN = /```(?:json)?\s*([\s\S]*?)```/g
 const JSON_OBJECT_PATTERN = /\{[\s\S]*\}/
 
+function hasStructuredOutputHint(text: string): boolean {
+  JSON_BLOCK_PATTERN.lastIndex = 0
+  if (JSON_BLOCK_PATTERN.test(text)) {
+    return true
+  }
+
+  const trimmed = text.trim()
+  return trimmed.startsWith('{') || trimmed.startsWith('[')
+}
+
 function extractJSON(text: string): string | null {
   JSON_BLOCK_PATTERN.lastIndex = 0
   const blockMatch = JSON_BLOCK_PATTERN.exec(text)
@@ -171,6 +181,15 @@ export function validateAgentOutput(
   const jsonStr = extractJSON(output)
   
   if (!jsonStr) {
+    if (hasStructuredOutputHint(output)) {
+      return {
+        isValid: false,
+        role,
+        errors: ['Structured output detected but valid JSON payload was not found'],
+        rawOutput: output,
+      }
+    }
+
     return {
       isValid: true,
       role,
@@ -203,11 +222,11 @@ export function validateAgentOutput(
       errors,
       rawOutput: output,
     }
-  } catch (err) {
+  } catch {
     return {
-      isValid: true,
+      isValid: false,
       role,
-      errors: [],
+      errors: ['Structured output JSON could not be parsed'],
       rawOutput: output,
     }
   }
@@ -240,4 +259,25 @@ export function getValidationErrorSummary(results: OutputValidationResult[]): st
   return invalid
     .map((r) => `${r.role}: ${r.errors.join(', ')}`)
     .join('; ')
+}
+
+export const ToolContractEnvelopeSchema = z.object({
+  serverId: z.string().min(1),
+  toolName: z.string().min(1),
+  args: z.record(z.unknown()),
+})
+
+export function validateToolContractEnvelope(payload: unknown): {
+  isValid: boolean
+  errors: string[]
+  parsed?: z.infer<typeof ToolContractEnvelopeSchema>
+} {
+  const result = ToolContractEnvelopeSchema.safeParse(payload)
+  if (result.success) {
+    return { isValid: true, errors: [], parsed: result.data }
+  }
+  return {
+    isValid: false,
+    errors: result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`),
+  }
 }

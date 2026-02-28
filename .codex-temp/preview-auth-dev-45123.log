@@ -1,0 +1,141 @@
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:45123
+   - Network:      http://169.254.83.107:45123
+
+ ✓ Starting...
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+   The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+   	- include was updated to add '/tmp/.next-swarm-45123/types/**/*.ts'
+
+ ○ Compiling /instrumentation ...
+ ✓ Compiled /instrumentation in 4.1s (290 modules)
+[telemetry] OpenTelemetry initialized for swarm-ui
+[telemetry] Exporting traces to http://localhost:4318/v1/traces
+ ✓ Ready in 7.3s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 718ms (233 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:59.741Z","requestId":"7d9ff8c7-7a30-4b42-87df-a3e2a0019af0","method":"GET","path":"/","durationMs":2,"userAgent":"node","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:05:59.757Z","requestId":"136b6bc6-b78f-42b0-8dec-2b60c98c92df","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"node","ip":"::1"}}
+ ○ Compiling /login ...
+ ✓ Compiled /login in 3.6s (1000 modules)
+ ✓ Compiled in 683ms (276 modules)
+ GET /login?callbackUrl=%2Fapp 200 in 4341ms
+ ✓ Compiled in 159ms (276 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:04.513Z","requestId":"0675aa6b-31e1-452e-a910-2b5037196dd9","method":"GET","path":"/login","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+ GET /login 200 in 79ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:05.008Z","requestId":"33c6a7aa-b7d9-4f0a-8567-5ae46c55e304","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1276ms (1162 modules)
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 2116ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:07.152Z","requestId":"6b0f52d8-2e7e-4248-bc68-9946b6c1a375","method":"GET","path":"/api/auth/session","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 310ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.244Z","requestId":"46637332-c6bc-4d45-b490-21cc9c5efa33","method":"GET","path":"/api/auth/providers","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+ ✓ Compiled in 200ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.296Z","requestId":"f2d618a0-d3ac-43f9-8dc3-ac0b2165faae","method":"GET","path":"/login","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/providers 500 in 56ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.353Z","requestId":"7b05d03b-9006-45a2-b23e-c7caedcedc11","method":"GET","path":"/api/auth/error","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/error 302 in 99ms
+ GET /login 200 in 163ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.473Z","requestId":"a040cc7a-6cdd-4806-b81f-6feff3406ce9","method":"GET","path":"/login","query":"?error=Configuration","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.505Z","requestId":"f11f2b22-c477-492d-8025-9301dcbf5621","method":"GET","path":"/app","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:08.688Z","requestId":"12586a61-a59c-4646-a1ba-121ec1e6a700","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+ GET /login?callbackUrl=%2Fapp 200 in 84ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:09.136Z","requestId":"f27fe3b5-23f7-4f52-9400-01fd52fbf414","method":"GET","path":"/api/auth/session","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 33ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:09.184Z","requestId":"fdfbcaca-9aea-4f90-9bdc-265952102ece","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 23ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:10.617Z","requestId":"61172a57-1b8f-4146-a093-3ce9100c7ce0","method":"GET","path":"/app","query":"?tab=chat","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:10.750Z","requestId":"74f8b90c-bc09-4509-a071-152b77232494","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp%3Ftab%3Dchat","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+ ✓ Compiled in 178ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:10.798Z","requestId":"073b4e19-d570-4ec9-9269-519949a553a1","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp"}}
+ GET /login?callbackUrl=%2Fapp%3Ftab%3Dchat 200 in 154ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:11.307Z","requestId":"3a4d24c8-bb10-4bfa-8e73-7fcce8f9ea61","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dchat"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 62ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:11.401Z","requestId":"5eb397a1-6a6b-419f-bf2f-d1bb7f6143a6","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dchat"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 50ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:12.851Z","requestId":"bc51ebbe-3c6d-4407-b687-064a3ff2b477","method":"GET","path":"/app","query":"?tab=observability","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:12.973Z","requestId":"8aff93ce-fa68-4321-bb83-cc01a77021e1","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp%3Ftab%3Dobservability","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+ ✓ Compiled in 176ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:13.092Z","requestId":"9dc44230-ffcb-4b60-ae5f-c85e34b9b96a","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp%3Ftab%3Dchat","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dchat"}}
+ GET /login?callbackUrl=%2Fapp%3Ftab%3Dobservability 200 in 131ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:13.461Z","requestId":"fe4dc4e0-6cc7-4808-8883-f69007d91f7d","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dobservability"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 36ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:13.511Z","requestId":"5336cdd3-5826-4c5d-be5f-2e27f164129c","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dobservability"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 26ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:14.944Z","requestId":"0e7727c4-9f5c-49d2-9564-9cc579a5ccc6","method":"GET","path":"/settings","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:15.094Z","requestId":"148b38e3-a982-4f4c-a8e7-82e7ca5e2931","method":"GET","path":"/login","query":"?callbackUrl=%2Fsettings","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1"}}
+ ✓ Compiled in 187ms (277 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:15.152Z","requestId":"e1ab78dc-4b28-41bb-bfab-0726aca9a380","method":"GET","path":"/login","query":"?callbackUrl=%2Fapp%3Ftab%3Dobservability","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fapp%3Ftab%3Dobservability"}}
+ GET /login?callbackUrl=%2Fsettings 200 in 177ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:15.628Z","requestId":"76563ee4-636b-4f8e-ba62-b0893d1797ec","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fsettings"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 30ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T04:06:15.676Z","requestId":"b47604c6-7906-414f-a1e4-13e5bb3b07f6","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","ip":"::1","referer":"http://localhost:45123/login?callbackUrl=%2Fsettings"}}
+[31m[auth][error][0m MissingSecret: Please define a `secret`. Read more at https://errors.authjs.dev#missingsecret
+    at assertConfig (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/utils/assert.js:66:16)
+    at Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:91:95)
+    at async AppRouteRouteModule.do (C:\RIDER FINAL\TEST_RIDER_FINAL\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:38696)
+ GET /api/auth/session 500 in 26ms
+ ✓ Compiled in 158ms (277 modules)
+ ✓ Compiled in 170ms (277 modules)
+ ✓ Compiled in 153ms (277 modules)
+ ✓ Compiled in 198ms (277 modules)
+ ✓ Compiled in 198ms (277 modules)
+ ✓ Compiled in 205ms (277 modules)
+ ✓ Compiled in 192ms (277 modules)
+ ✓ Compiled in 159ms (277 modules)
+ ✓ Compiled in 158ms (277 modules)
+ ✓ Compiled in 152ms (277 modules)
+ ✓ Compiled in 151ms (277 modules)
+ ✓ Compiled in 152ms (277 modules)
+ ✓ Compiled in 191ms (277 modules)
+ ✓ Compiled in 195ms (277 modules)
+ ✓ Compiled in 177ms (277 modules)
+ ✓ Compiled in 169ms (277 modules)
+ ✓ Compiled in 164ms (277 modules)

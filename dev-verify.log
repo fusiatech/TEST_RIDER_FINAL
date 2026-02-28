@@ -1,0 +1,37 @@
+
+> swarm-ui@1.0.0 dev:local
+> node ./scripts/dev-local.mjs
+
+ ○ Compiling /instrumentation ...
+ ✓ Compiled /instrumentation in 1108ms (290 modules)
+[telemetry] OpenTelemetry initialized for swarm-ui
+[telemetry] Exporting traces to http://localhost:4318/v1/traces
+[36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[36mINFO [0m [lsp-server] LSP WebSocket server initialized
+Error: listen EADDRINUSE: address already in use 127.0.0.1:4100
+    at <unknown> (Error: listen EADDRINUSE: address already in use 127.0.0.1:4100) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '127.0.0.1',
+  port: 4100
+}
+ ⨯ uncaughtException: Error: listen EADDRINUSE: address already in use 127.0.0.1:4100
+    at <unknown> (Error: listen EADDRINUSE: address already in use 127.0.0.1:4100) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '127.0.0.1',
+  port: 4100
+}
+ ⨯ uncaughtException:  Error: listen EADDRINUSE: address already in use 127.0.0.1:4100
+    at <unknown> (Error: listen EADDRINUSE: address already in use 127.0.0.1:4100) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '127.0.0.1',
+  port: 4100
+}
+[36mINFO [0m [ws-server] Scheduler initialized and started
+^C^C^C

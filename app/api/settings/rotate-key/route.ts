@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getSettings, saveSettings } from '@/server/storage'
+import { getUserApiKeys, saveUserApiKeys } from '@/server/storage'
 import {
   rotateEncryptionKey,
   getCurrentKeyVersion,
@@ -8,6 +8,7 @@ import {
   updateKeyMetadataAfterRotation,
   isEncrypted,
 } from '@/lib/encryption'
+import { auth } from '@/auth'
 
 const RotateKeyRequestSchema = z.object({
   oldSecret: z.string().min(16, 'Old secret must be at least 16 characters'),
@@ -23,6 +24,11 @@ const RotateKeyRequestSchema = z.object({
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body: unknown = await request.json()
     const parseResult = RotateKeyRequestSchema.safeParse(body)
     
@@ -34,10 +40,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { oldSecret, newSecret } = parseResult.data
-    const settings = await getSettings()
+    const apiKeys = (await getUserApiKeys(session.user.id)) ?? {}
 
     const encryptedFields: Record<string, string> = {}
-    const apiKeys = settings.apiKeys ?? {}
     
     for (const [key, value] of Object.entries(apiKeys)) {
       if (value && isEncrypted(value)) {
@@ -80,12 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    const updatedSettings = {
-      ...settings,
-      apiKeys: updatedApiKeys,
-    }
-
-    await saveSettings(updatedSettings)
+    await saveUserApiKeys(session.user.id, updatedApiKeys)
 
     const existingMetadata = createKeyMetadata()
     const newMetadata = updateKeyMetadataAfterRotation(existingMetadata, newKeyVersion)
@@ -118,8 +118,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const settings = await getSettings()
-    const apiKeys = settings.apiKeys ?? {}
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const apiKeys = (await getUserApiKeys(session.user.id)) ?? {}
     
     let encryptedCount = 0
     const encryptedFields: string[] = []

@@ -1,0 +1,2 @@
+ws.open
+{"type":"swarm-error","error":"Authentication is required for profile-scoped API keys."}

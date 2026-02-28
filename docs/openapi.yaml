@@ -18,7 +18,7 @@ info:
     Most endpoints require authentication via NextAuth.js session cookies.
     
     ## WebSocket
-    Real-time updates are available via WebSocket at `ws://localhost:3000`.
+    Real-time updates are available via WebSocket at `ws://localhost:3000/api/ws`.
     See [WebSocket API documentation](./WEBSOCKET_API.md) for details.
   version: 1.0.0
   license:

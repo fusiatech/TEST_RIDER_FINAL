@@ -10,7 +10,7 @@ import http from 'node:http'
 import { WebSocket } from 'ws'
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-const WS_URL = process.env.WS_URL || 'ws://localhost:3000'
+const WS_URL = process.env.WS_URL || 'ws://localhost:3000/api/ws'
 
 interface PerformanceMetrics {
   totalJobs: number

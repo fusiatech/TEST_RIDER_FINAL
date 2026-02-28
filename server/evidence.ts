@@ -10,6 +10,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import type { EvidenceLedgerEntry, FileSnapshot, LinkedTestResult, Screenshot, TestResult } from '@/lib/types'
 import { createEvidence, updateEvidence, getEvidence } from '@/server/storage'
 import { isGitRepo } from '@/server/worktree-manager'
+import { getCurrentTraceId } from '@/lib/telemetry'
 
 const CLI_EXCERPT_MAX = 2048
 const DIFF_SUMMARY_MAX = 1024
@@ -74,11 +75,17 @@ export async function createPipelineEvidence(projectPath: string): Promise<strin
   const id = randomUUID()
   const timestamp = Date.now()
   const git = getGitBranchAndCommit(projectPath)
+  const traceId = getCurrentTraceId() ?? randomUUID()
   const entry: EvidenceLedgerEntry = {
     id,
     timestamp,
     branch: git?.branch,
     commitHash: git?.commitHash,
+    traceId,
+    logRefs: [],
+    diffRefs: [],
+    testIds: [],
+    artifactRefs: [],
   }
   await createEvidence(entry)
   return id
@@ -95,6 +102,7 @@ export async function appendCliExcerpt(
   const excerpt = truncateCliExcerpt(output)
   await updateEvidence(evidenceId, {
     cliExcerpts: { [agentId]: excerpt },
+    logRefs: [`cli:${agentId}`],
   })
 }
 
@@ -107,7 +115,10 @@ export async function appendDiffSummary(
 ): Promise<void> {
   const diffSummary = getGitDiffStat(projectPath)
   if (diffSummary) {
-    await updateEvidence(evidenceId, { diffSummary })
+    await updateEvidence(evidenceId, {
+      diffSummary,
+      diffRefs: ['git:working-tree'],
+    })
   }
 }
 
@@ -200,6 +211,7 @@ export async function linkTestResult(
   
   await updateEvidence(evidenceId, {
     testResults: results,
+    testIds: [testResult.id],
   })
 }
 
@@ -228,6 +240,7 @@ export async function appendScreenshot(
   
   await updateEvidence(evidenceId, {
     screenshots,
+    artifactRefs: [`screenshot:${screenshot.url}`],
   })
 }
 
