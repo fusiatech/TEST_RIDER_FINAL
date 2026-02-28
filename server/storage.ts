@@ -1,13 +1,45 @@
 import { Low } from 'lowdb'
-import { JSONFile } from 'lowdb/node'
-import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, TestRunSummary, ApiKeys, User, Workspace, AuditLogEntry, AuditLogFilter, Prompt, PromptVersion, Tenant, PersistedTerminalSession, TicketTemplate, RunRecord, ArtifactRecord } from '@/lib/types'
+import type { Adapter } from 'lowdb'
+import type { Session, Settings, Project, SwarmJob, ScheduledTask, EvidenceLedgerEntry, TestRunSummary, ApiKeys, User, Workspace, AuditLogEntry, AuditLogFilter, Prompt, PromptVersion, Tenant, PersistedTerminalSession, TicketTemplate, RunRecord, ArtifactRecord, UserUIPreferences } from '@/lib/types'
+import { DEFAULT_UI_PREFERENCES } from '@/lib/types'
 import { DEFAULT_SETTINGS } from '@/lib/types'
 import type { Extension, ExtensionConfig } from '@/lib/extensions'
 import path from 'node:path'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { encrypt, decrypt, isEncrypted, getEncryptionSecret } from '@/lib/encryption'
 import { createLogger } from '@/server/logger'
 
 const logger = createLogger('storage')
+
+function getCandidateEncryptionSecrets(): string[] {
+  const candidates = [
+    getEncryptionSecret(),
+    process.env.NEXTAUTH_SECRET,
+    process.env.AUTH_SECRET,
+    'swarm-ui-local-dev-secret-not-for-production',
+    'swarm-ui-default-encryption-key-change-me',
+  ]
+  const unique: string[] = []
+  for (const secret of candidates) {
+    if (!secret) continue
+    if (!unique.includes(secret)) {
+      unique.push(secret)
+    }
+  }
+  return unique
+}
+
+function tryDecryptWithFallbacks(ciphertext: string): string | null {
+  const secrets = getCandidateEncryptionSecrets()
+  for (const secret of secrets) {
+    try {
+      return decrypt(ciphertext, secret)
+    } catch {
+      // Try next candidate secret.
+    }
+  }
+  return null
+}
 
 interface DbSchema {
   sessions: Session[]
@@ -24,12 +56,26 @@ interface DbSchema {
   users: User[]
   userCredentials: Record<string, string>
   userApiKeys: Record<string, ApiKeys>
+  userUIPreferences: Record<string, UserUIPreferences>
+  userRules: Record<string, UserRule[]>
   workspaces: Workspace[]
   auditLog: AuditLogEntry[]
   prompts: Prompt[]
   tenants: Tenant[]
   terminalSessions: PersistedTerminalSession[]
   ticketTemplates: TicketTemplate[]
+}
+
+export interface UserRule {
+  id: string
+  name: string
+  description: string
+  applicability: 'always' | 'manual' | 'model_decision' | 'file_pattern' | 'off'
+  enabled: boolean
+  filePattern?: string
+  modelIds?: string[]
+  projectIds?: string[]
+  updatedAt: number
 }
 
 const DEFAULT_DATA: DbSchema = {
@@ -47,6 +93,8 @@ const DEFAULT_DATA: DbSchema = {
   users: [],
   userCredentials: {},
   userApiKeys: {},
+  userUIPreferences: {},
+  userRules: {},
   workspaces: [],
   auditLog: [],
   prompts: [],
@@ -57,6 +105,70 @@ const DEFAULT_DATA: DbSchema = {
 
 let dbInstance: Low<DbSchema> | null = null
 let dbInitPromise: Promise<Low<DbSchema>> | null = null
+let dbWriteQueue: Promise<void> = Promise.resolve()
+
+function isRetriableDbWriteError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const code = (err as NodeJS.ErrnoException).code
+  return code === 'ENOENT' || code === 'EBUSY' || code === 'EPERM'
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+class ResilientJSONFile<T> implements Adapter<T> {
+  constructor(private readonly filename: string) {}
+
+  async read(): Promise<T | null> {
+    try {
+      const content = await readFile(this.filename, 'utf-8')
+      return JSON.parse(content) as T
+    } catch (err) {
+      if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null
+      }
+      throw err
+    }
+  }
+
+  async write(data: T): Promise<void> {
+    const serialized = JSON.stringify(data, null, 2)
+    const directory = path.dirname(this.filename)
+    const baseName = path.basename(this.filename)
+    const tmpFile = path.join(
+      directory,
+      `.${baseName}.${process.pid}.${Date.now().toString(36)}.${Math.random().toString(16).slice(2)}.tmp`
+    )
+
+    await mkdir(directory, { recursive: true })
+    await writeFile(tmpFile, serialized, 'utf-8')
+
+    let renamed = false
+    try {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          await rename(tmpFile, this.filename)
+          renamed = true
+          break
+        } catch (err) {
+          if (!isRetriableDbWriteError(err) || attempt === 3) {
+            break
+          }
+          await sleep(30 * (attempt + 1))
+        }
+      }
+
+      if (!renamed) {
+        await writeFile(this.filename, serialized, 'utf-8')
+      }
+    } finally {
+      if (!renamed) {
+        await rm(tmpFile, { force: true }).catch(() => undefined)
+      }
+    }
+  }
+}
 
 export async function getDb(): Promise<Low<DbSchema>> {
   if (dbInstance) return dbInstance
@@ -64,7 +176,7 @@ export async function getDb(): Promise<Low<DbSchema>> {
 
   dbInitPromise = (async () => {
     const filePath = path.join(process.cwd(), 'db.json')
-    const adapter = new JSONFile<DbSchema>(filePath)
+    const adapter = new ResilientJSONFile<DbSchema>(filePath)
     const db = new Low<DbSchema>(adapter, DEFAULT_DATA)
 
     await db.read()
@@ -77,6 +189,8 @@ export async function getDb(): Promise<Low<DbSchema>> {
     if (!db.data.users) db.data.users = []
     if (!db.data.userCredentials) db.data.userCredentials = {}
     if (!db.data.userApiKeys) db.data.userApiKeys = {}
+    if (!db.data.userUIPreferences) db.data.userUIPreferences = {}
+    if (!db.data.userRules) db.data.userRules = {}
     if (!db.data.auditLog) db.data.auditLog = []
     if (!db.data.prompts) db.data.prompts = []
     if (!db.data.tenants) db.data.tenants = []
@@ -84,6 +198,29 @@ export async function getDb(): Promise<Low<DbSchema>> {
     if (!db.data.ticketTemplates) db.data.ticketTemplates = []
     if (!db.data.runs) db.data.runs = []
     if (!db.data.artifacts) db.data.artifacts = []
+
+    const originalWrite = db.write.bind(db)
+    db.write = async () => {
+      const runWrite = async () => {
+        let lastError: unknown = null
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            await originalWrite()
+            return
+          } catch (err) {
+            lastError = err
+            if (!isRetriableDbWriteError(err) || attempt === 3) {
+              throw err
+            }
+            await sleep(40 * (attempt + 1))
+          }
+        }
+        throw lastError
+      }
+
+      dbWriteQueue = dbWriteQueue.then(runWrite, runWrite)
+      return dbWriteQueue
+    }
 
     dbInstance = db
     return db
@@ -145,16 +282,18 @@ export function encryptApiKeys(apiKeys: ApiKeys | undefined): ApiKeys | undefine
 export function decryptApiKeys(apiKeys: ApiKeys | undefined): ApiKeys | undefined {
   if (!apiKeys) return apiKeys
   
-  const secret = getEncryptionSecret()
   const decrypted: ApiKeys = {}
   
   for (const [key, value] of Object.entries(apiKeys)) {
     if (value && isEncrypted(value)) {
-      try {
-        decrypted[key as keyof ApiKeys] = decrypt(value, secret)
-      } catch (err) {
-        logger.error('Failed to decrypt API key', { key, error: err instanceof Error ? err.message : String(err) })
-        decrypted[key as keyof ApiKeys] = value
+      const plaintext = tryDecryptWithFallbacks(value)
+      if (plaintext !== null) {
+        decrypted[key as keyof ApiKeys] = plaintext
+      } else {
+        logger.error('Failed to decrypt API key', {
+          key,
+          error: 'No usable encryption secret matched stored value',
+        })
       }
     } else {
       decrypted[key as keyof ApiKeys] = value
@@ -235,6 +374,12 @@ export async function getUserApiKeys(userId: string): Promise<ApiKeys | undefine
   const normalizedUserId = (userId ?? '').trim()
   if (!normalizedUserId) return undefined
   const db = await getDb()
+  const allowLegacyImport =
+    process.env.SWARM_IMPORT_LEGACY_GLOBAL_KEYS === '1' ||
+    process.env.SWARM_IMPORT_LEGACY_GLOBAL_KEYS === 'true'
+  const allowEnvImport =
+    process.env.SWARM_IMPORT_ENV_KEYS === '1' ||
+    process.env.SWARM_IMPORT_ENV_KEYS === 'true'
   if (!db.data.userApiKeys) {
     db.data.userApiKeys = {}
   }
@@ -245,16 +390,20 @@ export async function getUserApiKeys(userId: string): Promise<ApiKeys | undefine
   }
   let encrypted = db.data.userApiKeys[normalizedUserId]
   if (!encrypted) {
-    await migrateApiKeysIfNeeded(db)
-    const legacyApiKeys = db.data.settings.apiKeys
-    const hasLegacy = legacyApiKeys && Object.values(legacyApiKeys).some(Boolean)
-    if (hasLegacy) {
-      encrypted = legacyApiKeys
-      db.data.userApiKeys[normalizedUserId] = legacyApiKeys
-      db.data.settings.apiKeys = {}
-      await db.write()
-      logger.info('Migrated legacy global API keys to user profile', { userId: normalizedUserId })
-    } else {
+    if (allowLegacyImport) {
+      await migrateApiKeysIfNeeded(db)
+      const legacyApiKeys = db.data.settings.apiKeys
+      const hasLegacy = legacyApiKeys && Object.values(legacyApiKeys).some(Boolean)
+      if (hasLegacy) {
+        encrypted = legacyApiKeys
+        db.data.userApiKeys[normalizedUserId] = legacyApiKeys
+        db.data.settings.apiKeys = {}
+        await db.write()
+        logger.info('Migrated legacy global API keys to user profile', { userId: normalizedUserId })
+      }
+    }
+
+    if (!encrypted && allowEnvImport) {
       const envApiKeys = readApiKeysFromEnv()
       if (envApiKeys) {
         const encryptedEnvKeys = encryptApiKeys(envApiKeys) ?? {}
@@ -279,6 +428,71 @@ export async function saveUserApiKeys(userId: string, apiKeys: ApiKeys): Promise
   if (db.data.userApiKeys['']) {
     delete db.data.userApiKeys['']
   }
+  await db.write()
+}
+
+export async function getUserUIPreferences(userId: string): Promise<UserUIPreferences | undefined> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return undefined
+  const db = await getDb()
+  if (!db.data.userUIPreferences) {
+    db.data.userUIPreferences = {}
+  }
+  return db.data.userUIPreferences[normalizedUserId]
+}
+
+export async function saveUserUIPreferences(userId: string, preferences: UserUIPreferences): Promise<void> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return
+  const db = await getDb()
+  if (!db.data.userUIPreferences) {
+    db.data.userUIPreferences = {}
+  }
+  db.data.userUIPreferences[normalizedUserId] = { ...DEFAULT_UI_PREFERENCES, ...preferences }
+  await db.write()
+}
+
+const DEFAULT_USER_RULES: UserRule[] = [
+  {
+    id: 'runtime-guardrails',
+    name: 'Runtime Guardrails',
+    description: 'Apply baseline safety and validation checks to every run.',
+    applicability: 'always',
+    enabled: true,
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'prompt-library-assist',
+    name: 'Prompt Library Assist',
+    description: 'Suggest prompt library entries before running manual tasks.',
+    applicability: 'manual',
+    enabled: true,
+    updatedAt: Date.now(),
+  },
+]
+
+export async function getUserRules(userId: string): Promise<UserRule[]> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return DEFAULT_USER_RULES
+  const db = await getDb()
+  if (!db.data.userRules) {
+    db.data.userRules = {}
+  }
+  const rules = db.data.userRules[normalizedUserId]
+  if (!rules || rules.length === 0) {
+    return DEFAULT_USER_RULES
+  }
+  return rules
+}
+
+export async function saveUserRules(userId: string, rules: UserRule[]): Promise<void> {
+  const normalizedUserId = (userId ?? '').trim()
+  if (!normalizedUserId) return
+  const db = await getDb()
+  if (!db.data.userRules) {
+    db.data.userRules = {}
+  }
+  db.data.userRules[normalizedUserId] = rules
   await db.write()
 }
 

@@ -1,0 +1,459 @@
+
+> fusia-ai@1.0.0 dev
+> node ./scripts/dev-local.mjs
+
+[dev-local] Starting SwarmUI at http://localhost:4100 (tmp=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\swarm-ui-dev, dist=C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev)
+ ✓ Compiled /instrumentation in 917ms (290 modules)
+[telemetry] OpenTelemetry initialized for swarm-ui
+[telemetry] Exporting traces to http://localhost:4318/v1/traces
+[36mINFO [0m [ws-server] WebSocket server attached to HTTP server
+[36mINFO [0m [ws-server] WebSocket endpoint {"path":"/api/ws"}
+[36mINFO [0m [lsp-server] LSP WebSocket server initialized
+[36mINFO [0m [server] SwarmUI ready on http://localhost:4100
+[36mINFO [0m [server] WebSocket server attached to same port at /api/ws
+[36mINFO [0m [server] LSP WebSocket server available at /api/lsp/ws
+[36mINFO [0m [server] Mode: development
+[36mINFO [0m [ws-server] Scheduler initialized and started
+[36mINFO [0m [ws-server] Client connected {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade","email":"rorybrowne@mail.com","role":"editor"}
+ ✓ Compiled /middleware in 246ms (237 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:52:47.829Z","requestId":"525abe64-2464-43c6-853c-861d4731cc05","method":"GET","path":"/api/health/live","durationMs":1,"userAgent":"node","ip":"::1"}}
+ ○ Compiling /api/health/live ...
+ ✓ Compiled /api/health/live in 550ms (612 modules)
+ GET /api/health/live 200 in 782ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:52:48.672Z","requestId":"16120e15-efd2-4908-b95c-7c69f0e4b479","method":"GET","path":"/api/ws","durationMs":1,"ip":"::1"}}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":5}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-normal-gemini-1772272369643","mode":"chat","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Give a concise answer to: what is 2+2? one sentenc"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:52:49.926Z","requestId":"ee18e9d7-d4c8-4bad-879c-e45d244937c2","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:52:54.448Z","requestId":"b2537958-0122-43a1-8103-ab37ac32458f","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-swarm-gemini-primary-1772272375426","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Provide a short orchestration output that referenc"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:52:55.691Z","requestId":"13a425d4-31fc-4a81-a4c4-88ca03325762","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:55:55.498Z","requestId":"584304af-7334-4c32-a997-f25dce857174","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-swarm-failover-from-claude-1772272556462","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Return a short execution summary and include queue"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:55:56.747Z","requestId":"91b30070-9af5-4fdb-8aa0-3ed805326d9c","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+ ✓ Compiled in 386ms (708 modules)
+ ✓ Compiled in 123ms (708 modules)
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:58:56.510Z","requestId":"57709ae9-70b6-4cda-9e6c-26b186ac34cd","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-project-planner-tickets-1772272737488","mode":"project","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Create structured output sections: Phases, Tasks, "}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T09:58:57.754Z","requestId":"5e5ec77b-5b5a-4af7-8886-35dd4a08a412","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:01:00.296Z","requestId":"f434dcfd-bbbf-47cc-a2cb-7b7f4791e54b","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"::1"}}
+ ✓ Compiled /api/health/live in 197ms (419 modules)
+ GET /api/health/live 200 in 320ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"failover-1772272860623","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Return a concise queue/job orchestration summary."}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:01:00.889Z","requestId":"3224ec2b-650b-4d53-9006-60731eb72a00","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Found 2 potential secrets in content {"critical":0,"high":2,"medium":0,"low":0}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Agent coder-1 output contains 2 potential secrets {"critical":0,"high":2}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Found 2 potential secrets in content {"critical":0,"high":2,"medium":0,"low":0}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Agent coder-2 output contains 2 potential secrets {"critical":0,"high":2}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Found 2 potential secrets in content {"critical":0,"high":2,"medium":0,"low":0}
+[33mWARN [0m [secrets-scanner] [trace:c8a1d9c4] Agent coder-3 output contains 2 potential secrets {"critical":0,"high":2}
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:22.473Z","requestId":"d2688ad5-c5cd-48ee-b0bc-ddc4e140de83","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"::1"}}
+ GET /api/health/live 200 in 45ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"failover-1772273062526","mode":"chat","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Reply with exactly: FAILOVER_OK"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:22.813Z","requestId":"4f20a128-46c4-45da-a9cc-7fd929cddf43","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:34.583Z","requestId":"e5bc3c9a-b759-4e38-a9ce-c0f6e27f7cf7","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"::1"}}
+ GET /api/health/live 200 in 44ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:34.657Z","requestId":"e3b3e833-fa7d-4579-a005-72fefcb9a4a8","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-normal-gemini-1772273075552","mode":"chat","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Reply in one line with exactly: CHAT_OK_GEMINI"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:35.820Z","requestId":"e55c20ba-ac45-4427-90c8-ada313299395","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:39.690Z","requestId":"f5f3b385-949c-4e60-9817-806957597ca6","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-normal-openai-1772273080555","mode":"chat","agentSelectionMode":"manual","preferredAgent":"codex","traceModeValidation":true,"prompt":"Reply in one line with exactly: CHAT_OK_OPENAI"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:40.824Z","requestId":"0abbf40a-8087-4f59-9b68-63bd4d289e13","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:46.657Z","requestId":"c969472e-234d-4b32-b7db-dbfe5ac59543","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-swarm-gemini-1772273087542","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Return a concise orchestration summary with exactl"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:04:47.805Z","requestId":"65fd4b7f-91c5-436f-b03b-04b5a0facc97","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:06:22.763Z","requestId":"55efb6db-5e65-4c0e-9a81-4a05b1d5ec58","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-swarm-claude-1772273183626","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Return a concise orchestration summary with exactl"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:06:24.219Z","requestId":"a32a6341-8447-4370-ac6e-391b2f440a76","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:07:53.665Z","requestId":"175f4861-80d4-4483-b386-49f4f1266c1e","method":"GET","path":"/api/ws","durationMs":1,"ip":"::1"}}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-project-planner-tickets-1772273274551","mode":"project","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Output markdown sections titled exactly: Phases, T"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:07:54.853Z","requestId":"cc9bfeb5-1f90-4e67-8cc2-18fba683669b","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:12.470Z","requestId":"662cd3a9-5480-4c73-b634-05140d97f08e","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ○ Compiling /app ...
+ ✓ Compiled /app in 10.7s (4602 modules)
+[36mINFO [0m [ws-server] Client disconnected {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade","code":1001}
+ GET /app 200 in 13338ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:26.625Z","requestId":"586a3999-769d-4f0f-919d-1f6a87db0222","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+[36mINFO [0m [ws-server] Client connected {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade","email":"rorybrowne@mail.com","role":"editor"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:27.105Z","requestId":"a9697c0b-52d9-4c09-b726-09a428c708ef","method":"GET","path":"/api/ws","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:27.107Z","requestId":"e364a929-ccdc-416f-ab96-b80999711e30","method":"GET","path":"/api/me/preferences","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/me/preferences in 5.6s (4597 modules)
+ GET /api/me/preferences 200 in 5673ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:32.872Z","requestId":"8f5d4c02-c779-47ab-823b-4f6191f6e18f","method":"GET","path":"/api/models/catalog","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:32.889Z","requestId":"ffffa28f-469f-4b07-ab3c-0d48e8cd79cb","method":"GET","path":"/api/sessions","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:32.891Z","requestId":"c955ee7e-7e79-4bbb-8b53-e6c2c3edf8da","method":"GET","path":"/api/settings","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ○ Compiling /api/sessions ...
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:33.556Z","requestId":"3d2f5239-3610-402c-be49-17bc0fa980b7","method":"GET","path":"/api/dashboard/summary","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /api/auth/session 200 in 7815ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:34.611Z","requestId":"39d7db89-07a3-408c-b1c4-59e651b68f96","method":"GET","path":"/api/auth/session","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ✓ Compiled /api/dashboard/summary in 3.3s (4614 modules)
+ GET /api/auth/session 200 in 1917ms
+ GET /api/sessions 200 in 4346ms
+ GET /api/dashboard/summary 200 in 3687ms
+ GET /api/settings 200 in 4573ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:37.515Z","requestId":"20346a1e-48b1-4398-b3b4-79800af0e34a","method":"GET","path":"/api/dashboard/summary","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /api/dashboard/summary 200 in 107ms
+ GET /api/models/catalog 200 in 5404ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:38.318Z","requestId":"ae78dfe5-ff16-4830-9c9b-3e572de9e98b","method":"GET","path":"/api/models/catalog","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /api/models/catalog 200 in 463ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:40.515Z","requestId":"aab7103b-1768-40b8-a7fa-f191b7525fd9","method":"POST","path":"/api/sessions","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:40.517Z","requestId":"86c4a9cb-511e-4141-90be-f3891f63bfcf","method":"PUT","path":"/api/me/preferences","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"5a3a93bc-e86a-42b0-bcaa-09da8417a20d","mode":"chat","agentSelectionMode":"manual","preferredAgent":"codex","traceModeValidation":false,"prompt":"test"}
+ PUT /api/me/preferences 500 in 7364ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:48.415Z","requestId":"1d87ff5c-2b48-46ca-80d6-9c56298be54e","method":"POST","path":"/api/sessions","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ POST /api/sessions 201 in 7572ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:49.024Z","requestId":"afd6dcca-7d7b-4fe3-8fef-9038acd092be","method":"PUT","path":"/api/me/preferences","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ✓ Compiled in 10s (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:50.036Z","requestId":"39eff65b-8714-4ab1-bd3f-423feea716ec","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ POST /api/sessions 201 in 1101ms
+ PUT /api/me/preferences 500 in 954ms
+ GET /app 200 in 725ms
+ ✓ Compiled in 1980ms (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:51.449Z","requestId":"991388bf-495a-492a-861a-980afcbd3019","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 371ms
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:08:58.013Z","requestId":"bbb158a1-0e12-41a1-a3bf-2a26c50e9716","method":"POST","path":"/api/sessions","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ POST /api/sessions 201 in 1004ms
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"5a3a93bc-e86a-42b0-bcaa-09da8417a20d","mode":"chat","agentSelectionMode":"manual","preferredAgent":"codex","traceModeValidation":false,"prompt":"Summarize what changed and what to verify next"}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:09:27.767Z","requestId":"c70b6682-74fa-4e96-a6ab-91c953704191","method":"POST","path":"/api/sessions","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ POST /api/sessions 201 in 356ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:09:34.488Z","requestId":"138f3ce3-bcbe-47b7-a80a-ea6c8a295fde","method":"POST","path":"/api/sessions","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ POST /api/sessions 201 in 566ms
+ ✓ Compiled in 63.9s (4628 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:01.576Z","requestId":"ec9d44de-7dbf-4835-9c15-ca4cb69fad14","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:01.768Z","requestId":"5cd9ce71-7d2a-484c-9a89-c796ca966e49","method":"GET","path":"/api/models/catalog","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 679ms
+ GET /api/models/catalog 200 in 1901ms
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:04.847Z","requestId":"b6fe2925-6552-45ea-99f7-a2f6bce3a88f","method":"GET","path":"/api/health/live","durationMs":0,"userAgent":"node","ip":"::1"}}
+ ○ Compiling /api/health/live ...
+ ✓ Compiled /api/health/live in 1107ms (2462 modules)
+ GET /api/health/live 200 in 1314ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:06.279Z","requestId":"fffe1a59-666d-4e40-9ddb-607c9f3bca0e","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-normal-gemini-1772273407091","mode":"chat","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Reply in one line with exactly: CHAT_OK_GEMINI"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:07.522Z","requestId":"becfc7d9-38d3-41a2-bfe2-eede27f02a1b","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:12.543Z","requestId":"2908d1d4-91f1-47c6-9235-794c44a4c982","method":"GET","path":"/api/ws","durationMs":1,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-normal-openai-1772273413337","mode":"chat","agentSelectionMode":"manual","preferredAgent":"codex","traceModeValidation":true,"prompt":"Reply in one line with exactly: CHAT_OK_OPENAI"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:13.733Z","requestId":"033d5555-8025-4452-bfdc-3c7574d5ef2e","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+ ✓ Compiled in 1748ms (4620 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:16.384Z","requestId":"df8e3fab-40f5-4aa1-8043-4edee2160e06","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:16.559Z","requestId":"85ff25c6-6e65-4129-a30b-9dc15aa60310","method":"GET","path":"/api/models/catalog","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 624ms
+ GET /api/models/catalog 200 in 1739ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:21.069Z","requestId":"b045b7bd-c6db-440a-b795-8fea8089b64c","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-swarm-gemini-1772273421812","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Return a concise orchestration summary with exactl"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:22.177Z","requestId":"dd8da27a-0846-4529-8498-015317130162","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+ ✓ Compiled in 1593ms (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:41.971Z","requestId":"9cb3cea7-5c2e-4245-9081-b7c9049c0689","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 391ms
+ ✓ Compiled in 1148ms (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:10:42.936Z","requestId":"c155bcd5-b2e0-4c57-9225-e98d09675c9b","method":"GET","path":"/app","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 382ms
+ ✓ Compiled in 13.9s (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:11:04.132Z","requestId":"55c4f1f4-808f-48c8-b854-2e338425b2cc","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 5873ms
+ ✓ Compiled in 15.3s (2158 modules)
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:11:19.299Z","requestId":"9fa5267e-623f-4edd-afd4-3d0c52ad4a7b","method":"GET","path":"/app","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ GET /app 200 in 5773ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-swarm-claude-1772273562806","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Return a concise orchestration summary with exactl"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:12:43.721Z","requestId":"a7008076-b0be-4f3e-b207-4138605d71a4","method":"GET","path":"/api/ws","durationMs":1,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:12:44.362Z","requestId":"c16b3df1-acac-41c1-81c6-987ecfb5416c","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:13:52.371Z","requestId":"c1e7a214-5b5e-435d-af88-6dd4edb50814","method":"PUT","path":"/api/me/preferences","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+ ○ Compiling /api/me/preferences ...
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:05.876Z","requestId":"591b0185-5647-4674-ac5a-28decce8b230","method":"GET","path":"/api/dashboard/summary","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:11.439Z","requestId":"d6bf2e85-2382-42f0-b381-d7e69e479b81","method":"GET","path":"/api/terminal","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:11.440Z","requestId":"e20ce9c1-d4f9-4589-9db2-b5a5449c7e2b","method":"GET","path":"/api/terminal","durationMs":1,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1006}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"fast-project-planner-tickets-1772273653804","mode":"project","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Output markdown sections titled exactly: Phases, T"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:15.279Z","requestId":"5aae6a9a-69af-4ef4-a834-c63258744fad","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:15.945Z","requestId":"be3cae02-4bba-4d03-b573-72f60eac267d","method":"GET","path":"/api/ws","durationMs":1,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:21.457Z","requestId":"5714ab2a-2503-4a70-9d1e-cf1373fd61b8","method":"PUT","path":"/api/me/preferences","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:14:25.399Z","requestId":"2d9fa7aa-000a-4c20-a48b-2db447fa3086","method":"PUT","path":"/api/me/preferences","durationMs":0,"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 OPR/127.0.0.0","ip":"::1","referer":"http://localhost:4100/app"}}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:15:06.947Z","requestId":"13fcb2a7-b918-4a63-aa64-71601579f727","method":"GET","path":"/api/health/live","durationMs":1,"userAgent":"node","ip":"::1"}}
+ GET /api/health/live 200 in 2462ms
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-normal-gemini-1772273710739","mode":"chat","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Give a concise answer to: what is 2+2? one sentenc"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:15:11.662Z","requestId":"5a91462f-29eb-4c64-99e1-612ba41a0ec2","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:15:12.884Z","requestId":"a403dffb-a7d4-4b55-b66d-91dbfcb34e3f","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-swarm-gemini-primary-1772273755396","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"gemini","traceModeValidation":true,"prompt":"Provide a short orchestration output that referenc"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:15:56.228Z","requestId":"18ee70c3-2fd5-4e03-94f0-be2dc2d33cff","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:15:57.397Z","requestId":"dd09bd64-d9cb-4815-ac67-1b87a07e663a","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[36mINFO [0m [ws-server] cancel-all-queued received
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[36mINFO [0m [ws-server] Cancelled queued jobs {"count":0}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:284:14)
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+[90mDEBUG[0m [ws-auth] No session token found in WebSocket upgrade request
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[36mINFO [0m [ws-server] Client connected (unauthenticated mode)
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[36mINFO [0m [ws-server] start-swarm received {"sessionId":"verify-swarm-failover-from-claude-1772274003004","mode":"swarm","agentSelectionMode":"manual","preferredAgent":"claude","traceModeValidation":true,"prompt":"Return a short execution summary and include queue"}
+[36mINFO [0m [ws-server] Client disconnected {"code":1005}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:20:03.883Z","requestId":"67a847b4-9d97-4b37-9479-db671c18a3e2","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}
+{"level":"info","component":"middleware","message":"Request","data":{"timestamp":"2026-02-28T10:20:05.224Z","requestId":"edcad89a-f426-467f-a606-d81a93b4cfbf","method":"GET","path":"/api/ws","durationMs":0,"ip":"::1"}}

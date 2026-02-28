@@ -41,6 +41,7 @@
   ],
   "exclude": [
     "node_modules",
+    "worktrees",
     "vscode-extension",
     "tests/components/**",
     "tests/performance/**"

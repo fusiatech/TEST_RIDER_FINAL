@@ -106,6 +106,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       const session2: Session = {
         id: 'session-2',
@@ -113,6 +114,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       mockDbData.sessions = [session1, session2]
 
@@ -136,6 +138,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       mockDbData.sessions = [testSession]
 
@@ -154,6 +157,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
 
       await saveSession(newSession)
@@ -169,6 +173,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       mockDbData.sessions = [existingSession]
 
@@ -192,6 +197,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       mockDbData.sessions = [session]
 
@@ -208,6 +214,7 @@ describe('storage', () => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         messages: [],
+        mode: 'chat',
       }
       mockDbData.sessions = [session]
 

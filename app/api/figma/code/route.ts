@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFigmaNode, getFigmaImage, generateReactCode } from '@/server/figma-client'
-import { getSettings } from '@/server/storage'
 import { z } from 'zod'
+import { auth } from '@/auth'
+import { getFigmaAccessTokenForUser } from '@/server/integrations/figma-service'
 
 const RequestSchema = z.object({
   fileKey: z.string(),
@@ -24,8 +25,9 @@ export async function POST(request: NextRequest) {
 
   const { fileKey, nodeId, useTailwind = true } = parsed.data
 
-  const settings = await getSettings()
-  const accessToken = settings.figmaConfig?.accessToken
+  const session = await auth().catch(() => null)
+  const userId = session?.user?.id
+  const accessToken = await getFigmaAccessTokenForUser(userId)
 
   if (!accessToken) {
     return NextResponse.json(

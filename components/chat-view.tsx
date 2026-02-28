@@ -1,27 +1,106 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useRef, useEffect, useCallback, useMemo, type KeyboardEvent } from 'react'
 import dynamic from 'next/dynamic'
-import { useSession, signOut } from 'next-auth/react'
 import { useSwarmStore } from '@/lib/store'
-import { CLI_REGISTRY } from '@/lib/cli-registry'
+import type { Attachment, CLIProvider, ReasoningMode } from '@/lib/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MessageBubble } from '@/components/message-bubble'
-import { AgentCard } from '@/components/agent-card'
-import { LivePreview } from '@/components/live-preview'
 import { FileUpload } from '@/components/file-upload'
 import { VoiceInputButton, VoiceInputIndicator } from '@/components/voice-input-button'
 import { SpellCheckInput } from '@/components/spell-check-input'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { MinimalErrorFallback } from '@/components/error-fallback'
 import { ROLE_LABELS } from '@/lib/types'
-import type { Attachment, ChatIntent } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadingState } from '@/components/ui/loading-state'
+import { apiJson } from '@/lib/client-api'
 import { AnimatePresence, motion } from 'framer-motion'
+import {
+  Send,
+  Square,
+  Sparkles,
+  Code2,
+  TestTube2,
+  Bug,
+  Shield,
+  Zap,
+  FolderKanban,
+  Globe,
+  Hammer,
+  Rocket,
+  CircleHelp,
+  ChevronDown,
+  Activity,
+  ListTree,
+  ListPlus,
+  X,
+} from 'lucide-react'
+import type { AppMode } from '@/lib/store'
+import { MODEL_CATALOG } from '@/lib/model-catalog'
+
+interface CatalogProviderEntry {
+  provider: string
+  label: string
+  supportsApi: boolean
+  isEnabledByUser: boolean
+  isConfiguredByUser: boolean
+  runtimeAvailable: boolean
+}
+
+interface CatalogModelEntry {
+  provider: string
+  modelId: string
+  displayName: string
+  source: 'api' | 'fallback'
+}
+
+interface CatalogResponse {
+  providers: CatalogProviderEntry[]
+  models: CatalogModelEntry[]
+  updatedAt: number
+}
+
+interface UIModelOption {
+  id: string
+  label: string
+  capability: {
+    supportsDeepReasoning: boolean
+    supportsStreaming: boolean
+    supportsTools: boolean
+  }
+}
+
+interface UIProviderOption {
+  id: CLIProvider
+  label: string
+  models: UIModelOption[]
+}
+
+const DEEP_REASONING_HINTS = ['gpt-5', 'o1', 'o3', 'pro', 'sonnet', 'opus', 'reason']
+
+function resolveModelCapability(providerId: CLIProvider, modelId: string): UIModelOption['capability'] {
+  const provider = MODEL_CATALOG.find((entry) => entry.id === providerId)
+  const exact = provider?.models.find((model) => model.id === modelId)
+  if (exact) {
+    return exact.capability
+  }
+
+  const lowered = modelId.toLowerCase()
+  const supportsDeepReasoning = DEEP_REASONING_HINTS.some((hint) => lowered.includes(hint))
+  return {
+    supportsDeepReasoning,
+    supportsStreaming: true,
+    supportsTools: true,
+  }
+}
+
+function isCLIProvider(value: string): value is CLIProvider {
+  return MODEL_CATALOG.some((provider) => provider.id === value)
+}
 
 function TabLoadingSkeleton() {
   return (
@@ -33,82 +112,40 @@ function TabLoadingSkeleton() {
   )
 }
 
-const AgentDashboard = dynamic(
-  () => import('@/components/agent-dashboard').then(mod => ({ default: mod.AgentDashboard })),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
-)
-
-const ProjectDashboard = dynamic(
-  () => import('@/components/project-dashboard').then(mod => ({ default: mod.ProjectDashboard })),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
-)
-
-const TestingDashboard = dynamic(
-  () => import('@/components/testing-dashboard').then(mod => ({ default: mod.TestingDashboard })),
-  { loading: () => <TabLoadingSkeleton />, ssr: false }
-)
-
-const EclipseDashboard = dynamic(
-  () => import('@/components/eclipse-dashboard').then(mod => ({ default: mod.EclipseDashboard })),
+const ControlCenterDashboard = dynamic(
+  () => import('@/components/control-center-dashboard').then((mod) => ({ default: mod.ControlCenterDashboard })),
   { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 
 const ObservabilityDashboard = dynamic(
-  () => import('@/components/observability-dashboard').then(mod => ({ default: mod.ObservabilityDashboard })),
+  () => import('@/components/observability-dashboard').then((mod) => ({ default: mod.ObservabilityDashboard })),
   { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
 
 const DevEnvironment = dynamic(
-  () => import('@/components/dev-environment').then(mod => ({ default: mod.DevEnvironment })),
+  () => import('@/components/dev-environment').then((mod) => ({ default: mod.DevEnvironment })),
   { loading: () => <TabLoadingSkeleton />, ssr: false }
 )
-import {
-  Send,
-  Square,
-  Loader2,
-  MessageCircle,
-  LayoutDashboard,
-  Sparkles,
-  Code2,
-  TestTube2,
-  Bug,
-  Shield,
-  ChevronDown,
-  Zap,
-  FolderKanban,
-  Globe,
-  Hammer,
-  Rocket,
-  Eye,
-  CircleHelp,
-  Cpu,
-  BarChart3,
-  User,
-  LogOut,
-  Settings,
-} from 'lucide-react'
-
-import type { AppMode } from '@/lib/store'
 
 const CHAT_PROMPTS = [
-  { icon: Globe, text: 'What is the best way to handle auth?', color: 'var(--color-role-researcher)' },
-  { icon: Bug, text: 'Explain this error and how to fix it', color: 'var(--color-role-validator)' },
-  { icon: Code2, text: 'How do I optimize this React component?', color: 'var(--color-role-coder)' },
-  { icon: Shield, text: 'What security best practices should I follow?', color: 'var(--color-role-security)' },
+  { icon: Globe, text: 'Plan a rollout for a zero-downtime auth migration', color: 'var(--color-role-researcher)' },
+  { icon: Bug, text: 'Debug this failing endpoint and propose a fix', color: 'var(--color-role-validator)' },
+  { icon: Code2, text: 'Implement a typed API client with retries and tests', color: 'var(--color-role-coder)' },
+  { icon: Shield, text: 'Validate security controls before production deploy', color: 'var(--color-role-security)' },
 ]
 
 const SWARM_PROMPTS = [
-  { icon: Code2, text: 'Refactor the auth module', color: 'var(--color-role-coder)' },
-  { icon: TestTube2, text: 'Add unit tests for the data layer', color: 'var(--color-role-researcher)' },
-  { icon: Bug, text: 'Fix the performance issue in the data table', color: 'var(--color-role-validator)' },
-  { icon: Shield, text: 'Review security of the API endpoints', color: 'var(--color-role-security)' },
+  { icon: Code2, text: 'Plan, build, and validate a production-ready auth refactor', color: 'var(--color-role-coder)' },
+  { icon: TestTube2, text: 'Build test strategy, implement coverage, and ship reports', color: 'var(--color-role-researcher)' },
+  { icon: Bug, text: 'Investigate latency regression and execute a full fix pipeline', color: 'var(--color-role-validator)' },
+  { icon: Shield, text: 'Run a full security validation and remediation pass', color: 'var(--color-role-security)' },
 ]
 
 const PROJECT_PROMPTS = [
-  { icon: Rocket, text: 'Build a SaaS dashboard with auth and billing', color: 'var(--color-role-planner)' },
-  { icon: Hammer, text: 'Create a CLI tool that generates boilerplate', color: 'var(--color-role-coder)' },
-  { icon: Zap, text: 'Build an API for real-time notifications', color: 'var(--color-role-validator)' },
-  { icon: FolderKanban, text: 'Create a project management app', color: 'var(--color-role-researcher)' },
+  { icon: Rocket, text: 'Design and execute a full MVP delivery plan', color: 'var(--color-role-planner)' },
+  { icon: Hammer, text: 'Ideate features, prioritize, and implement the first milestone', color: 'var(--color-role-coder)' },
+  { icon: Zap, text: 'Build and validate a realtime event platform', color: 'var(--color-role-validator)' },
+  { icon: FolderKanban, text: 'Create a roadmap and ticket architecture for a new product', color: 'var(--color-role-researcher)' },
 ]
 
 const MODE_PROMPTS: Record<AppMode, typeof CHAT_PROMPTS> = {
@@ -123,36 +160,215 @@ const MODE_LABELS: Record<AppMode, string> = {
   project: 'Project',
 }
 
-const CHAT_INTENT_OPTIONS: Array<{ value: ChatIntent; label: string }> = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'plan', label: 'Plan' },
-  { value: 'one_line_fix', label: 'One-line' },
-  { value: 'code_implementation', label: 'Implement' },
-  { value: 'code_review', label: 'Review' },
-  { value: 'explain', label: 'Explain' },
-  { value: 'debug', label: 'Debug' },
-]
+function buildFollowUpPrompts(mode: AppMode, lastAssistantText: string): string[] {
+  const lower = lastAssistantText.toLowerCase()
+  if (lower.includes('test') || lower.includes('failing')) {
+    return [
+      'Create a focused fix plan for the failing area',
+      'Generate targeted tests for the failure paths',
+      'Summarize what changed and what to verify next',
+    ]
+  }
+  if (lower.includes('plan') || lower.includes('roadmap')) {
+    return [
+      'Turn this plan into executable tasks',
+      'Identify the top 3 risks and mitigations',
+      'Generate a delivery timeline with checkpoints',
+    ]
+  }
+  if (mode === 'project') {
+    return [
+      'Break this into project tickets and priorities',
+      'Create the first milestone implementation checklist',
+      'Open a conversation focused on technical execution',
+    ]
+  }
+  if (mode === 'swarm') {
+    return [
+      'Run a deeper multi-agent validation pass',
+      'Expand this into implementation plus testing steps',
+      'Produce a concise executive summary and action list',
+    ]
+  }
+  return [
+    'Implement this now with production-safe changes',
+    'Refine this with clearer architecture decisions',
+    'Explain the tradeoffs and best next step',
+  ]
+}
 
-const VALID_TABS = ['chat', 'dashboard', 'ide', 'testing', 'eclipse', 'observability'] as const
+function extractAssistantSuggestions(content: string): string[] {
+  const lines = content.split('\n').map((line) => line.trim())
+  const headingPattern = /^(#+\s*)?(recommended prompts?|suggested prompts?|continue with|next actions?|next prompts?)\s*:?\s*$/i
+  const bulletPattern = /^[-*]\s+(.+)$|^\d+\.\s+(.+)$/
+
+  const suggestions: string[] = []
+  let capture = false
+
+  for (const line of lines) {
+    if (!line) {
+      if (capture && suggestions.length > 0) break
+      continue
+    }
+    if (line.startsWith('```')) {
+      if (capture) break
+      continue
+    }
+    if (headingPattern.test(line)) {
+      capture = true
+      continue
+    }
+    if (!capture) continue
+    const match = line.match(bulletPattern)
+    if (!match) {
+      if (suggestions.length > 0) break
+      continue
+    }
+    const candidate = (match[1] ?? match[2] ?? '').trim().replace(/^["'`]|["'`]$/g, '')
+    if (candidate.length < 12 || candidate.length > 140) continue
+    suggestions.push(candidate)
+    if (suggestions.length >= 5) break
+  }
+
+  return suggestions
+}
+
+function dedupePrompts(items: string[]): string[] {
+  const seen = new Set<string>()
+  const output: string[] = []
+  for (const item of items) {
+    const normalized = item.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    output.push(item)
+  }
+  return output
+}
+
+const VALID_TABS = ['chat', 'dashboard', 'ide', 'observability'] as const
 type TabType = typeof VALID_TABS[number]
 
 function isValidTab(tab: string | null): tab is TabType {
   return tab !== null && VALID_TABS.includes(tab as TabType)
 }
 
+function CompactRunTimeline({
+  agents,
+  isRunning,
+}: {
+  agents: Array<{ id: string; role: string; status: string; output: string }>
+  isRunning: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  if (!isRunning && agents.length === 0) return null
+
+  const statusCounts = {
+    running: agents.filter((agent) => agent.status === 'running' || agent.status === 'spawning').length,
+    completed: agents.filter((agent) => agent.status === 'completed').length,
+    failed: agents.filter((agent) => agent.status === 'failed').length,
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card/50 p-3">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 text-left"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg border border-border/80 bg-background/60 p-1.5">
+            <Activity className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground">Run Timeline</p>
+            <p className="text-[11px] text-muted">
+              {statusCounts.running} running | {statusCounts.completed} completed | {statusCounts.failed} failed
+            </p>
+          </div>
+        </div>
+        <ChevronDown className={cn('h-4 w-4 text-muted transition-transform', open && 'rotate-180')} />
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {agents.map((agent) => (
+            <div key={agent.id} className="rounded-lg border border-border/70 bg-background/60 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-foreground">{ROLE_LABELS[agent.role as keyof typeof ROLE_LABELS] ?? agent.role}</span>
+                <Badge variant="outline" className="text-[10px] capitalize">
+                  {agent.status}
+                </Badge>
+              </div>
+              {agent.output.trim() ? (
+                <p className="mt-1 line-clamp-2 text-[11px] text-muted">{agent.output.trim()}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChatResponseLoading({
+  queuedCount,
+  agentCount,
+  activeStep,
+}: {
+  queuedCount: number
+  agentCount: number
+  activeStep: number
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card/40 p-3 md:p-4" data-action-id="chat-response-loading">
+      <LoadingState
+        variant="workflow"
+        size="md"
+        text="Fusia is building your response..."
+        steps={['Queued', 'Planning', 'Running', 'Review']}
+        activeStep={activeStep}
+      />
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-border/70 bg-background/70 px-2.5 py-2">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Queued</p>
+          <p className="mt-1 text-xs font-medium text-foreground">{queuedCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-background/70 px-2.5 py-2">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Active agents</p>
+          <p className="mt-1 text-xs font-medium text-foreground">{agentCount}</p>
+        </div>
+        <div className="rounded-lg border border-border/70 bg-background/70 px-2.5 py-2">
+          <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Output</p>
+          <p className="mt-1 text-xs font-medium text-foreground">Streaming with pacing</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ChatView() {
   const [input, setInput] = useState('')
-  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [isVoiceListening, setIsVoiceListening] = useState(false)
-  const agentDropdownRef = useRef<HTMLDivElement>(null)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const { data: session } = useSession()
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false)
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [followOutput, setFollowOutput] = useState(false)
+  const [catalogData, setCatalogData] = useState<CatalogResponse | null>(null)
+  const [catalogSource, setCatalogSource] = useState<'loading' | 'live' | 'fallback'>('loading')
+  const [catalogStatusMessage, setCatalogStatusMessage] = useState('Loading live model catalog...')
+  const [catalogLoadError, setCatalogLoadError] = useState<string | null>(null)
+  const [catalogUpdatedAt, setCatalogUpdatedAt] = useState<number | null>(null)
+  const [srAnnouncement, setSrAnnouncement] = useState('')
+  const [providerHighlightedIndex, setProviderHighlightedIndex] = useState(0)
+  const [modelHighlightedIndex, setModelHighlightedIndex] = useState(0)
 
-  const searchParams = useSearchParams()
-  const router = useRouter()
+  const providerTriggerRef = useRef<HTMLButtonElement>(null)
+  const modelTriggerRef = useRef<HTMLButtonElement>(null)
+  const providerMenuRef = useRef<HTMLDivElement>(null)
+  const modelMenuRef = useRef<HTMLDivElement>(null)
+  const providerOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const modelOptionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const messages = useSwarmStore((s) => s.messages)
   const agents = useSwarmStore((s) => s.agents)
@@ -161,97 +377,363 @@ export function ChatView() {
   const cancelSwarm = useSwarmStore((s) => s.cancelSwarm)
   const activeTab = useSwarmStore((s) => s.activeTab)
   const setActiveTab = useSwarmStore((s) => s.setActiveTab)
-  const wsConnected = useSwarmStore((s) => s.wsConnected)
   const mode = useSwarmStore((s) => s.mode)
   const settings = useSwarmStore((s) => s.settings)
-  const chatIntent = useSwarmStore((s) => s.chatIntent)
-  const setChatIntent = useSwarmStore((s) => s.setChatIntent)
-  const selectedAgent = useSwarmStore((s) => s.selectedAgent)
-  const setSelectedAgent = useSwarmStore((s) => s.setSelectedAgent)
-  const showPreview = useSwarmStore((s) => s.showPreview)
-  const togglePreview = useSwarmStore((s) => s.togglePreview)
-  const currentProjectId = useSwarmStore((s) => s.currentProjectId)
-  const switchProject = useSwarmStore((s) => s.switchProject)
+  const queuedMessages = useSwarmStore((s) => s.queuedMessages)
+  const uiPreferences = useSwarmStore((s) => s.uiPreferences)
+  const updateUIPreferences = useSwarmStore((s) => s.updateUIPreferences)
+  const queueMessage = useSwarmStore((s) => s.queueMessage)
+  const removeQueuedMessage = useSwarmStore((s) => s.removeQueuedMessage)
+  const clearQueuedMessages = useSwarmStore((s) => s.clearQueuedMessages)
+  const selectedProvider = useSwarmStore((s) => s.selectedAgent)
+  const setSelectedProvider = useSwarmStore((s) => s.setSelectedAgent)
+  const selectedModelId = useSwarmStore((s) => s.selectedModelId)
+  const setSelectedModelId = useSwarmStore((s) => s.setSelectedModelId)
+  const reasoningMode = useSwarmStore((s) => s.reasoningMode)
+  const setReasoningMode = useSwarmStore((s) => s.setReasoningMode)
 
-  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
-
-  // G-IA-01: Update URL when params change
-  const updateUrlParams = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString())
-    for (const [key, value] of Object.entries(updates)) {
-      if (value) {
-        params.set(key, value)
+  const loadCatalog = useCallback(async () => {
+    setCatalogSource('loading')
+    setCatalogStatusMessage('Loading live model catalog...')
+    setCatalogLoadError(null)
+    try {
+      const data = await apiJson<CatalogResponse>('/api/models/catalog')
+      setCatalogData(data)
+      const hasLiveEntries = data.providers.length > 0 || data.models.length > 0
+      if (hasLiveEntries) {
+        setCatalogSource('live')
+        setCatalogStatusMessage('Live catalog loaded.')
+        setCatalogUpdatedAt(data.updatedAt || Date.now())
+        setSrAnnouncement('Live model catalog loaded.')
       } else {
-        params.delete(key)
+        setCatalogSource('fallback')
+        setCatalogStatusMessage('Live catalog returned no models. Using fallback catalog.')
+        setCatalogLoadError('No live models returned')
+        setSrAnnouncement('Live catalog returned no models. Fallback catalog in use.')
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load catalog'
+      setCatalogData(null)
+      setCatalogSource('fallback')
+      setCatalogStatusMessage('Live catalog unavailable. Using fallback catalog.')
+      setCatalogLoadError(message)
+      setSrAnnouncement('Live catalog unavailable. Fallback catalog in use.')
     }
-    router.push(`?${params.toString()}`, { scroll: false })
-  }, [searchParams, router])
-
-  // G-IA-01: Sync tab state with URL on mount
-  useEffect(() => {
-    const tabParam = searchParams.get('tab')
-    if (isValidTab(tabParam) && tabParam !== activeTab) {
-      setActiveTab(tabParam)
-    }
-  }, [searchParams, activeTab, setActiveTab])
-
-  // G-IA-01: Sync project and ticket state from URL on mount
-  useEffect(() => {
-    const projectId = searchParams.get('project')
-    const ticketId = searchParams.get('ticket')
-    
-    if (projectId && projectId !== currentProjectId) {
-      switchProject(projectId)
-    }
-    if (ticketId && ticketId !== selectedTicketId) {
-      setSelectedTicketId(ticketId)
-    }
-  }, [searchParams, currentProjectId, switchProject, selectedTicketId])
-
-  // G-IA-01: Update URL when tab changes
-  const handleTabChange = useCallback((tab: TabType) => {
-    setActiveTab(tab)
-    updateUrlParams({ tab })
-  }, [setActiveTab, updateUrlParams])
-
-  // G-IA-01: Callback for project selection from dashboard
-  const handleProjectSelect = useCallback((projectId: string | null) => {
-    if (projectId) {
-      switchProject(projectId)
-    }
-    updateUrlParams({ project: projectId, ticket: null })
-  }, [switchProject, updateUrlParams])
-
-  // G-IA-01: Callback for ticket selection from dashboard
-  const handleTicketSelect = useCallback((ticketId: string | null) => {
-    setSelectedTicketId(ticketId)
-    updateUrlParams({ ticket: ticketId })
-  }, [updateUrlParams])
-
-  const enabledCLIs = CLI_REGISTRY.filter((cli) => settings.enabledCLIs.includes(cli.id))
-  const currentAgent = enabledCLIs.find((c) => c.id === selectedAgent) ?? enabledCLIs[0] ?? CLI_REGISTRY[0]
-
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, agents, scrollToBottom])
+    void loadCatalog()
+  }, [loadCatalog])
+
+  useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab')
+    if (isValidTab(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+    // Resolve query tab once on mount; do not override user tab interactions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setActiveTab])
+
+  const hideLocalConnectors = settings.executionRuntime === 'server_managed'
+  const localConnectorIds = useMemo(() => new Set<CLIProvider>(['cursor', 'copilot', 'rovo', 'custom']), [])
+  const staticProviderMap = useMemo(
+    () => new Map<CLIProvider, (typeof MODEL_CATALOG)[number]>(MODEL_CATALOG.map((provider) => [provider.id, provider])),
+    []
+  )
+  const enabledProviders = useMemo<UIProviderOption[]>(() => {
+    const fallback = MODEL_CATALOG
+      .filter((provider) => settings.enabledCLIs.includes(provider.id))
+      .filter((provider) => !hideLocalConnectors || !localConnectorIds.has(provider.id))
+      .map((provider) => ({
+        id: provider.id,
+        label: provider.label,
+        models: provider.models.map((model) => ({
+          id: model.id,
+          label: model.label,
+          capability: model.capability,
+        })),
+      }))
+
+    if (!catalogData) return fallback
+
+    const modelGroups = new Map<string, UIModelOption[]>()
+    for (const model of catalogData.models) {
+      if (!isCLIProvider(model.provider)) continue
+      const list = modelGroups.get(model.provider) ?? []
+      list.push({
+        id: model.modelId,
+        label: model.displayName,
+        capability: resolveModelCapability(model.provider, model.modelId),
+      })
+      modelGroups.set(model.provider, list)
+    }
+
+    const catalogProviders = catalogData.providers
+      .filter((provider): provider is CatalogProviderEntry & { provider: CLIProvider } => isCLIProvider(provider.provider))
+    const fromCatalog = catalogProviders
+      .filter((provider) => settings.enabledCLIs.includes(provider.provider))
+      .filter((provider) => !hideLocalConnectors || !localConnectorIds.has(provider.provider))
+      .map((provider) => {
+        const fallbackProvider = staticProviderMap.get(provider.provider)
+        const models = modelGroups.get(provider.provider)
+        const safeModels = (models && models.length > 0)
+          ? models
+          : (fallbackProvider?.models.map((model) => ({
+              id: model.id,
+              label: model.label,
+              capability: model.capability,
+            })) ?? [])
+        return {
+          id: provider.provider,
+          label: provider.label || fallbackProvider?.label || provider.provider,
+          models: safeModels,
+        }
+      })
+
+    return fromCatalog.length > 0 ? fromCatalog : fallback
+  }, [catalogData, hideLocalConnectors, localConnectorIds, settings.enabledCLIs, staticProviderMap])
+
+  const fallbackCurrentProvider: UIProviderOption = {
+    id: MODEL_CATALOG[0].id,
+    label: MODEL_CATALOG[0].label,
+    models: MODEL_CATALOG[0].models.map((model) => ({
+      id: model.id,
+      label: model.label,
+      capability: model.capability,
+    })),
+  }
+  const currentProvider = enabledProviders.find((provider) => provider.id === selectedProvider) ?? enabledProviders[0] ?? fallbackCurrentProvider
+  const availableModels = currentProvider.models
+  const effectiveModelId = selectedModelId && availableModels.some((model) => model.id === selectedModelId)
+    ? selectedModelId
+    : (availableModels[0]?.id ?? null)
+  const effectiveModel = availableModels.find((model) => model.id === effectiveModelId) ?? null
+  const reasoningSupported = Boolean(effectiveModel?.capability.supportsDeepReasoning)
+  const catalogUpdatedLabel = useMemo(
+    () => (catalogUpdatedAt ? new Date(catalogUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null),
+    [catalogUpdatedAt]
+  )
+  const catalogBadgeLabel = catalogSource === 'live'
+    ? 'Catalog: Live'
+    : catalogSource === 'fallback'
+      ? 'Catalog: Fallback'
+      : 'Catalog: Loading'
+
+  useEffect(() => {
+    if (selectedProvider === currentProvider.id) return
+    setSelectedProvider(currentProvider.id)
+  }, [selectedProvider, currentProvider.id, setSelectedProvider])
+
+  useEffect(() => {
+    if (!effectiveModelId) return
+    if (selectedModelId === effectiveModelId) return
+    setSelectedModelId(effectiveModelId)
+  }, [effectiveModelId, selectedModelId, setSelectedModelId])
+
+  useEffect(() => {
+    if (!providerMenuOpen) return
+    const selectedIndex = Math.max(enabledProviders.findIndex((provider) => provider.id === currentProvider.id), 0)
+    setProviderHighlightedIndex(selectedIndex)
+    requestAnimationFrame(() => {
+      providerOptionRefs.current[selectedIndex]?.focus()
+    })
+  }, [providerMenuOpen, enabledProviders, currentProvider.id])
+
+  useEffect(() => {
+    if (!modelMenuOpen) return
+    const selectedIndex = Math.max(availableModels.findIndex((model) => model.id === effectiveModelId), 0)
+    setModelHighlightedIndex(selectedIndex)
+    requestAnimationFrame(() => {
+      modelOptionRefs.current[selectedIndex]?.focus()
+    })
+  }, [modelMenuOpen, availableModels, effectiveModelId])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (agentDropdownRef.current && !agentDropdownRef.current.contains(e.target as Node)) {
-        setAgentDropdownOpen(false)
+      if (providerMenuRef.current && !providerMenuRef.current.contains(e.target as Node)) {
+        setProviderMenuOpen(false)
       }
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-        setProfileMenuOpen(false)
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setModelMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [])
+
+  useEffect(() => {
+    if (followOutput) {
+      scrollToBottom()
+    }
+  }, [messages, agents, followOutput, scrollToBottom])
+
+  useEffect(() => {
+    const focusComposer = () => {
+      const element =
+        document.querySelector<HTMLTextAreaElement>('textarea#chat-input') ??
+        document.querySelector<HTMLTextAreaElement>('#chat-input textarea')
+      if (element) {
+        element.focus()
+      }
+    }
+    window.addEventListener('fusia:focus-composer', focusComposer as EventListener)
+    return () => {
+      window.removeEventListener('fusia:focus-composer', focusComposer as EventListener)
+    }
+  }, [])
+
+  const handleProviderSelect = useCallback((providerId: CLIProvider) => {
+    const nextProvider = enabledProviders.find((provider) => provider.id === providerId)
+    const nextModel = nextProvider?.models[0]?.id ?? null
+    setSelectedProvider(providerId)
+    setSelectedModelId(nextModel)
+    setProviderMenuOpen(false)
+    setSrAnnouncement(`Provider set to ${nextProvider?.label ?? providerId}.`)
+    requestAnimationFrame(() => {
+      providerTriggerRef.current?.focus()
+    })
+
+    void updateUIPreferences({
+      composer: {
+        ...uiPreferences.composer,
+        defaultProvider: providerId,
+        defaultModelId: nextModel ?? uiPreferences.composer.defaultModelId,
+      },
+    })
+  }, [enabledProviders, setSelectedProvider, setSelectedModelId, updateUIPreferences, uiPreferences.composer])
+
+  const handleModelSelect = useCallback((modelId: string) => {
+    setSelectedModelId(modelId)
+    const nextReasoning = uiPreferences.composer.reasoningByModel[modelId] ?? 'standard'
+    setReasoningMode(nextReasoning)
+    setModelMenuOpen(false)
+    const selected = availableModels.find((model) => model.id === modelId)
+    setSrAnnouncement(`Model set to ${selected?.label ?? modelId}.`)
+    requestAnimationFrame(() => {
+      modelTriggerRef.current?.focus()
+    })
+
+    void updateUIPreferences({
+      composer: {
+        ...uiPreferences.composer,
+        defaultModelId: modelId,
+      },
+    })
+  }, [setSelectedModelId, uiPreferences.composer, updateUIPreferences, setReasoningMode, availableModels])
+
+  const handleProviderTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      const selectedIndex = Math.max(enabledProviders.findIndex((provider) => provider.id === currentProvider.id), 0)
+      setProviderHighlightedIndex(selectedIndex)
+      setProviderMenuOpen(true)
+    }
+  }, [enabledProviders, currentProvider.id])
+
+  const handleModelTriggerKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      const selectedIndex = Math.max(availableModels.findIndex((model) => model.id === effectiveModelId), 0)
+      setModelHighlightedIndex(selectedIndex)
+      setModelMenuOpen(true)
+    }
+  }, [availableModels, effectiveModelId])
+
+  const handleProviderOptionKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setProviderMenuOpen(false)
+      providerTriggerRef.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      const next = Math.min(index + 1, Math.max(enabledProviders.length - 1, 0))
+      setProviderHighlightedIndex(next)
+      providerOptionRefs.current[next]?.focus()
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      const next = Math.max(index - 1, 0)
+      setProviderHighlightedIndex(next)
+      providerOptionRefs.current[next]?.focus()
+      return
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      setProviderHighlightedIndex(0)
+      providerOptionRefs.current[0]?.focus()
+      return
+    }
+    if (event.key === 'End') {
+      event.preventDefault()
+      const last = Math.max(enabledProviders.length - 1, 0)
+      setProviderHighlightedIndex(last)
+      providerOptionRefs.current[last]?.focus()
+      return
+    }
+    if (event.key === 'Tab') {
+      setProviderMenuOpen(false)
+    }
+  }, [enabledProviders.length])
+
+  const handleModelOptionKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setModelMenuOpen(false)
+      modelTriggerRef.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      const next = Math.min(index + 1, Math.max(availableModels.length - 1, 0))
+      setModelHighlightedIndex(next)
+      modelOptionRefs.current[next]?.focus()
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      const next = Math.max(index - 1, 0)
+      setModelHighlightedIndex(next)
+      modelOptionRefs.current[next]?.focus()
+      return
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      setModelHighlightedIndex(0)
+      modelOptionRefs.current[0]?.focus()
+      return
+    }
+    if (event.key === 'End') {
+      event.preventDefault()
+      const last = Math.max(availableModels.length - 1, 0)
+      setModelHighlightedIndex(last)
+      modelOptionRefs.current[last]?.focus()
+      return
+    }
+    if (event.key === 'Tab') {
+      setModelMenuOpen(false)
+    }
+  }, [availableModels.length])
+
+  const handleReasoningChange = useCallback((value: ReasoningMode) => {
+    if (!effectiveModelId) return
+    setReasoningMode(value)
+    void updateUIPreferences({
+      composer: {
+        ...uiPreferences.composer,
+        reasoningByModel: {
+          ...uiPreferences.composer.reasoningByModel,
+          [effectiveModelId]: value,
+        },
+      },
+    })
+  }, [effectiveModelId, setReasoningMode, uiPreferences.composer, updateUIPreferences])
 
   const handleSend = (text?: string) => {
     const trimmed = (text ?? input).trim()
@@ -261,8 +743,12 @@ export function ChatView() {
     setAttachments([])
   }
 
-  const handleCancel = () => {
-    cancelSwarm()
+  const handleQueue = (text?: string) => {
+    const trimmed = (text ?? input).trim()
+    if (!trimmed) return
+    queueMessage(trimmed, attachments)
+    setInput('')
+    setAttachments([])
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -270,413 +756,238 @@ export function ChatView() {
       e.preventDefault()
       handleSend()
     }
-    if (e.key === 'Escape' && agentDropdownOpen) {
-      setAgentDropdownOpen(false)
-    }
   }
 
-  const handleVoiceTranscript = useCallback((transcript: string, _isFinal: boolean) => {
-    setInput(transcript)
+  const handleVoiceTranscript = useCallback((transcript: string) => {
+    setInput((prev) => (prev ? `${prev}\n${transcript}` : transcript))
   }, [])
 
   const handleVoiceListeningChange = useCallback((listening: boolean) => {
     setIsVoiceListening(listening)
   }, [])
 
-  const runningAgents = agents.filter((a) => a.status === 'running' || a.status === 'spawning')
   const currentPrompts = MODE_PROMPTS[mode]
-
-  const showProjectDashboard = mode === 'project' && activeTab === 'dashboard'
+  const experienceLabel = uiPreferences.experienceLevel === 'expert' ? 'Expert' : 'Guided'
+  const responseStyleLabel = uiPreferences.responseStyle.replace('_', ' ')
+  const activeRunAgents = agents
+    .filter((agent) => agent.status === 'running' || agent.status === 'spawning' || agent.status === 'completed' || agent.status === 'failed')
+    .slice(-8)
+  const latestAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant')
+  const followUpPrompts = useMemo(() => {
+    if (!latestAssistantMessage) return []
+    const generated = buildFollowUpPrompts(mode, latestAssistantMessage.content)
+    const extracted = extractAssistantSuggestions(latestAssistantMessage.content)
+    return dedupePrompts([...generated, ...extracted]).slice(0, 4)
+  }, [latestAssistantMessage, mode])
+  const loadingStep = useMemo(() => {
+    if (queuedMessages.length > 0) return 0
+    if (activeRunAgents.length === 0) return 1
+    if (activeRunAgents.some((agent) => agent.status === 'running' || agent.status === 'spawning')) return 2
+    return 3
+  }, [activeRunAgents, queuedMessages.length])
 
   return (
     <div className="flex flex-1 flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-border px-6 py-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-foreground">SwarmUI</h1>
-          <Badge variant="secondary">v1.0.0</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={showPreview ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5 text-xs"
-            onClick={togglePreview}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Preview
-          </Button>
-          <div className="flex rounded-lg border border-border bg-secondary/30 p-0.5" role="tablist" aria-label="Main navigation">
-            <button
-              role="tab"
-              aria-selected={activeTab === 'chat'}
-              onClick={() => handleTabChange('chat')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'chat'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-chat"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Chat
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'dashboard'}
-              onClick={() => handleTabChange('dashboard')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'dashboard'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-dashboard"
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Dashboard
-              {agents.length > 0 && (
-                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-1 text-[10px] text-primary">
-                  {agents.length}
-                </span>
-              )}
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'testing'}
-              onClick={() => handleTabChange('testing')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'testing'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-testing"
-            >
-              <TestTube2 className="h-3.5 w-3.5" />
-              Testing
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'eclipse'}
-              onClick={() => handleTabChange('eclipse')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'eclipse'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-eclipse"
-            >
-              <Cpu className="h-3.5 w-3.5" />
-              Eclipse
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'ide'}
-              onClick={() => handleTabChange('ide')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'ide'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-ide"
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              IDE
-            </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'observability'}
-              onClick={() => handleTabChange('observability')}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                activeTab === 'observability'
-                  ? 'bg-primary text-background shadow-sm tab-active-indicator'
-                  : 'text-muted hover:text-foreground'
-              )}
-              data-testid="tab-observability"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Observability
-            </button>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs"
-            onClick={() => router.push('/settings')}
-            data-testid="header-settings-button"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Settings
-          </Button>
-          <div className="relative" ref={profileMenuRef}>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setProfileMenuOpen((v) => !v)}
-              aria-label="Open profile menu"
-              data-testid="profile-menu-button"
-            >
-              <User className="h-4 w-4" />
-            </Button>
-            {profileMenuOpen && (
-              <div className="absolute right-0 top-10 z-50 min-w-56 rounded-md border border-border bg-background p-2 shadow-xl">
-                <div className="mb-2 border-b border-border px-2 pb-2">
-                  <p className="text-xs text-muted">Signed in as</p>
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {session?.user?.email ?? 'Unknown user'}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2"
-                  onClick={() => {
-                    setProfileMenuOpen(false)
-                    router.push('/settings')
-                  }}
-                >
-                  <Settings className="h-4 w-4" />
-                  Profile & API Keys
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2 text-red-400 hover:text-red-300"
-                  onClick={() => {
-                    setProfileMenuOpen(false)
-                    void signOut({ callbackUrl: '/login' })
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </Button>
-              </div>
-            )}
-          </div>
-          {isRunning && (
+      <div className="border-b border-border bg-card/30 px-4 py-2">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm text-muted">Swarm running...</span>
+              <Badge variant="outline">{MODE_LABELS[mode]} Mode</Badge>
+              <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                {experienceLabel}
+              </Badge>
+              <Badge variant="outline" className="hidden text-[10px] uppercase tracking-wide md:inline-flex">
+                {responseStyleLabel}
+              </Badge>
+              {queuedMessages.length > 0 ? (
+                <Badge variant="outline" className="text-[10px]">
+                  Queue {queuedMessages.length}
+                </Badge>
+              ) : null}
             </div>
-          )}
-          {!wsConnected && (
-            <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-600">
-              Connecting...
-            </Badge>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setFollowOutput((value) => !value)}
+            data-action-id="chat-follow-output-toggle"
+          >
+            <ListTree className="h-3.5 w-3.5" />
+            {followOutput ? 'Following output' : 'Follow paused'}
+          </Button>
         </div>
-      </header>
+      </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'ide' ? (
-          <motion.div
-            key="ide"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 min-h-0"
-          >
-            <ErrorBoundary
-              fallback={(props) => (
-                <div className="flex h-full items-center justify-center p-8">
-                  <MinimalErrorFallback {...props} />
-                </div>
-              )}
-            >
+          <motion.div key="ide" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0">
+            <ErrorBoundary fallback={(props) => <div className="flex h-full items-center justify-center p-8"><MinimalErrorFallback {...props} /></div>}>
               <DevEnvironment />
             </ErrorBoundary>
-          </motion.div>
-        ) : activeTab === 'testing' ? (
-          <motion.div key="testing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
-            <TestingDashboard />
-          </motion.div>
-        ) : activeTab === 'eclipse' ? (
-          <motion.div key="eclipse" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
-            <EclipseDashboard />
           </motion.div>
         ) : activeTab === 'observability' ? (
           <motion.div key="observability" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
             <ObservabilityDashboard />
           </motion.div>
-        ) : activeTab === 'chat' ? (
-          <motion.div
-            key="chat"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 min-h-0"
-          >
-            <ErrorBoundary
-              fallback={(props) => (
-                <div className="flex h-full items-center justify-center p-8">
-                  <MinimalErrorFallback {...props} />
-                </div>
-              )}
-            >
+        ) : activeTab === 'dashboard' ? (
+          <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0 overflow-auto">
+            <ControlCenterDashboard />
+          </motion.div>
+        ) : (
+          <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="flex-1 min-h-0">
+            <ErrorBoundary fallback={(props) => <div className="flex h-full items-center justify-center p-8"><MinimalErrorFallback {...props} /></div>}>
               <ScrollArea className="h-full">
-                <div className="mx-auto max-w-3xl space-y-4 p-6">
+                <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
                   {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-in">
-                    <div className="relative mb-6">
-                      <div className="absolute inset-0 rounded-3xl bg-primary/5 blur-2xl" />
-                      <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/10">
-                        <Sparkles className="h-10 w-10 text-primary" />
-                      </div>
-                    </div>
-                    <h2 className="text-xl font-bold text-foreground">
-                      Welcome to SwarmUI
-                    </h2>
-                    <p className="mt-2 max-w-md text-sm text-muted">
-                      {mode === 'chat' && 'Ask questions and get intelligent answers from AI agents.'}
-                      {mode === 'swarm' && 'Describe a task and a swarm of AI agents will work together to complete it.'}
-                      {mode === 'project' && 'Describe a project and we\'ll decompose it into tasks with a full development pipeline.'}
-                    </p>
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      {MODE_LABELS[mode]} Mode
-                    </Badge>
-
-                    <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-                      {currentPrompts.map((prompt) => (
-                        <button
-                          key={prompt.text}
-                          onClick={() => handleSend(prompt.text)}
-                          className="group flex items-start gap-3 rounded-xl border border-border bg-card/50 p-4 text-left transition-all hover:border-primary/30 hover:bg-card"
-                        >
-                          <prompt.icon
-                            className="mt-0.5 h-4 w-4 shrink-0 transition-colors"
-                            style={{ color: prompt.color }}
-                          />
-                          <span className="text-sm text-muted group-hover:text-foreground transition-colors">
-                            {prompt.text}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <AnimatePresence mode="popLayout">
-                  {messages.map((message) => (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                    >
-                      <MessageBubble message={message} />
-                      {message.role === 'assistant' && message.agents && message.agents.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          <AnimatePresence>
-                            {message.agents.map((agent) => (
-                              <AgentCard key={agent.id} agent={agent} />
-                            ))}
-                          </AnimatePresence>
+                    <div className="flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+                      <div className="relative mb-6">
+                        <div className="absolute inset-0 rounded-3xl bg-primary/5 blur-2xl" />
+                        <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/20 to-primary/5">
+                          <Sparkles className="h-10 w-10 text-primary" />
                         </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-
-                {isRunning && agents.length === 0 && (
-                  <div className="space-y-3 animate-fade-in">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-48" />
-                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <h2 className="text-xl font-bold text-foreground">
+                        Build The Future with Fusia AI
+                      </h2>
+                      <p className="mt-2 max-w-2xl text-sm text-muted">
+                        Plan, build, test, validate, execute, and ideate in one adaptive workspace.
+                      </p>
+                      <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+                        {currentPrompts.map((prompt) => (
+                          <button
+                            key={prompt.text}
+                            onClick={() => handleSend(prompt.text)}
+                            className="group flex items-start gap-3 rounded-xl border border-border bg-card/50 p-4 text-left transition-all hover:border-primary/30 hover:bg-card"
+                          >
+                            <prompt.icon className="mt-0.5 h-4 w-4 shrink-0 transition-colors" style={{ color: prompt.color }} />
+                            <span className="text-sm text-muted transition-colors group-hover:text-foreground">
+                              {prompt.text}
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                  </div>
-                )}
+                  )}
 
-                {isRunning && agents.length > 0 && (
+                  <CompactRunTimeline
+                    agents={activeRunAgents}
+                    isRunning={isRunning}
+                  />
+
                   <AnimatePresence mode="popLayout">
-                    <div className="space-y-2 animate-fade-in">
-                      {agents.map((agent) => (
-                        <AgentCard key={agent.id} agent={agent} />
-                      ))}
-                    </div>
+                    {messages.map((message) => (
+                      <motion.div key={message.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
+                        <MessageBubble message={message} />
+                      </motion.div>
+                    ))}
                   </AnimatePresence>
-                )}
+
+                  {isRunning ? (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+                      <ChatResponseLoading
+                        queuedCount={queuedMessages.length}
+                        agentCount={activeRunAgents.length}
+                        activeStep={loadingStep}
+                      />
+                    </motion.div>
+                  ) : null}
+
+                  {followUpPrompts.length > 0 && !isRunning && (
+                    <section className="rounded-xl border border-border/70 bg-card/40 p-3">
+                      <p className="mb-2 text-xs font-medium text-muted">Continue with</p>
+                      <div className="flex flex-wrap gap-2">
+                        {followUpPrompts.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
+                            onClick={() => handleSend(prompt)}
+                            data-action-id="chat-followup-prompt"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
                   <div ref={bottomRef} />
                 </div>
               </ScrollArea>
             </ErrorBoundary>
           </motion.div>
-        ) : showProjectDashboard ? (
-          <motion.div
-            key="project-dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 min-h-0"
-          >
-            <ScrollArea className="h-full">
-              <ProjectDashboard
-                onProjectSelect={handleProjectSelect}
-                onTicketSelect={handleTicketSelect}
-                initialTicketId={selectedTicketId}
-              />
-              <div ref={bottomRef} />
-            </ScrollArea>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="agent-dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex-1 min-h-0"
-          >
-            <ScrollArea className="h-full">
-              <AgentDashboard />
-              {showPreview && (
-                <div className="px-6 pb-6">
-                  <LivePreview />
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </ScrollArea>
-          </motion.div>
         )}
       </AnimatePresence>
 
-      {runningAgents.length > 0 && activeTab === 'chat' && (
-        <div className="border-t border-border bg-card/50 px-4 py-2">
-          <div className="mx-auto flex max-w-3xl items-center gap-2 overflow-x-auto">
-            {runningAgents.map((agent) => (
-              <Badge
-                key={agent.id}
-                variant="outline"
-                className="shrink-0 animate-pulse-dot gap-1.5"
-              >
-                <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                {ROLE_LABELS[agent.role]} {agent.status === 'spawning' ? 'spawning...' : 'running...'}
-              </Badge>
-            ))}
+      {activeTab === 'chat' && (
+      <div className="border-t border-border p-3 md:p-4">
+        <div className="mx-auto max-w-5xl space-y-2">
+          <div className="sr-only" role="status" aria-live="polite">
+            {srAnnouncement}
           </div>
-        </div>
-      )}
 
-      <div className="border-t border-border p-4">
-        <div className="mx-auto max-w-3xl space-y-2">
-          {chatIntent !== 'auto' && (
-            <div className="px-1">
-              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                Intent: {CHAT_INTENT_OPTIONS.find((option) => option.value === chatIntent)?.label ?? 'Auto'}
-              </Badge>
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            <Badge variant={catalogSource === 'live' ? 'default' : 'outline'} className="text-[10px] uppercase tracking-wide">
+              {catalogBadgeLabel}
+            </Badge>
+            <span className="text-[11px] text-muted">
+              {catalogStatusMessage}
+              {catalogUpdatedLabel ? ` Updated ${catalogUpdatedLabel}.` : ''}
+              {catalogSource === 'fallback' && catalogLoadError ? ` (${catalogLoadError})` : ''}
+            </span>
+            {catalogSource === 'fallback' ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px]"
+                onClick={() => void loadCatalog()}
+                data-action-id="composer-catalog-retry"
+              >
+                Retry live sync
+              </Button>
+            ) : null}
+          </div>
+
+          {queuedMessages.length > 0 ? (
+            <div className="rounded-xl border border-border/70 bg-card/40 p-2.5">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-medium text-foreground">Queued prompts</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={clearQueuedMessages}
+                  data-action-id="chat-queue-clear"
+                >
+                  Clear queue
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                {queuedMessages.slice(0, 4).map((entry, index) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-2.5 py-1.5"
+                  >
+                    <span className="text-[10px] text-muted">#{index + 1}</span>
+                    <span className="line-clamp-1 flex-1 text-xs text-foreground">{entry.prompt}</span>
+                    <button
+                      type="button"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted transition-colors hover:bg-primary/10 hover:text-foreground"
+                      onClick={() => removeQueuedMessage(entry.id)}
+                      data-action-id="chat-queue-remove"
+                      aria-label="Remove queued prompt"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {queuedMessages.length > 4 ? (
+                  <p className="text-[10px] text-muted">+{queuedMessages.length - 4} more in queue</p>
+                ) : null}
+              </div>
             </div>
-          )}
+          ) : null}
+
           {(input.length > 500 || isVoiceListening) && (
             <div className="flex items-center justify-between px-1">
               {isVoiceListening ? (
@@ -685,99 +996,155 @@ export function ChatView() {
                 <span />
               )}
               {input.length > 500 && (
-                <span className={cn(
-                  'text-[10px] tabular-nums',
-                  input.length > 4000 ? 'text-destructive' : 'text-muted'
-                )}>
+                <span className={cn('text-[10px] tabular-nums', input.length > 4000 ? 'text-destructive' : 'text-muted')}>
                   {input.length.toLocaleString()} characters
                 </span>
               )}
             </div>
           )}
-          <div className="flex items-end gap-2">
+
+          <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border/80 bg-card/60 p-2">
             <div className="group relative" title="Attach file">
-              <FileUpload
-                attachments={attachments}
-                onAttachmentsChange={setAttachments}
-              />
+              <FileUpload attachments={attachments} onAttachmentsChange={setAttachments} />
             </div>
-            {/* Agent selector dropdown */}
-            <div ref={agentDropdownRef} className="relative">
+
+            <div ref={providerMenuRef} className="relative">
               <button
-                onClick={() => setAgentDropdownOpen(!agentDropdownOpen)}
-                aria-label={`Select agent: ${currentAgent.name}`}
-                aria-expanded={agentDropdownOpen}
+                ref={providerTriggerRef}
+                type="button"
+                onClick={() => setProviderMenuOpen((value) => !value)}
+                onKeyDown={handleProviderTriggerKeyDown}
+                aria-label={`Select provider: ${currentProvider.label}`}
+                aria-expanded={providerMenuOpen}
                 aria-haspopup="listbox"
+                aria-controls="provider-selector-listbox"
                 className={cn(
                   'flex h-11 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-medium transition-all',
-                  agentDropdownOpen
+                  providerMenuOpen
                     ? 'border-primary/50 text-foreground ring-2 ring-primary/20'
-                    : 'border-border text-muted hover:text-foreground hover:border-border'
+                    : 'border-border text-muted hover:border-primary/40 hover:text-foreground'
                 )}
+                data-action-id="composer-provider-select"
               >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: currentAgent.installed !== false ? 'var(--color-success)' : 'var(--color-error)' }}
-                />
-                <span className="max-w-[80px] truncate">{currentAgent.name.split(' ')[0]}</span>
-                <ChevronDown className={cn(
-                  'h-3 w-3 transition-transform',
-                  agentDropdownOpen && 'rotate-180'
-                )} />
+                <span className="max-w-[120px] truncate">{currentProvider.label}</span>
+                <ChevronDown className={cn('h-3 w-3 transition-transform', providerMenuOpen && 'rotate-180')} />
               </button>
-              {agentDropdownOpen && (
-                <div role="listbox" aria-label="Agent selector" className="absolute bottom-full left-0 z-50 mb-2 w-56 rounded-xl border border-border bg-card p-1.5 shadow-xl animate-fade-in">
-                  <div className="mb-1.5 px-2 py-1">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted">Select Agent</span>
-                  </div>
-                  {enabledCLIs.map((cli) => (
-                    <button
-                      key={cli.id}
-                      role="option"
-                      aria-selected={selectedAgent === cli.id || (!selectedAgent && cli.id === currentAgent.id)}
-                      onClick={() => {
-                        setSelectedAgent(cli.id)
-                        setAgentDropdownOpen(false)
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
-                        (selectedAgent === cli.id || (!selectedAgent && cli.id === currentAgent.id))
-                          ? 'bg-primary/15 text-primary'
-                          : 'text-muted hover:bg-secondary hover:text-foreground'
-                      )}
-                    >
-                      <span
-                        className="h-2.5 w-2.5 rounded-full ring-2 ring-background"
-                        style={{ backgroundColor: cli.installed !== false ? 'var(--color-success)' : 'var(--color-error)' }}
-                      />
-                      <span className="flex-1 text-left">{cli.name}</span>
-                      {cli.installed === false && (
-                        <span className="text-[10px] text-muted">not found</span>
-                      )}
-                    </button>
-                  ))}
+              {providerMenuOpen && (
+                <div
+                  id="provider-selector-listbox"
+                  role="listbox"
+                  aria-label="Provider selector"
+                  className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-xl border border-border bg-card p-1.5 shadow-xl transition-all duration-150"
+                >
+                  {enabledProviders.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-muted">No providers enabled. Enable one in Settings.</p>
+                  ) : (
+                    enabledProviders.map((provider, index) => (
+                      <button
+                        key={provider.id}
+                        ref={(element) => {
+                          providerOptionRefs.current[index] = element
+                        }}
+                        role="option"
+                        tabIndex={providerHighlightedIndex === index ? 0 : -1}
+                        aria-selected={currentProvider.id === provider.id}
+                        onClick={() => handleProviderSelect(provider.id)}
+                        onKeyDown={(event) => handleProviderOptionKeyDown(event, index)}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
+                          currentProvider.id === provider.id
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-muted hover:bg-primary/10 hover:text-foreground'
+                        )}
+                      >
+                        <span className="flex-1 text-left">{provider.label}</span>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="shrink-0">
-              <label className="sr-only" htmlFor="chat-intent-select">Response intent</label>
-              <select
-                id="chat-intent-select"
-                value={chatIntent}
-                onChange={(e) => setChatIntent(e.target.value as ChatIntent)}
-                className="h-11 rounded-xl border border-border bg-card px-3 text-xs text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                title="Select response intent"
+            <div ref={modelMenuRef} className="relative">
+              <button
+                ref={modelTriggerRef}
+                type="button"
+                onClick={() => setModelMenuOpen((value) => !value)}
+                onKeyDown={handleModelTriggerKeyDown}
+                aria-label={`Select model: ${effectiveModel?.label ?? 'None'}`}
+                aria-expanded={modelMenuOpen}
+                aria-haspopup="listbox"
+                aria-controls="model-selector-listbox"
+                className={cn(
+                  'flex h-11 items-center gap-2 rounded-xl border bg-card px-3 text-xs font-medium transition-all',
+                  modelMenuOpen
+                    ? 'border-primary/50 text-foreground ring-2 ring-primary/20'
+                    : 'border-border text-muted hover:border-primary/40 hover:text-foreground'
+                )}
+                data-action-id="composer-model-select"
               >
-                {CHAT_INTENT_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                <span className="max-w-[150px] truncate">{effectiveModel?.label ?? 'Select model'}</span>
+                <ChevronDown className={cn('h-3 w-3 transition-transform', modelMenuOpen && 'rotate-180')} />
+              </button>
+              {modelMenuOpen && (
+                <div
+                  id="model-selector-listbox"
+                  role="listbox"
+                  aria-label="Model selector"
+                  className="absolute bottom-full left-0 z-50 mb-2 w-72 rounded-xl border border-border bg-card p-1.5 shadow-xl transition-all duration-150"
+                >
+                  {availableModels.length === 0 ? (
+                    <div className="space-y-1 px-3 py-2">
+                      <p className="text-xs text-muted">No models available for this provider.</p>
+                      {catalogSource === 'loading' ? <p className="text-[11px] text-muted">Catalog is still loading.</p> : null}
+                      {catalogSource === 'fallback' ? <p className="text-[11px] text-muted">Fallback catalog is active.</p> : null}
+                    </div>
+                  ) : (
+                    availableModels.map((model, index) => (
+                      <button
+                        key={model.id}
+                        ref={(element) => {
+                          modelOptionRefs.current[index] = element
+                        }}
+                        role="option"
+                        tabIndex={modelHighlightedIndex === index ? 0 : -1}
+                        aria-selected={effectiveModelId === model.id}
+                        onClick={() => handleModelSelect(model.id)}
+                        onKeyDown={(event) => handleModelOptionKeyDown(event, index)}
+                        className={cn(
+                          'flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
+                          effectiveModelId === model.id
+                            ? 'bg-primary/15 text-primary'
+                            : 'text-muted hover:bg-primary/10 hover:text-foreground'
+                        )}
+                      >
+                        <span className="truncate">{model.label}</span>
+                        {model.capability.supportsDeepReasoning ? (
+                          <Badge variant="outline" className="text-[10px]">Deep</Badge>
+                        ) : null}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="relative flex-1">
+            {reasoningSupported && (
+              <label className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 text-xs text-foreground">
+                <span>Reasoning</span>
+                <select
+                  value={reasoningMode}
+                  onChange={(e) => handleReasoningChange(e.target.value as ReasoningMode)}
+                  className="h-11 bg-transparent text-xs focus:outline-none"
+                  data-action-id="composer-reasoning-select"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="deep">Deep</option>
+                </select>
+              </label>
+            )}
+
+            <div className="relative min-w-[240px] flex-1">
               <label className="sr-only" htmlFor="chat-input">Message input</label>
               <SpellCheckInput
                 id="chat-input"
@@ -787,10 +1154,10 @@ export function ChatView() {
                 placeholder={mode === 'project' ? 'Describe a feature or task for this project...' : 'Describe your task...'}
                 rows={1}
                 autoResize
-                maxHeight={200}
+                maxHeight={220}
                 minHeight={44}
                 showInlineErrors={true}
-                className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-shadow [&_textarea]:bg-transparent [&_textarea]:border-0 [&_textarea]:p-0 [&_textarea]:focus:ring-0 [&_textarea]:focus:ring-offset-0"
+                className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow [&_textarea]:bg-transparent [&_textarea]:border-0 [&_textarea]:p-0 [&_textarea]:focus:ring-0 [&_textarea]:focus:ring-offset-0"
                 data-testid="chat-input"
               />
             </div>
@@ -799,8 +1166,9 @@ export function ChatView() {
               variant="ghost"
               size="icon"
               className="h-11 w-11 shrink-0 rounded-xl text-muted hover:text-foreground"
+              onClick={() => window.dispatchEvent(new CustomEvent('fusia:open-keyboard-shortcuts'))}
               aria-label="Help and keyboard shortcuts"
-              title="Help — Enter to send, Shift+Enter for new line"
+              data-action-id="composer-help"
             >
               <CircleHelp className="h-4 w-4" />
             </Button>
@@ -813,13 +1181,26 @@ export function ChatView() {
               appendMode={true}
             />
 
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => handleQueue()}
+              disabled={!input.trim()}
+              className="h-11 w-11 shrink-0 rounded-xl"
+              aria-label="Queue prompt"
+              data-action-id="composer-queue"
+            >
+              <ListPlus className="h-4 w-4" />
+            </Button>
+
             {isRunning ? (
               <Button
                 variant="destructive"
                 size="icon"
-                onClick={handleCancel}
+                onClick={cancelSwarm}
                 className="h-11 w-11 shrink-0 rounded-xl"
-                aria-label="Cancel running swarm"
+                aria-label="Cancel running run"
+                data-action-id="composer-stop"
               >
                 <Square className="h-4 w-4" />
               </Button>
@@ -828,12 +1209,10 @@ export function ChatView() {
                 size="icon"
                 onClick={() => handleSend()}
                 disabled={!input.trim()}
-                className={cn(
-                  'h-11 w-11 shrink-0 rounded-xl transition-colors btn-press',
-                  input.trim() ? 'bg-primary hover:bg-primary/90' : 'bg-muted/50'
-                )}
+                className={cn('h-11 w-11 shrink-0 rounded-xl transition-colors btn-press', input.trim() ? 'bg-primary hover:bg-primary/90' : 'bg-muted/50')}
                 aria-label="Send message"
                 data-testid="send-button"
+                data-action-id="composer-send"
               >
                 <Send className="h-4 w-4" />
               </Button>
@@ -841,6 +1220,8 @@ export function ChatView() {
           </div>
         </div>
       </div>
+      )}
+
     </div>
   )
 }

@@ -1,9 +1,9 @@
 {
   "phase": -1,
   "basePort": 4100,
-  "timestamp": "2026-02-27T23:24:12.762Z",
-  "attempts": 3,
-  "passes": 3,
+  "timestamp": "2026-02-28T04:26:51.935Z",
+  "attempts": 1,
+  "passes": 1,
   "status": "pass",
   "checks": {
     "startupConsistency": true,

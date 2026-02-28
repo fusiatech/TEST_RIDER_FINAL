@@ -1,0 +1,30 @@
+[
+  {
+    "name": "normal-gemini",
+    "mode": "chat",
+    "providerRequested": "gemini",
+    "finalType": "swarm-result",
+    "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nTwo plus two equals four.Two plus two equals four."
+  },
+  {
+    "name": "swarm-gemini-primary",
+    "mode": "swarm",
+    "providerRequested": "gemini",
+    "finalType": null,
+    "outputPreview": ""
+  },
+  {
+    "name": "swarm-failover-from-claude",
+    "mode": "swarm",
+    "providerRequested": "claude",
+    "finalType": null,
+    "outputPreview": ""
+  },
+  {
+    "name": "project-planner-tickets",
+    "mode": "project",
+    "providerRequested": "gemini",
+    "finalType": "swarm-result",
+    "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nOkay, I’ve reviewed the research (which I’ll assume is a whitepaper or technical report about Gemini model optimization for API execution – I’ll need to actually *read* it to be certain, but based on the prompt, it’s likely a discussion of techniques like quantization, distillation, and optimized inference pipelines).\n\nHere’s the research summary:\n\n**Research Summary - Gemini Model Optimization for API Execution**\n\nThe research highlights several key strategies for improving the performance and efficiency of Gemini model inference, particularly when deployed through APIs.  The core findings center around the following:\n\n1. **Quantization:**  Reducing the precision of model weights (e.g., from FP16 to INT8) significantly reduces memory footp"
+  }
+]

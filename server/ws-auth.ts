@@ -84,12 +84,8 @@ export async function authenticateWSConnection(req: IncomingMessage): Promise<WS
       loggedMissingSecretWarning = true
     }
     return {
-      authenticated: true,
-      user: {
-        id: 'anonymous',
-        email: 'anonymous@local',
-        role: 'viewer',
-      },
+      authenticated: false,
+      error: 'Missing auth secret; cannot verify websocket session token',
     }
   }
 

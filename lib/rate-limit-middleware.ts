@@ -22,6 +22,7 @@ export interface RateLimitedRouteOptions {
 const ROUTE_CONFIGS: Record<string, RateLimitConfig> = {
   '/api/sessions': { interval: 60_000, limit: 100 },
   '/api/settings': { interval: 60_000, limit: 30 },
+  '/api/me/preferences': { interval: 60_000, limit: 60 },
   '/api/projects': { interval: 60_000, limit: 100 },
   '/api/jobs': { interval: 60_000, limit: 60 },
   '/api/admin': { interval: 60_000, limit: 30 },

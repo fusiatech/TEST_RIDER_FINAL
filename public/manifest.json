@@ -1,11 +1,11 @@
 {
-  "name": "SwarmUI",
-  "short_name": "SwarmUI",
-  "description": "Multi-agent AI orchestration platform",
+  "name": "Fusia AI",
+  "short_name": "Fusia",
+  "description": "Adaptive multi-agent engineering workspace",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#10b981",
+  "theme_color": "#6d28d9",
   "orientation": "portrait-primary",
   "categories": ["developer", "productivity", "utilities"],
   "icons": [

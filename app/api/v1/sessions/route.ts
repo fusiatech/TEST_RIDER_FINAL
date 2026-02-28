@@ -83,8 +83,9 @@ export const POST = withValidation(
     const { response: rateLimitResponse, headers } = await applyRateLimit(request)
     if (rateLimitResponse) return rateLimitResponse
 
-    await saveSession(body)
-    const response = NextResponse.json(body, { status: 201 })
+    const normalizedBody = SessionSchema.parse(body)
+    await saveSession(normalizedBody)
+    const response = NextResponse.json(normalizedBody, { status: 201 })
     headers.forEach((value, key) => response.headers.set(key, value))
     return addVersionHeaders(response, versionInfo)
   }

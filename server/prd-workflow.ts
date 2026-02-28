@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod'
-import { runAPIAgent } from './api-runner'
+import { runGenerationGateway } from './generation-gateway'
 import { getProject, saveProject, getSettings } from './storage'
 import { createLogger } from './logger'
 import type {
@@ -374,30 +374,12 @@ export class PRDWorkflowEngine {
     workflow.steps.push(step)
 
     try {
-      const settings = await getSettings()
-      const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-      if (!apiKey) {
-        throw new Error('OpenAI API key not configured')
-      }
-
       const prompt = generateEpicsPrompt(prd, project.name)
-      let response = ''
-
-      await runAPIAgent({
-        provider: 'chatgpt',
+      const generatedEpics = await this.generateFromPrompt<GeneratedEpic[]>(
         prompt,
-        apiKey,
-        onOutput: (chunk) => {
-          response += chunk
-        },
-        onComplete: () => {},
-        onError: (error) => {
-          throw new Error(error)
-        },
-      })
-
-      const generatedEpics = this.parseJSONResponse<GeneratedEpic[]>(response)
+        'workflow_epics',
+        () => JSON.stringify(this.buildFallbackEpics(project.name), null, 2),
+      )
       const epics: Epic[] = []
 
       for (const genEpic of generatedEpics) {
@@ -456,30 +438,12 @@ export class PRDWorkflowEngine {
       throw new Error(`Epic ${epicId} not found`)
     }
 
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
     const prompt = generateStoriesPrompt(epic, project.prd || '')
-    let response = ''
-
-    await runAPIAgent({
-      provider: 'chatgpt',
+    const generatedStories = await this.generateFromPrompt<GeneratedStory[]>(
       prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
-    })
-
-    const generatedStories = this.parseJSONResponse<GeneratedStory[]>(response)
+      'workflow_stories',
+      () => JSON.stringify(this.buildFallbackStories(epic.title), null, 2),
+    )
     const now = Date.now()
     const stories: Ticket[] = []
 
@@ -540,30 +504,12 @@ export class PRDWorkflowEngine {
     const epic = project.epics.find((e) => e.id === story.epicId)
     const epicTitle = epic?.title || 'Unknown Epic'
 
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
     const prompt = generateTasksPrompt(story, epicTitle)
-    let response = ''
-
-    await runAPIAgent({
-      provider: 'chatgpt',
+    const generatedTasks = await this.generateFromPrompt<GeneratedTask[]>(
       prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
-    })
-
-    const generatedTasks = this.parseJSONResponse<GeneratedTask[]>(response)
+      'workflow_tasks',
+      () => JSON.stringify(this.buildFallbackTasks(story.title), null, 2),
+    )
     const now = Date.now()
     const tasks: Ticket[] = []
 
@@ -616,30 +562,12 @@ export class PRDWorkflowEngine {
       throw new Error(`Task ${taskId} not found`)
     }
 
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
     const prompt = generateSubtasksPrompt(task)
-    let response = ''
-
-    await runAPIAgent({
-      provider: 'chatgpt',
+    const generatedSubtasks = await this.generateFromPrompt<GeneratedTask[]>(
       prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
-    })
-
-    const generatedSubtasks = this.parseJSONResponse<GeneratedTask[]>(response)
+      'workflow_subtasks',
+      () => JSON.stringify(this.buildFallbackSubtasks(task.title), null, 2),
+    )
     const now = Date.now()
     const subtasks: Ticket[] = []
 
@@ -692,30 +620,8 @@ export class PRDWorkflowEngine {
       throw new Error(`Ticket ${ticketId} not found`)
     }
 
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
     const prdSection = prdSectionId ? this.extractPRDSection(project.prd || '', prdSectionId) : project.prd || ''
     const prompt = generateDesignPackPrompt(ticket, prdSection)
-    let response = ''
-
-    await runAPIAgent({
-      provider: 'chatgpt',
-      prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
-    })
-
     const parsed = this.parseJSONResponse<{
       uiRequirements: string[]
       componentSpecs: Array<{
@@ -730,7 +636,13 @@ export class PRDWorkflowEngine {
       }
       wireframeDescriptions: string[]
       interactionPatterns: string[]
-    }>(response)
+    }>(
+      await this.generateTextFromPrompt(
+        prompt,
+        'workflow_design_pack',
+        () => JSON.stringify(this.buildFallbackDesignPack(ticket.title), null, 2),
+      )
+    )
 
     const now = Date.now()
     const designPack: DesignPack = {
@@ -771,30 +683,8 @@ export class PRDWorkflowEngine {
       throw new Error(`Ticket ${ticketId} not found`)
     }
 
-    const settings = await getSettings()
-    const apiKey = settings.apiKeys?.openai || process.env.OPENAI_API_KEY
-
-    if (!apiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
-
     const prdSection = prdSectionId ? this.extractPRDSection(project.prd || '', prdSectionId) : project.prd || ''
     const prompt = generateDevPackPrompt(ticket, prdSection)
-    let response = ''
-
-    await runAPIAgent({
-      provider: 'chatgpt',
-      prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
-    })
-
     const parsed = this.parseJSONResponse<{
       architectureOverview: string
       apiSpecs: Array<{
@@ -817,7 +707,13 @@ export class PRDWorkflowEngine {
         priority?: 'low' | 'medium' | 'high'
       }>
       implementationNotes: string
-    }>(response)
+    }>(
+      await this.generateTextFromPrompt(
+        prompt,
+        'workflow_dev_pack',
+        () => JSON.stringify(this.buildFallbackDevPack(ticket.title), null, 2),
+      )
+    )
 
     const now = Date.now()
     const devPack: DevPack = {
@@ -1007,6 +903,201 @@ export class PRDWorkflowEngine {
   }
 
   /* ── Helper Methods ─────────────────────────────────────────────── */
+
+  private async generateTextFromPrompt(
+    prompt: string,
+    artifactType: string,
+    deterministicFallback: () => string,
+  ): Promise<string> {
+    const settings = await getSettings()
+    const result = await runGenerationGateway({
+      prompt,
+      settings,
+      artifactType,
+      deterministicFallback,
+    })
+    return result.text
+  }
+
+  private async generateFromPrompt<T>(
+    prompt: string,
+    artifactType: string,
+    deterministicFallback: () => string,
+  ): Promise<T> {
+    const text = await this.generateTextFromPrompt(prompt, artifactType, deterministicFallback)
+    return this.parseJSONResponse<T>(text)
+  }
+
+  private buildFallbackEpics(projectName: string): GeneratedEpic[] {
+    return [
+      {
+        title: `${projectName} Core Platform`,
+        description: 'Baseline platform epic covering core functionality, persistence, and reliability.',
+        prdSectionId: 'overview',
+      },
+    ]
+  }
+
+  private buildFallbackStories(epicTitle: string): GeneratedStory[] {
+    return [
+      {
+        title: `As a user, I want to complete the ${epicTitle} workflow so that the product delivers value end-to-end`,
+        description: `Deterministic story generated for ${epicTitle}.`,
+        acceptanceCriteria: [
+          'Given a valid request, when workflow executes, then artifacts are produced',
+          'Given invalid input, when validated, then clear errors are returned',
+          'Given completion, when persisted, then state is retrievable',
+        ],
+        persona: 'End User',
+        storyPoints: '5',
+        businessValue: 'high',
+      },
+    ]
+  }
+
+  private buildFallbackTasks(storyTitle: string): GeneratedTask[] {
+    return [
+      {
+        title: `${storyTitle}: Implement service logic`,
+        description: 'Implement core service logic and schema validation.',
+        acceptanceCriteria: [
+          'Service handles happy path',
+          'Service handles invalid input',
+          'Unit tests cover branches',
+        ],
+        complexity: 'M',
+        assignedRole: 'coder',
+      },
+      {
+        title: `${storyTitle}: Add verification tests`,
+        description: 'Add integration checks for API and persistence behavior.',
+        acceptanceCriteria: [
+          'Integration tests pass in CI',
+          'Failure scenarios are covered',
+        ],
+        complexity: 'M',
+        assignedRole: 'validator',
+      },
+    ]
+  }
+
+  private buildFallbackSubtasks(taskTitle: string): GeneratedTask[] {
+    return [
+      {
+        title: `${taskTitle}: Define schema`,
+        description: 'Define and validate request/response schemas.',
+        acceptanceCriteria: ['Schema compiles', 'Validation rejects malformed payloads'],
+        complexity: 'S',
+        assignedRole: 'planner',
+      },
+      {
+        title: `${taskTitle}: Add tests`,
+        description: 'Add targeted tests and update fixtures.',
+        acceptanceCriteria: ['Tests are deterministic', 'Edge cases are asserted'],
+        complexity: 'S',
+        assignedRole: 'validator',
+      },
+    ]
+  }
+
+  private buildFallbackDesignPack(ticketTitle: string): {
+    uiRequirements: string[]
+    componentSpecs: Array<{
+      name: string
+      props: Record<string, { type: string; required?: boolean; description?: string }>
+      variants: Array<{ name: string; props?: Record<string, unknown> }>
+    }>
+    designTokens: {
+      colors: Record<string, string>
+      spacing: Record<string, string>
+      typography: Record<string, { fontFamily?: string; fontSize?: string; fontWeight?: string }>
+    }
+    wireframeDescriptions: string[]
+    interactionPatterns: string[]
+  } {
+    return {
+      uiRequirements: [
+        `Interface must clearly expose ${ticketTitle} flow controls`,
+        'Error and loading states must be explicit',
+      ],
+      componentSpecs: [
+        {
+          name: 'WorkflowPanel',
+          props: {
+            title: { type: 'string', required: true, description: 'Panel heading' },
+            status: { type: 'string', required: true, description: 'Workflow status' },
+          },
+          variants: [{ name: 'default', props: { variant: 'default' } }],
+        },
+      ],
+      designTokens: {
+        colors: { primary: '#2563eb', surface: '#f8fafc', text: '#0f172a' },
+        spacing: { sm: '0.5rem', md: '1rem', lg: '1.5rem' },
+        typography: {
+          heading: { fontFamily: 'Inter', fontSize: '1.25rem', fontWeight: '600' },
+          body: { fontFamily: 'Inter', fontSize: '1rem', fontWeight: '400' },
+        },
+      },
+      wireframeDescriptions: [
+        'Top summary row with status and progress',
+        'Main panel listing actionable steps and outputs',
+      ],
+      interactionPatterns: ['Primary action button triggers generation', 'Inline validation for required fields'],
+    }
+  }
+
+  private buildFallbackDevPack(ticketTitle: string): {
+    architectureOverview: string
+    apiSpecs: Array<{
+      endpoint: string
+      method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'
+      requestSchema?: Record<string, unknown>
+      responseSchema?: Record<string, unknown>
+      description?: string
+    }>
+    databaseSchema: string
+    techStack: string[]
+    dependencies: string[]
+    testPlan: Array<{
+      id: string
+      name: string
+      description?: string
+      type?: 'unit' | 'integration' | 'e2e' | 'performance' | 'security'
+      steps?: string[]
+      expectedResult?: string
+      priority?: 'low' | 'medium' | 'high'
+    }>
+    implementationNotes: string
+  } {
+    return {
+      architectureOverview: `Service-oriented implementation for ${ticketTitle} with typed route handlers and persistence boundary.`,
+      apiSpecs: [
+        {
+          endpoint: '/api/workflow/execute',
+          method: 'POST',
+          requestSchema: { input: 'string' },
+          responseSchema: { success: 'boolean', artifactId: 'string' },
+          description: 'Runs workflow step and stores artifact output.',
+        },
+      ],
+      databaseSchema: 'artifact_runs(id uuid, project_id text, status text, payload jsonb, created_at bigint)',
+      techStack: ['Next.js 15', 'TypeScript', 'lowdb'],
+      dependencies: ['zod', 'next-auth'],
+      testPlan: [
+        {
+          id: 'fallback-devpack-1',
+          name: 'Workflow route validation',
+          description: 'Validate happy-path and invalid payload behavior.',
+          type: 'integration',
+          steps: ['POST valid payload', 'POST invalid payload'],
+          expectedResult: 'Valid request succeeds, invalid request returns 400',
+          priority: 'high',
+        },
+      ],
+      implementationNotes:
+        'Deterministic dev pack generated without live provider response. Replace with live generation when provider lane is available.',
+    }
+  }
 
   private parseJSONResponse<T>(response: string): T {
     const jsonMatch = response.match(/\[[\s\S]*\]|\{[\s\S]*\}/)

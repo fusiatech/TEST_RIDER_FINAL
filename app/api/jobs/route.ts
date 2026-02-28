@@ -95,6 +95,8 @@ const EnqueueSchema = z.object({
   intent: z.enum(['auto', 'plan', 'one_line_fix', 'code_implementation', 'code_review', 'explain', 'debug']).optional(),
   agentSelectionMode: AgentSelectionModeSchema.optional(),
   preferredAgent: CLIProvider.optional(),
+  selectedModelId: z.string().optional(),
+  reasoningMode: z.enum(['standard', 'deep']).optional(),
   traceModeValidation: z.boolean().optional(),
   idempotencyKey: z.string().min(1).optional(),
   attachments: z.array(EnqueueAttachmentSchema).max(10).optional(),

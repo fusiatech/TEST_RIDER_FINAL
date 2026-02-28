@@ -13,40 +13,20 @@
         "ok": true,
         "message": "WebSocket connected"
       },
-      "baseUrl": "http://127.0.0.1:59626",
-      "wsUrl": "ws://127.0.0.1:59626/api/ws",
-      "firstRequest500": false
-    },
-    {
-      "run": 2,
-      "status": "pass",
-      "readiness": {
-        "live": 200,
-        "ready": 200
-      },
-      "healthStatus": 200,
-      "ws": {
-        "ok": true,
-        "message": "WebSocket connected"
-      },
-      "baseUrl": "http://127.0.0.1:59783",
-      "wsUrl": "ws://127.0.0.1:59783/api/ws",
-      "firstRequest500": false
-    },
-    {
-      "run": 3,
-      "status": "pass",
-      "readiness": {
-        "live": 200,
-        "ready": 200
-      },
-      "healthStatus": 200,
-      "ws": {
-        "ok": true,
-        "message": "WebSocket connected"
-      },
-      "baseUrl": "http://127.0.0.1:4102",
-      "wsUrl": "ws://127.0.0.1:4102/api/ws",
+      "criticalRoutes": [
+        {
+          "path": "/api/health",
+          "status": 200,
+          "ok": true
+        },
+        {
+          "path": "/api/auth/session",
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "baseUrl": "http://127.0.0.1:4100",
+      "wsUrl": "ws://127.0.0.1:4100/api/ws",
       "firstRequest500": false
     }
   ]

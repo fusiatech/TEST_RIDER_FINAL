@@ -1,0 +1,4 @@
+[normal-gemini] pass=false reason=provider runtime error
+[swarm-gemini-primary] pass=false reason=provider runtime error
+[swarm-failover-from-claude] pass=false reason=provider runtime error
+[project-planner-tickets] pass=false reason=provider runtime error

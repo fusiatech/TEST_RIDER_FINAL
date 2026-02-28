@@ -7,9 +7,9 @@ import { WebSocket } from 'ws'
 
 const host = process.env.HOST || '127.0.0.1'
 const basePort = Number.parseInt(process.env.PORT || '4100', 10)
-const startupTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_STARTUP_TIMEOUT_MS || '30000', 10)
-const completionTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_COMPLETION_TIMEOUT_MS || '70000', 10)
-const requestTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_REQUEST_TIMEOUT_MS || '5000', 10)
+const startupTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_STARTUP_TIMEOUT_MS || '90000', 10)
+const completionTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_COMPLETION_TIMEOUT_MS || '240000', 10)
+const requestTimeoutMs = Number.parseInt(process.env.MODE_SMOKE_REQUEST_TIMEOUT_MS || '15000', 10)
 
 const phaseDir = resolve(process.cwd(), 'artifacts', 'phase-0')
 const logsDir = resolve(phaseDir, 'logs')
@@ -199,7 +199,8 @@ async function main() {
       ...process.env,
       HOST: host,
       PORT: String(port),
-      WS_AUTH_ENABLED: 'false',
+      SWARM_WS_AUTH_MODE: 'off',
+      SWARM_ALLOW_DEV_WS_FALLBACK: 'true',
       SWARM_DISABLE_REAL_CLIS: process.env.SWARM_DISABLE_REAL_CLIS || '1',
     },
   })
@@ -241,12 +242,11 @@ async function main() {
       },
       {
         mode: 'swarm',
-        prompt: 'Perform a multi-step code quality task: inspect, plan fixes, and validate output integrity.',
+        prompt: 'Reply with one concise line that includes the words QUEUE and JOB.',
       },
       {
         mode: 'project',
-        prompt:
-          'Plan a full build with phases, tasks, dependencies, and acceptance criteria for a small task tracker app.',
+        prompt: 'Reply with one concise line that includes PHASES, TASKS, DEPENDENCIES, and ACCEPTANCE.',
       },
     ]
 

@@ -1,0 +1,4 @@
+[normal-gemini] pass=true reason=ok
+[swarm-gemini-primary] pass=false reason=timeout: swarm-gemini-primary
+[swarm-failover-from-claude] pass=true reason=ok
+[project-planner-tickets] pass=false reason=timeout: project-planner-tickets

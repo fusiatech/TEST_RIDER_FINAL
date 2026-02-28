@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-02-28T09:50:10.274Z",
+  "user": {
+    "id": "69f39c52-7b3e-4db7-8b04-eeb14fe8aade",
+    "email": "rorybrowne@mail.com"
+  },
+  "diagnostics": [
+    {
+      "provider": "openai",
+      "configured": true,
+      "ok": true,
+      "status": 200,
+      "reason": "ok"
+    },
+    {
+      "provider": "gemini",
+      "configured": true,
+      "ok": true,
+      "status": 200,
+      "reason": "ok"
+    },
+    {
+      "provider": "claude",
+      "configured": true,
+      "ok": false,
+      "status": 401,
+      "reason": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CYaFyLUv9LwtCMVj4Spom\"}"
+    }
+  ]
+}

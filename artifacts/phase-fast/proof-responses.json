@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-02-28T06:14:51.032Z",
+  "results": [
+    {
+      "name": "manual-gemini",
+      "durationMs": 7924,
+      "payload": {
+        "mode": "chat",
+        "agentSelectionMode": "manual",
+        "preferredAgent": "gemini"
+      },
+      "finalType": "swarm-result",
+      "finalText": "No usable provider output was generated. Last provider error: gemini: Gemini API model resolution failed: model=gemini-1.5-pro status=404 {",
+      "agentProvider": "gemini",
+      "preflight": "[orchestrator] Provider preflight: [{\"provider\":\"gemini\",\"apiProvider\":\"gemini-api\",\"configured\":true,\"runtimeAvailable\":true,\"cooldownUntil\":null}]\n",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini\n"
+      ],
+      "failovers": []
+    },
+    {
+      "name": "auto",
+      "durationMs": 10560,
+      "payload": {
+        "mode": "chat",
+        "agentSelectionMode": "auto"
+      },
+      "finalType": "swarm-result",
+      "finalText": "[api-runner] Gemini model: gemini-2.5-flash-lite\n**auto works.**\n\n**Rationale:** The `auto` keyword in C++ is a powerful tool that allows the compiler to deduce the type of a variable automatically from its initializer. This simplifies code, reduces redundancy, and makes refactoring easier.\n\n**Practical Examples:**\n\n*   **Declaring complex types:**\n    ```c++\n    std::map<std::string, std::vector<int>> myMap;\n    auto it = myMap.begin(); // Compiler deduces 'it' is of type std::map<std::string, std::vector<int>>::iterator\n    ```\n    Without `auto`, you'd have to write the full, lengthy iterator type.\n\n*   **Range-based for loops:**\n    ```c++\n    std::vector<int> numbers = {1, 2, 3};\n    for (auto num : numbers) { // Compiler deduces 'num' is of type int\n        std::cout << num << \" \";\n    }\n    ```\n    This is much cleaner than `for (int num : numbers)`.\n\n*   **Lambda expressions:**\n    ```c++\n    auto add = [](int a, int b) { return a + b; }; // Compiler deduces 'add' is a function object type\n    std::cout << add(5, 3); // Output: 8\n    ```\n    `auto` is essential here as the type of a lambda is unnamed and unutterable.**auto works.**\n\n**Rationale:** The `auto` keyword in C++ is a powerful tool that allows the compiler to deduce the type of a variable automatically from its initializer. This simplifies code, reduces redundancy, and makes refactoring easier.\n\n**Practical Examples:**\n\n*   **Declaring complex types:**\n    ```c++\n    std::map<std::string, std::vector<int>> myMap;\n    auto it = myMap.begin(); // Compiler deduces 'it' is of type std::map<std::string, std::vector<int>>::iterator\n    ```\n    Without `auto`, you'd have to write the full, lengthy iterator type.\n\n*   **Range-based for loops:**\n    ```c++\n    std::vector<int> numbers = {1, 2, 3};\n    for (auto num : numbers) { // Compiler deduces 'num' is of type int\n        std::cout << num << \" \";\n    }\n    ```\n    This is much cleaner than `for (int num : numbers)`.\n\n*   **Lambda expressions:**\n    ```c++\n    auto add = [](int a, int b) { return a + b; }; // Compiler deduces 'add' is a function object type\n    std::cout << add(5, 3); // Output: 8\n    ```\n    `auto` is essential here as the type of a lambda is unnamed and unutterable.",
+      "agentProvider": "gemini",
+      "preflight": "[orchestrator] Provider preflight: [{\"provider\":\"gemini\",\"apiProvider\":\"gemini-api\",\"configured\":true,\"runtimeAvailable\":true,\"cooldownUntil\":null}]\n",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini\n"
+      ],
+      "failovers": []
+    },
+    {
+      "name": "manual-cursor",
+      "durationMs": 10224,
+      "payload": {
+        "mode": "chat",
+        "agentSelectionMode": "manual",
+        "preferredAgent": "cursor"
+      },
+      "finalType": "swarm-result",
+      "finalText": "No usable provider output was generated. Last provider error: cursor: OpenAI API model resolution failed: model=gpt-3.5-turbo status=429 {",
+      "agentProvider": "cursor",
+      "preflight": "[orchestrator] Provider preflight: [{\"provider\":\"cursor\",\"apiProvider\":\"chatgpt\",\"configured\":true,\"runtimeAvailable\":true,\"cooldownUntil\":1772259277338}]\n",
+      "attempts": [
+        "[orchestrator] API attempt 1 using cursor\n"
+      ],
+      "failovers": []
+    }
+  ]
+}

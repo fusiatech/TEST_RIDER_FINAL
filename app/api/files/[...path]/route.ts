@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
-import { sanitizePath, sanitizeFilename, isPathSafe } from '@/lib/sanitize'
+import { sanitizeFilename } from '@/lib/sanitize'
 import { getDefaultWorkspaceQuotaPolicy, getWorkspaceUsage } from '@/server/workspace-quotas'
+import { areRawPathSegmentsSafe, sanitizeApiPathSegments, toApiRelativePath } from '@/server/files/path-normalization'
+import { getSettings } from '@/server/storage'
 
-function getProjectPath(): string {
+async function getProjectPath(): Promise<string> {
+  try {
+    const settings = await getSettings()
+    const configuredPath = settings.projectPath?.trim()
+    if (configuredPath && fs.existsSync(configuredPath)) {
+      return configuredPath
+    }
+  } catch {
+    // fallback to env/cwd
+  }
   return process.env.PROJECT_PATH ?? process.cwd()
 }
 
@@ -14,25 +25,21 @@ function isWithinProject(targetPath: string, projectRoot: string): boolean {
   return resolved === root || resolved.startsWith(root + path.sep)
 }
 
-function sanitizePathSegments(segments: string[]): string[] {
-  return segments.map(seg => sanitizeFilename(seg)).filter(seg => seg.length > 0)
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const rawSegments = (await params).path
-  const segments = sanitizePathSegments(rawSegments)
+  const segments = sanitizeApiPathSegments(rawSegments)
   
-  if (segments.length === 0 || !rawSegments.every(isPathSafe)) {
+  if (segments.length === 0 || !areRawPathSegmentsSafe(rawSegments)) {
     return NextResponse.json(
       { error: 'Invalid path' },
       { status: 400 }
     )
   }
   
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
   const filePath = path.join(projectRoot, ...segments)
 
   if (!isWithinProject(filePath, projectRoot)) {
@@ -60,16 +67,16 @@ export async function PUT(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const rawSegments = (await params).path
-  const segments = sanitizePathSegments(rawSegments)
+  const segments = sanitizeApiPathSegments(rawSegments)
   
-  if (segments.length === 0 || !rawSegments.every(isPathSafe)) {
+  if (segments.length === 0 || !areRawPathSegmentsSafe(rawSegments)) {
     return NextResponse.json(
       { error: 'Invalid path' },
       { status: 400 }
     )
   }
   
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
   const filePath = path.join(projectRoot, ...segments)
 
   if (!isWithinProject(filePath, projectRoot)) {
@@ -123,16 +130,16 @@ export async function DELETE(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const rawSegments = (await params).path
-  const segments = sanitizePathSegments(rawSegments)
+  const segments = sanitizeApiPathSegments(rawSegments)
   
-  if (segments.length === 0 || !rawSegments.every(isPathSafe)) {
+  if (segments.length === 0 || !areRawPathSegmentsSafe(rawSegments)) {
     return NextResponse.json(
       { error: 'Invalid path' },
       { status: 400 }
     )
   }
   
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
   const targetPath = path.join(projectRoot, ...segments)
 
   if (!isWithinProject(targetPath, projectRoot)) {
@@ -161,16 +168,16 @@ export async function PATCH(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const rawSegments = (await params).path
-  const segments = sanitizePathSegments(rawSegments)
+  const segments = sanitizeApiPathSegments(rawSegments)
   
-  if (segments.length === 0 || !rawSegments.every(isPathSafe)) {
+  if (segments.length === 0 || !areRawPathSegmentsSafe(rawSegments)) {
     return NextResponse.json(
       { error: 'Invalid path' },
       { status: 400 }
     )
   }
   
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
   const oldPath = path.join(projectRoot, ...segments)
 
   if (!isWithinProject(oldPath, projectRoot)) {
@@ -220,8 +227,8 @@ export async function PATCH(
 
     return NextResponse.json({
       ok: true,
-      oldPath: path.relative(projectRoot, oldPath),
-      newPath: path.relative(projectRoot, newPath),
+      oldPath: toApiRelativePath(projectRoot, oldPath),
+      newPath: toApiRelativePath(projectRoot, newPath),
       newName,
     })
   } catch (err) {

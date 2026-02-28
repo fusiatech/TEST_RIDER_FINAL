@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-02-28T03:18:33.523Z",
+  "timestamp": "2026-02-28T05:52:11.946Z",
   "executionRuntime": "server_managed",
   "defaultOrder": [
+    "copilot",
+    "cursor",
     "gemini",
     "codex",
-    "claude",
-    "cursor",
-    "copilot"
+    "claude"
   ],
   "matrix": [
     {

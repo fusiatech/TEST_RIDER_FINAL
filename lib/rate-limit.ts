@@ -247,6 +247,7 @@ export async function checkDualRateLimit(
 export const ROUTE_RATE_LIMITS: Record<string, RateLimitConfig> = {
   '/api/sessions': { interval: 60_000, limit: 100 },
   '/api/settings': { interval: 60_000, limit: 30 },
+  '/api/me/preferences': { interval: 60_000, limit: 60 },
   '/api/projects': { interval: 60_000, limit: 100 },
   '/api/jobs': { interval: 60_000, limit: 60 },
   '/api/admin': { interval: 60_000, limit: 30 },

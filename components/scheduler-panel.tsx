@@ -261,7 +261,7 @@ export function SchedulerPanel({ onClose }: { onClose: () => void }) {
   const enabledCount = scheduledTasks.filter((t) => t.enabled).length
 
   return (
-    <div className="flex h-full flex-col border-l border-border bg-background" style={{ width: 420 }}>
+    <div className="flex h-full w-full flex-col bg-background">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-primary" />

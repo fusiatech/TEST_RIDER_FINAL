@@ -20,9 +20,12 @@ import type {
   KanbanColumn,
   GitBranch,
   Workspace,
+  UserUIPreferences,
+  UITab,
+  ReasoningMode,
 } from '@/lib/types'
 import type { Notification } from '@/lib/notifications'
-import { DEFAULT_SETTINGS, ROLE_LABELS, SessionSchema, SettingsSchema, validateAttachments } from '@/lib/types'
+import { DEFAULT_SETTINGS, DEFAULT_UI_PREFERENCES, ROLE_LABELS, SessionSchema, SettingsSchema, UserUIPreferencesSchema, validateAttachments } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 import { wsClient, type WSConnectionState } from '@/lib/ws-client'
 import { isOutputQualityAcceptable, sanitizeOutputText } from '@/lib/output-sanitize'
@@ -63,6 +66,7 @@ let lastWsToastAt = 0
 let pendingRunAckTimer: ReturnType<typeof setTimeout> | null = null
 let pendingRunAckIdempotencyKey: string | null = null
 let currentRunId: string | null = null
+let currentRunSessionId: string | null = null
 let currentRunLogs: RunLogEntry[] = []
 const RUN_ACCEPTED_TIMEOUT_MS = 12000
 
@@ -92,10 +96,7 @@ function getDefaultPreviewUrl(): string {
   if (configuredUrl) {
     return configuredUrl
   }
-  if (typeof window !== 'undefined') {
-    return window.location.origin
-  }
-  return 'http://localhost:3000'
+  return ''
 }
 
 function toEnqueueAttachments(attachments: Attachment[]): EnqueueAttachment[] {
@@ -105,6 +106,37 @@ function toEnqueueAttachments(attachments: Attachment[]): EnqueueAttachment[] {
     size: attachment.size,
     ...(attachment.dataUrl ? { dataUrl: attachment.dataUrl } : {}),
   }))
+}
+
+function mergeUIPreferences(
+  current: UserUIPreferences,
+  patch: Partial<UserUIPreferences>
+): UserUIPreferences {
+  return UserUIPreferencesSchema.parse({
+    ...current,
+    ...patch,
+    preview: {
+      ...current.preview,
+      ...(patch.preview ?? {}),
+    },
+    observability: {
+      ...current.observability,
+      ...(patch.observability ?? {}),
+    },
+    composer: {
+      ...current.composer,
+      ...(patch.composer ?? {}),
+      reasoningByModel: {
+        ...current.composer.reasoningByModel,
+        ...(patch.composer?.reasoningByModel ?? {}),
+      },
+    },
+  })
+}
+
+function normalizePrimaryTab(tab: UITab): UITab {
+  if (tab === 'testing' || tab === 'eclipse') return 'dashboard'
+  return tab
 }
 
 function inferRoleFromId(agentId: string): AgentRole {
@@ -161,6 +193,13 @@ export interface Idea {
   complexity: IdeaComplexity
 }
 
+export interface QueuedMessage {
+  id: string
+  prompt: string
+  attachments: Attachment[]
+  createdAt: number
+}
+
 export interface DebugBreakpoint {
   id: string
   file: string
@@ -183,6 +222,7 @@ interface SwarmStore {
   agents: AgentInstance[]
   isRunning: boolean
   settings: Settings
+  uiPreferences: UserUIPreferences
   sidebarOpen: boolean
   settingsOpen: boolean
   activeTab: 'chat' | 'dashboard' | 'ide' | 'testing' | 'eclipse' | 'observability'
@@ -193,6 +233,8 @@ interface SwarmStore {
   mode: AppMode
   chatIntent: ChatIntent
   selectedAgent: CLIProvider | null
+  selectedModelId: string | null
+  reasoningMode: ReasoningMode
   projects: Project[]
   currentProjectId: string | null
   errors: SwarmError[]
@@ -200,6 +242,7 @@ interface SwarmStore {
   showPreview: boolean
   sessionsLoading: boolean
   settingsLoading: boolean
+  uiPreferencesLoading: boolean
   filesLoading: boolean
   ideOpen: boolean
   openFiles: OpenFile[]
@@ -214,7 +257,9 @@ interface SwarmStore {
   jobs: SwarmJob[]
   scheduledTasks: ScheduledTask[]
   ideas: Idea[]
-  activePanel: 'queue' | 'schedule' | 'ideas' | null
+  ideasLoading: boolean
+  queuedMessages: QueuedMessage[]
+  activePanel: 'todos' | 'queue' | 'schedule' | null
   fileTreeVersion: number
   watchedProjectPath: string | null
   debugSessions: DebugSessionState[]
@@ -257,7 +302,7 @@ interface SwarmStore {
   setCurrentSession: (id: string | null) => void
   setRunning: (running: boolean) => void
   setConfidence: (value: number | null) => void
-  setActiveTab: (tab: 'chat' | 'dashboard' | 'ide' | 'testing' | 'eclipse' | 'observability') => void
+  setActiveTab: (tab: UITab) => void
   initWebSocket: () => void
   confidence: number | null
   setSecurityResults: (results: ClientSecurityCheck[]) => void
@@ -267,11 +312,15 @@ interface SwarmStore {
   persistSession: () => Promise<void>
   loadSettings: () => Promise<void>
   persistSettings: () => Promise<void>
+  loadUIPreferences: () => Promise<void>
+  updateUIPreferences: (patch: Partial<UserUIPreferences>) => Promise<void>
   addTicket: (ticket: Ticket) => void
   getTicketsByStage: (stage: AgentRole) => Ticket[]
   setMode: (mode: AppMode) => void
   setChatIntent: (intent: ChatIntent) => void
   setSelectedAgent: (agent: CLIProvider | null) => void
+  setSelectedModelId: (modelId: string | null) => void
+  setReasoningMode: (mode: ReasoningMode) => void
   createProject: (name: string, description: string) => string
   updateProject: (id: string, update: Partial<Project>) => void
   deleteProject: (id: string) => void
@@ -311,7 +360,11 @@ interface SwarmStore {
   toggleScheduledTask: (id: string) => void
   setIdeas: (ideas: Idea[]) => void
   generateIdeas: () => void
-  setActivePanel: (panel: 'queue' | 'schedule' | 'ideas' | null) => void
+  queueMessage: (prompt: string, attachments?: Attachment[]) => void
+  removeQueuedMessage: (id: string) => void
+  clearQueuedMessages: () => void
+  processQueuedMessages: () => void
+  setActivePanel: (panel: 'todos' | 'queue' | 'schedule' | null) => void
   loadJobs: () => Promise<void>
   loadScheduledTasks: () => Promise<void>
   addEpic: (projectId: string, epic: Epic) => void
@@ -363,6 +416,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   agents: [],
   isRunning: false,
   settings: DEFAULT_SETTINGS,
+  uiPreferences: DEFAULT_UI_PREFERENCES,
   sidebarOpen: true,
   settingsOpen: false,
   confidence: null,
@@ -373,7 +427,9 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   tickets: [],
   mode: 'chat' as AppMode,
   chatIntent: 'auto',
-  selectedAgent: null,
+  selectedAgent: DEFAULT_UI_PREFERENCES.composer.defaultProvider,
+  selectedModelId: DEFAULT_UI_PREFERENCES.composer.defaultModelId,
+  reasoningMode: 'standard',
   projects: [],
   currentProjectId: null,
   errors: [],
@@ -381,6 +437,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   showPreview: false,
   sessionsLoading: false,
   settingsLoading: false,
+  uiPreferencesLoading: false,
   filesLoading: false,
   ideOpen: false,
   openFiles: [],
@@ -395,6 +452,8 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   jobs: [],
   scheduledTasks: [],
   ideas: [],
+  ideasLoading: false,
+  queuedMessages: [],
   activePanel: null,
   fileTreeVersion: 0,
   watchedProjectPath: null,
@@ -421,13 +480,16 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
   createSession: () => {
     const id = generateId()
+    const now = Date.now()
+    const currentMode = get().mode
     const session: Session = {
       id,
-      title: 'New Chat',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      title: 'New conversation',
+      createdAt: now,
+      updatedAt: now,
       messages: [],
       chatIntent: get().chatIntent,
+      mode: currentMode,
     }
     set((state) => ({
       sessions: [session, ...state.sessions],
@@ -447,6 +509,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       currentSessionId: id,
       messages: session.messages,
       chatIntent: session.chatIntent ?? 'auto',
+      mode: session.mode ?? 'chat',
       agents: [],
       isRunning: false,
     })
@@ -463,6 +526,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
           sessions: filtered,
           currentSessionId: next?.id ?? null,
           messages: next?.messages ?? [],
+          mode: next?.mode ?? state.mode,
           agents: [],
           isRunning: false,
         }
@@ -481,6 +545,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
               ...s,
               messages: newMessages,
               chatIntent: state.chatIntent,
+              mode: state.mode,
               updatedAt: Date.now(),
               title:
                 s.messages.length === 0 && message.role === 'user'
@@ -532,17 +597,18 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   },
 
   toggleSidebar: () => {
-    set((state) => {
-      const newState = !state.sidebarOpen
+    const nextOpen = !get().sidebarOpen
+    set(() => {
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('swarm-sidebar-open', JSON.stringify(newState))
+          localStorage.setItem('swarm-sidebar-open', JSON.stringify(nextOpen))
         } catch {
           // localStorage may not be available
         }
       }
-      return { sidebarOpen: newState }
+      return { sidebarOpen: nextOpen }
     })
+    void get().updateUIPreferences({ leftRailCollapsed: !nextOpen })
   },
 
   toggleSettings: () => {
@@ -582,6 +648,16 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     wsClient.onMessage = (msg) => {
       switch (msg.type) {
         case 'agent-output': {
+          const scopedSessionId = currentRunSessionId ?? get().currentSessionId
+          if (msg.sessionId && scopedSessionId && msg.sessionId !== scopedSessionId) {
+            break
+          }
+          if (msg.runId && currentRunId && msg.runId !== currentRunId) {
+            break
+          }
+          if (msg.runId && !currentRunId && !get().isRunning) {
+            break
+          }
           const sanitized = sanitizeOutputText(msg.data)
           const entry: RunLogEntry = {
             timestamp: Date.now(),
@@ -617,6 +693,18 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
           break
         }
         case 'agent-status': {
+          const scopedSessionId = currentRunSessionId ?? get().currentSessionId
+          if (msg.sessionId && scopedSessionId && msg.sessionId !== scopedSessionId) {
+            break
+          }
+          if (msg.runId && currentRunId && msg.runId !== currentRunId) {
+            break
+          }
+          if (msg.runId && !currentRunId && !get().isRunning) {
+            break
+          }
+          const providerRequested = msg.providerRequested ?? get().selectedAgent ?? undefined
+          const providerActive = msg.providerActive ?? providerRequested
           const existingAgent = get().agents.find((a) => a.id === msg.agentId)
           if (!existingAgent && msg.status === 'spawning') {
             const role = inferRoleFromId(msg.agentId)
@@ -624,7 +712,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
               id: msg.agentId,
               role,
               label: buildLabelFromId(msg.agentId),
-              provider: get().settings.enabledCLIs[0] ?? 'cursor',
+              provider: providerActive ?? providerRequested ?? 'custom',
               status: 'spawning',
               output: '',
               startedAt: Date.now(),
@@ -634,17 +722,57 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
             get().updateAgent(msg.agentId, {
               status: msg.status,
               exitCode: msg.exitCode,
+              ...(providerActive ? { provider: providerActive } : {}),
               ...(msg.status === 'running' ? { startedAt: existingAgent.startedAt ?? Date.now() } : {}),
               ...(msg.status === 'completed' || msg.status === 'failed' ? { finishedAt: Date.now() } : {}),
             })
           }
+
+          if (msg.failoverFrom && msg.providerActive) {
+            const failoverEntry: RunLogEntry = {
+              timestamp: Date.now(),
+              level: 'warn',
+              source: 'orchestrator',
+              agentId: msg.agentId,
+              text: `Failover ${msg.failoverFrom} -> ${msg.providerActive}${msg.failureCode ? ` (${msg.failureCode})` : ''}`,
+            }
+            currentRunLogs.push(failoverEntry)
+            if (currentRunId) {
+              set((state) => ({
+                runLogs: {
+                  ...state.runLogs,
+                  [currentRunId as string]: [...(state.runLogs[currentRunId as string] ?? []), failoverEntry],
+                },
+              }))
+            }
+          }
           break
         }
         case 'swarm-result': {
+          const scopedSessionId = currentRunSessionId ?? get().currentSessionId
+          if (msg.sessionId && scopedSessionId && msg.sessionId !== scopedSessionId) {
+            break
+          }
+          if (msg.runId && currentRunId && msg.runId !== currentRunId) {
+            break
+          }
+          if (msg.runId && !currentRunId && !get().isRunning) {
+            break
+          }
           get().handleSwarmResult(msg.result)
           break
         }
         case 'swarm-error': {
+          const scopedSessionId = currentRunSessionId ?? get().currentSessionId
+          if (msg.sessionId && scopedSessionId && msg.sessionId !== scopedSessionId) {
+            break
+          }
+          if (msg.runId && currentRunId && msg.runId !== currentRunId) {
+            break
+          }
+          if (msg.runId && !currentRunId && !get().isRunning) {
+            break
+          }
           clearPendingRunAck()
           currentRunLogs.push({
             timestamp: Date.now(),
@@ -660,10 +788,12 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
             timestamp: Date.now(),
           })
           currentRunId = null
+          currentRunSessionId = null
           currentRunLogs = []
           get().recalculateContextTelemetry()
           toast.error('Swarm failed', { description: msg.error })
           recordSwarmEvent('swarm_error', { error: msg.error })
+          get().processQueuedMessages()
           break
         }
         case 'ticket-created': {
@@ -689,6 +819,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
         }
         case 'run.accepted': {
           currentRunId = msg.runId
+          currentRunSessionId = msg.sessionId
           currentRunLogs = []
           set((state) => ({
             runLogs: {
@@ -709,6 +840,16 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
             idempotencyKey: msg.idempotencyKey,
           })
           get().recalculateContextTelemetry()
+          break
+        }
+        case 'run.cancelled': {
+          if (!currentRunId || msg.runId === currentRunId) {
+            currentRunId = null
+            currentRunSessionId = null
+            currentRunLogs = []
+            set({ isRunning: false, agents: [] })
+            get().processQueuedMessages()
+          }
           break
         }
         case 'notification': {
@@ -741,13 +882,17 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     wsClient.connect()
   },
 
-  setActiveTab: (tab: 'chat' | 'dashboard' | 'ide' | 'testing' | 'eclipse' | 'observability') => {
-    set({ activeTab: tab })
+  setActiveTab: (tab: UITab) => {
+    const normalized = normalizePrimaryTab(tab)
+    set({ activeTab: normalized })
+    void get().updateUIPreferences({ defaultTab: normalized })
   },
 
   sendMessage: (prompt: string, attachments: Attachment[] = []) => {
     const state = get()
     const selectedAgent = state.selectedAgent
+    const selectedModelId = state.selectedModelId ?? state.uiPreferences.composer.defaultModelId
+    const reasoningMode = state.reasoningMode
 
     let sessionId = state.currentSessionId
     if (!sessionId) {
@@ -776,6 +921,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     get().addMessage(userMessage)
     set({ isRunning: true, agents: [] })
     currentRunId = null
+    currentRunSessionId = sessionId
     currentRunLogs = []
 
     get().initWebSocket()
@@ -795,6 +941,8 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       intent: get().chatIntent,
       agentSelectionMode: selectedAgent ? 'manual' : 'auto',
       ...(selectedAgent ? { preferredAgent: selectedAgent } : {}),
+      ...(selectedModelId ? { selectedModelId } : {}),
+      ...(reasoningMode ? { reasoningMode } : {}),
       idempotencyKey: userMessage.id,
       ...(enqueueAttachments.length > 0 ? { attachments: enqueueAttachments } : {}),
     })
@@ -808,6 +956,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       pendingRunAckIdempotencyKey = null
       pendingRunAckTimer = null
       set({ isRunning: false })
+      currentRunSessionId = null
       currentRunLogs.push({
         timestamp: Date.now(),
         level: 'warn',
@@ -865,16 +1014,58 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     set({ isRunning: false, confidence: outputQualityPassed ? result.confidence : null })
     currentRunLogs = []
     currentRunId = null
+    currentRunSessionId = null
 
     recordSwarmEvent('swarm_complete', {
       confidence: result.confidence,
       agentCount: result.agents?.length ?? 0,
       outputLength: result.finalOutput.length,
     })
+    get().processQueuedMessages()
   },
 
   sendPrompt: (prompt: string) => {
     get().sendMessage(prompt)
+  },
+
+  queueMessage: (prompt: string, attachments: Attachment[] = []) => {
+    const trimmed = prompt.trim()
+    if (!trimmed) return
+    set((state) => ({
+      queuedMessages: [
+        ...state.queuedMessages,
+        {
+          id: generateId(),
+          prompt: trimmed,
+          attachments,
+          createdAt: Date.now(),
+        },
+      ],
+    }))
+    toast.success('Prompt queued', {
+      description: 'It will run after the current response completes.',
+    })
+  },
+
+  removeQueuedMessage: (id: string) => {
+    set((state) => ({
+      queuedMessages: state.queuedMessages.filter((entry) => entry.id !== id),
+    }))
+  },
+
+  clearQueuedMessages: () => {
+    set({ queuedMessages: [] })
+  },
+
+  processQueuedMessages: () => {
+    const state = get()
+    if (state.isRunning) return
+    if (state.queuedMessages.length === 0) return
+    const [next, ...remaining] = state.queuedMessages
+    set({ queuedMessages: remaining })
+    setTimeout(() => {
+      get().sendMessage(next.prompt, next.attachments)
+    }, 0)
   },
 
   cancelSwarm: () => {
@@ -884,6 +1075,7 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       wsClient.send({ type: 'cancel-swarm', sessionId })
     }
     set({ isRunning: false })
+    currentRunSessionId = null
 
     recordSwarmEvent('swarm_cancel', { sessionId })
   },
@@ -929,7 +1121,49 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   },
 
   setMode: (mode: AppMode) => {
-    set({ mode })
+    const experienceLevel = get().uiPreferences.experienceLevel
+    const preferredTab = normalizePrimaryTab(get().uiPreferences.defaultTab)
+    const currentTab = normalizePrimaryTab(get().activeTab)
+    const adaptiveDefaultTab = experienceLevel === 'guided' ? 'dashboard' : 'chat'
+    const modeDefaultTab = mode === 'project' ? 'dashboard' : adaptiveDefaultTab
+    const nextTab =
+      currentTab === 'chat' || currentTab === 'dashboard' || currentTab === 'ide' || currentTab === 'observability'
+        ? currentTab
+        : (preferredTab === 'chat' || preferredTab === 'dashboard' ? preferredTab : modeDefaultTab)
+
+    set({ mode, activeTab: nextTab })
+
+    const sessionsForMode = get()
+      .sessions
+      .filter((session) => (session.mode ?? 'chat') === mode)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+
+    const targetSession = sessionsForMode[0]
+    if (targetSession) {
+      get().switchSession(targetSession.id)
+    } else {
+      const id = generateId()
+      const now = Date.now()
+      const session: Session = {
+        id,
+        title: 'New conversation',
+        createdAt: now,
+        updatedAt: now,
+        messages: [],
+        chatIntent: get().chatIntent,
+        mode,
+      }
+      set((state) => ({
+        sessions: [session, ...state.sessions],
+        currentSessionId: id,
+        messages: [],
+        agents: [],
+        isRunning: false,
+      }))
+      void get().persistSession()
+    }
+
+    void get().updateUIPreferences({ defaultMode: mode })
   },
 
   setChatIntent: (intent: ChatIntent) => {
@@ -946,6 +1180,14 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
 
   setSelectedAgent: (agent: CLIProvider | null) => {
     set({ selectedAgent: agent })
+  },
+
+  setSelectedModelId: (modelId: string | null) => {
+    set({ selectedModelId: modelId })
+  },
+
+  setReasoningMode: (mode: ReasoningMode) => {
+    set({ reasoningMode: mode })
   },
 
   createProject: (name: string, description: string) => {
@@ -1045,18 +1287,38 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   },
 
   setPreviewUrl: (url: string) => {
+    const trimmed = url.trim()
     set((state) => ({
-      previewUrl: url,
+      previewUrl: trimmed,
       settings: {
         ...state.settings,
-        previewUrl: url,
+        previewUrl: trimmed,
       },
     }))
     void get().persistSettings()
+    const workspaceId = get().currentWorkspaceId
+    const nextPreviewPrefs = {
+      ...get().uiPreferences.preview,
+      defaultUrl: trimmed,
+      workspaceOverrides: {
+        ...get().uiPreferences.preview.workspaceOverrides,
+        ...(workspaceId ? { [workspaceId]: trimmed } : {}),
+      },
+    }
+    void get().updateUIPreferences({
+      preview: nextPreviewPrefs,
+    })
   },
 
   togglePreview: () => {
-    set((state) => ({ showPreview: !state.showPreview }))
+    const next = !get().showPreview
+    set({ showPreview: next })
+    void get().updateUIPreferences({
+      preview: {
+        ...get().uiPreferences.preview,
+        openByDefault: next,
+      },
+    })
   },
 
   toggleIde: () => {
@@ -1467,27 +1729,38 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   },
 
   generateIdeas: () => {
-    const TEMPLATE_IDEAS: Omit<Idea, 'id'>[] = [
-      { title: 'SaaS Analytics Dashboard', description: 'Build a real-time analytics dashboard with user tracking, funnel visualizations, and revenue metrics for SaaS products.', complexity: 'L' },
-      { title: 'REST API Generator CLI', description: 'A CLI tool that scaffolds REST APIs from OpenAPI specs with validation, auth middleware, and database integration.', complexity: 'M' },
-      { title: 'Browser Extension: Tab Manager', description: 'Chrome extension that groups, saves, and restores tab sessions with search and tagging capabilities.', complexity: 'S' },
-      { title: 'Real-time Chat Platform', description: 'WebSocket-based chat app with rooms, file sharing, message reactions, and read receipts.', complexity: 'L' },
-      { title: 'Markdown Blog Engine', description: 'Static site generator that converts markdown files into a beautiful blog with RSS, SEO, and dark mode.', complexity: 'M' },
-      { title: 'Task Automation Service', description: 'Microservice that runs scheduled tasks with retry logic, webhooks, and a monitoring dashboard.', complexity: 'L' },
-      { title: 'Component Library Starter', description: 'React component library with Storybook, automated testing, and npm publishing pipeline.', complexity: 'M' },
-      { title: 'Personal Finance Tracker', description: 'Mobile-first web app for tracking expenses, budgets, and investments with chart visualizations.', complexity: 'XL' },
-      { title: 'AI Code Review Bot', description: 'GitHub bot that automatically reviews PRs, suggests improvements, and checks for security issues.', complexity: 'L' },
-      { title: 'E-commerce Storefront', description: 'Full-stack e-commerce site with product catalog, cart, Stripe checkout, and order management.', complexity: 'XL' },
-    ]
-    const shuffled = [...TEMPLATE_IDEAS].sort(() => Math.random() - 0.5)
-    const selected = shuffled.slice(0, 5).map((idea) => ({
-      ...idea,
-      id: generateId(),
-    }))
-    set({ ideas: selected })
+    void (async () => {
+      set({ ideasLoading: true })
+      try {
+        const response = await fetch('/api/ideas/generate', { method: 'POST' })
+        if (response.ok) {
+          const data = await response.json() as { ideas?: Idea[] }
+          if (Array.isArray(data.ideas) && data.ideas.length > 0) {
+            set({ ideas: data.ideas, ideasLoading: false })
+            return
+          }
+        }
+      } catch {
+        // Fall back to local templates if API is unavailable.
+      }
+
+      const TEMPLATE_IDEAS: Omit<Idea, 'id'>[] = [
+        { title: 'SaaS Analytics Dashboard', description: 'Build a real-time analytics dashboard with user tracking, funnel visualizations, and revenue metrics for SaaS products.', complexity: 'L' },
+        { title: 'REST API Generator', description: 'Scaffold REST APIs from OpenAPI specs with validation, auth middleware, and database integration.', complexity: 'M' },
+        { title: 'Browser Extension: Tab Manager', description: 'Group, save, and restore tab sessions with search and tagging capabilities.', complexity: 'S' },
+        { title: 'Real-time Chat Platform', description: 'WebSocket-based chat app with rooms, file sharing, message reactions, and read receipts.', complexity: 'L' },
+        { title: 'Markdown Blog Engine', description: 'Convert markdown into a blog with RSS, SEO, and theme support.', complexity: 'M' },
+        { title: 'Task Automation Service', description: 'Run scheduled tasks with retry logic, webhooks, and monitoring.', complexity: 'L' },
+        { title: 'Component Library Starter', description: 'React component library with Storybook, automated tests, and release pipeline.', complexity: 'M' },
+        { title: 'Personal Finance Tracker', description: 'Mobile-first app for expenses, budgets, and investment insights.', complexity: 'XL' },
+      ]
+      const shuffled = [...TEMPLATE_IDEAS].sort(() => Math.random() - 0.5)
+      const selected = shuffled.slice(0, 5).map((idea) => ({ ...idea, id: generateId() }))
+      set({ ideas: selected, ideasLoading: false })
+    })()
   },
 
-  setActivePanel: (panel: 'queue' | 'schedule' | 'ideas' | null) => {
+  setActivePanel: (panel: 'todos' | 'queue' | 'schedule' | null) => {
     set((state) => ({
       activePanel: state.activePanel === panel ? null : panel,
     }))
@@ -1499,10 +1772,22 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       const res = await fetch('/api/sessions')
       if (!res.ok) return
       const data: unknown = await res.json()
-      const parsed = Array.isArray(data)
-        ? data.map((s) => SessionSchema.parse(s))
-        : []
-      set({ sessions: parsed })
+      const rawSessions = Array.isArray(data)
+        ? data
+        : (Array.isArray((data as { data?: unknown[] })?.data) ? (data as { data: unknown[] }).data : [])
+      const parsed = rawSessions.map((s) => SessionSchema.parse(s))
+      const currentMode = get().mode
+      const currentId = get().currentSessionId
+      const currentSession = parsed.find((session) => session.id === currentId)
+      const modeSession = parsed.find((session) => session.mode === currentMode)
+      const nextSession = currentSession ?? modeSession ?? parsed[0] ?? null
+      set({
+        sessions: parsed,
+        currentSessionId: nextSession?.id ?? null,
+        messages: nextSession?.messages ?? [],
+        chatIntent: nextSession?.chatIntent ?? get().chatIntent,
+        mode: nextSession?.mode ?? currentMode,
+      })
       get().recalculateContextTelemetry()
     } catch {
       // API may not be available in UI-only dev mode
@@ -1533,9 +1818,10 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
       if (!res.ok) return
       const data: unknown = await res.json()
       const parsed = SettingsSchema.parse(data)
+      const preferredPreview = get().uiPreferences.preview.defaultUrl
       set({
         settings: parsed,
-        previewUrl: parsed.previewUrl || getDefaultPreviewUrl(),
+        previewUrl: parsed.previewUrl || preferredPreview || getDefaultPreviewUrl(),
       })
     } catch {
       // API may not be available
@@ -1544,26 +1830,89 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
     }
   },
 
-    persistSettings: async () => {
-      try {
-        const settings = get().settings
-        if (settings.apiKeys) {
-          await fetch('/api/settings', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settings.apiKeys),
-          })
-        }
-        const { apiKeys, ...nonSecretSettings } = settings
+  persistSettings: async () => {
+    try {
+      const settings = get().settings
+      if (settings.apiKeys) {
         await fetch('/api/settings', {
-          method: 'PUT',
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nonSecretSettings),
+          body: JSON.stringify(settings.apiKeys),
         })
-      } catch {
-        // API may not be available
       }
-    },
+      const nonSecretSettings = { ...settings }
+      delete nonSecretSettings.apiKeys
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nonSecretSettings),
+      })
+    } catch {
+      // API may not be available
+    }
+  },
+
+  loadUIPreferences: async () => {
+    set({ uiPreferencesLoading: true })
+    try {
+      const res = await fetch('/api/me/preferences')
+      if (!res.ok) return
+      const data: unknown = await res.json()
+      const parsed = UserUIPreferencesSchema.parse(data)
+      const workspaceId = get().currentWorkspaceId
+      const workspacePreview = workspaceId ? parsed.preview.workspaceOverrides?.[workspaceId] : undefined
+      const normalizedTab = normalizePrimaryTab(parsed.defaultTab)
+      const defaultProvider = parsed.composer.defaultProvider
+      const defaultModelId = parsed.composer.defaultModelId
+      const reasoningMode = parsed.composer.reasoningByModel[defaultModelId] ?? 'standard'
+
+      set((state) => ({
+        uiPreferences: parsed,
+        mode: parsed.defaultMode,
+        activeTab: normalizedTab,
+        selectedAgent: defaultProvider,
+        selectedModelId: defaultModelId,
+        reasoningMode,
+        sidebarOpen: !parsed.leftRailCollapsed,
+        previewUrl: workspacePreview || parsed.preview.defaultUrl || state.previewUrl,
+        showPreview: parsed.preview.openByDefault,
+      }))
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('fusia-theme-preset', parsed.themePreset)
+        } catch {
+          // ignore storage failures
+        }
+      }
+    } catch {
+      // API may not be available
+    } finally {
+      set({ uiPreferencesLoading: false })
+    }
+  },
+
+  updateUIPreferences: async (patch: Partial<UserUIPreferences>) => {
+    const current = get().uiPreferences
+    const merged = mergeUIPreferences(current, patch)
+    set({ uiPreferences: merged })
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('fusia-theme-preset', merged.themePreset)
+      } catch {
+        // ignore storage failures
+      }
+    }
+
+    try {
+      await fetch('/api/me/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+    } catch {
+      // API may not be available
+    }
+  },
 
   loadJobs: async () => {
     try {
@@ -2091,11 +2440,13 @@ export const useSwarmStore = create<SwarmStore>()((set, get) => ({
   switchWorkspace: (id: string) => {
     const workspace = get().workspaces.find((w) => w.id === id)
     if (!workspace) return
+    const previewOverride = get().uiPreferences.preview.workspaceOverrides?.[id]
 
     const now = new Date().toISOString()
     set((state) => ({
       currentWorkspaceId: id,
       settings: { ...state.settings, projectPath: workspace.path },
+      previewUrl: previewOverride || state.previewUrl,
       workspaces: state.workspaces.map((w) =>
         w.id === id ? { ...w, lastOpenedAt: now } : w
       ),

@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { WSMessageSchema } from '@/lib/types'
 import type { WSMessage } from '@/lib/types'
 import { cancelSwarm } from '@/server/orchestrator'
-import { getDb, getEffectiveSettingsForUser, getSettings, getUsers } from '@/server/storage'
+import { getDb, getEffectiveSettingsForUser, getSettings, getUsers, getUserByEmail, saveUser } from '@/server/storage'
 import { jobQueue } from '@/server/job-queue'
 import { scheduler } from '@/server/scheduler'
 import { createLogger } from '@/server/logger'
@@ -27,11 +27,18 @@ const HEARTBEAT_INTERVAL = 30000
 // In development we default to unauthenticated WS unless explicitly enabled.
 // In production we default to authenticated WS unless explicitly disabled.
 const WS_AUTH_ENABLED = process.env.WS_AUTH_ENABLED === 'false' ? false : true
+const DEV_PROFILE_FALLBACK_ENABLED =
+  process.env.SWARM_ALLOW_DEV_WS_FALLBACK === '1' ||
+  process.env.SWARM_ALLOW_DEV_WS_FALLBACK === 'true' ||
+  // Backward compatibility for existing local scripts.
+  process.env.SWARM_DEV_PROFILE_FALLBACK === '1' ||
+  process.env.SWARM_DEV_PROFILE_FALLBACK === 'true'
 
 interface ExtWebSocket extends WebSocket {
   isAlive: boolean
   user?: WSAuthenticatedUser
   authenticated: boolean
+  runtimeUserId?: string
 }
 
 let wss: WebSocketServer | null = null
@@ -42,10 +49,32 @@ async function resolveDevFallbackUserId(): Promise<string | null> {
     return cachedDevFallbackUserId
   }
 
-  const users = await getUsers()
+  let users = await getUsers()
   if (users.length === 0) {
-    // Don't cache null: a user may register after server startup.
-    return null
+    const preferredEmail =
+      process.env.SWARM_DEV_FALLBACK_EMAIL?.trim().toLowerCase() || 'local@swarmui.dev'
+    const now = Date.now()
+    try {
+      const existing = await getUserByEmail(preferredEmail)
+      if (existing) {
+        cachedDevFallbackUserId = existing.id
+        return existing.id
+      }
+      const fallbackUserId = `dev-${now}`
+      await saveUser({
+        id: fallbackUserId,
+        email: preferredEmail,
+        name: 'Local Dev',
+        role: 'editor',
+        createdAt: now,
+        updatedAt: now,
+      })
+      cachedDevFallbackUserId = fallbackUserId
+      return fallbackUserId
+    } catch {
+      // Don't cache null: a user may register after startup.
+      return null
+    }
   }
 
   const preferredEmail = process.env.SWARM_DEV_FALLBACK_EMAIL?.trim().toLowerCase()
@@ -126,7 +155,7 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
   switch (msg.type) {
     case 'start-swarm': {
       let effectiveUserId: string | undefined = ws.user?.id
-      if (!effectiveUserId && process.env.NODE_ENV !== 'production') {
+      if (!effectiveUserId && process.env.NODE_ENV !== 'production' && DEV_PROFILE_FALLBACK_ENABLED) {
         const fallbackUserId = await resolveDevFallbackUserId()
         effectiveUserId = fallbackUserId ?? undefined
         if (effectiveUserId) {
@@ -147,11 +176,12 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
         ws.send(
           JSON.stringify({
             type: 'swarm-error',
-            error: 'Authentication is required for profile-scoped API keys.',
+            error: 'Authentication is required for profile-scoped API keys. Sign in and retry.',
           })
         )
         break
       }
+      ws.runtimeUserId = effectiveUserId
       const pipelineMode = msg.mode ?? 'chat'
       logger.info('start-swarm received', {
         sessionId: msg.sessionId,
@@ -177,6 +207,8 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
         ...(msg.intent ? { intent: msg.intent } : {}),
         ...(msg.agentSelectionMode ? { agentSelectionMode: msg.agentSelectionMode } : {}),
         ...(msg.preferredAgent ? { preferredAgent: msg.preferredAgent } : {}),
+        ...(msg.selectedModelId ? { selectedModelId: msg.selectedModelId } : {}),
+        ...(msg.reasoningMode ? { reasoningMode: msg.reasoningMode } : {}),
         ...(msg.traceModeValidation !== undefined
           ? { traceModeValidation: msg.traceModeValidation }
           : {}),
@@ -204,17 +236,19 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
 
     case 'cancel-job':
       logger.info('cancel-job received', { jobId: msg.jobId })
-      void jobQueue.cancelJob(msg.jobId).then((cancelled) => {
+      void jobQueue.cancelJob(msg.jobId, ws.user?.id ?? ws.runtimeUserId).then((cancelled) => {
         if (cancelled) {
           void auditJobCancel(msg.jobId)
           ws.send(JSON.stringify({ type: 'agent-status', agentId: 'system', status: 'cancelled' }))
+        } else {
+          ws.send(JSON.stringify({ type: 'swarm-error', error: 'Job not found or not owned by current user' }))
         }
       })
       break
 
     case 'pause-job':
       logger.info('pause-job received', { jobId: msg.jobId })
-      void jobQueue.pauseJob(msg.jobId).then((paused) => {
+      void jobQueue.pauseJob(msg.jobId, 'ws-pause', ws.user?.id ?? ws.runtimeUserId).then((paused) => {
         if (paused) {
           void auditJobPause(msg.jobId, 'ws-pause')
           ws.send(JSON.stringify({ type: 'run.paused', runId: msg.jobId, reason: 'ws-pause' }))
@@ -226,7 +260,7 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
 
     case 'resume-job':
       logger.info('resume-job received', { jobId: msg.jobId })
-      void jobQueue.resumeJob(msg.jobId).then((resumed) => {
+      void jobQueue.resumeJob(msg.jobId, ws.user?.id ?? ws.runtimeUserId).then((resumed) => {
         if (resumed) {
           void auditJobResume(msg.jobId)
           ws.send(JSON.stringify({ type: 'run.resumed', runId: msg.jobId }))
@@ -238,7 +272,7 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
 
     case 'cancel-all-queued':
       logger.info('cancel-all-queued received')
-      void jobQueue.cancelAllQueued().then((count) => {
+      void jobQueue.cancelAllQueued(ws.user?.id ?? ws.runtimeUserId).then((count) => {
         ws.send(JSON.stringify({ type: 'agent-status', agentId: 'system', status: 'completed' }))
         logger.info('Cancelled queued jobs', { count })
       })
@@ -246,7 +280,7 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
 
     case 'emergency-stop':
       logger.warn('emergency-stop received', { reason: msg.reason })
-      void jobQueue.emergencyStop(msg.reason ?? 'ws-emergency-stop').then((result) => {
+      void jobQueue.emergencyStop(msg.reason ?? 'ws-emergency-stop', ws.user?.id ?? ws.runtimeUserId).then((result) => {
         void auditEmergencyStop(msg.reason)
         ws.send(
           JSON.stringify({
@@ -305,11 +339,15 @@ async function handleMessage(ws: ExtWebSocket, raw: string): Promise<void> {
 
       try {
         startFileWatcher(resolved.path, (info) => {
-          broadcastToAll({
-            type: 'file-changed',
-            event: info.event,
-            path: info.path,
-          })
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: 'file-changed',
+                event: info.event,
+                path: info.path,
+              })
+            )
+          }
         })
         ws.send(JSON.stringify({ type: 'agent-status', agentId: 'file-watcher', status: 'running' }))
       } catch (err) {
@@ -406,6 +444,21 @@ export function broadcastToAll(msg: WSMessage): void {
   })
 }
 
+function socketUserId(ws: ExtWebSocket): string | undefined {
+  return ws.user?.id ?? ws.runtimeUserId
+}
+
+export function broadcastToUser(userId: string | undefined, msg: WSMessage): void {
+  if (!wss || !userId) return
+  const data = JSON.stringify(msg)
+  wss.clients.forEach((client) => {
+    const ext = client as ExtWebSocket
+    if (client.readyState !== WebSocket.OPEN) return
+    if (socketUserId(ext) !== userId) return
+    client.send(data)
+  })
+}
+
 export function startWSServer(server: http.Server): WebSocketServer {
   wss = new WebSocketServer({
     noServer: true,
@@ -426,6 +479,19 @@ export function startWSServer(server: http.Server): WebSocketServer {
       const authResult = await authenticateWSConnection(request)
 
       if (!authResult.authenticated) {
+        if (process.env.NODE_ENV !== 'production') {
+          logger.warn('WebSocket auth failed in development; allowing unauthenticated connection with fallback profile', {
+            error: authResult.error,
+            ip: request.socket.remoteAddress,
+          })
+          wss!.handleUpgrade(request, socket, head, (ws) => {
+            const extWs = ws as ExtWebSocket
+            extWs.authenticated = false
+            wss!.emit('connection', extWs, request)
+          })
+          return
+        }
+
         logger.warn('WebSocket connection rejected - authentication failed', {
           error: authResult.error,
           ip: request.socket.remoteAddress,

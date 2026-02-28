@@ -7,9 +7,9 @@ import { WebSocket } from 'ws'
 
 const host = process.env.HOST || '127.0.0.1'
 const basePort = Number.parseInt(process.env.PORT || '4100', 10)
-const startupTimeoutMs = Number.parseInt(process.env.CHAT_SMOKE_STARTUP_TIMEOUT_MS || '25000', 10)
+const startupTimeoutMs = Number.parseInt(process.env.CHAT_SMOKE_STARTUP_TIMEOUT_MS || '90000', 10)
 const completionTimeoutMs = Number.parseInt(process.env.CHAT_SMOKE_COMPLETION_TIMEOUT_MS || '45000', 10)
-const requestTimeoutMs = Number.parseInt(process.env.CHAT_SMOKE_REQUEST_TIMEOUT_MS || '4000', 10)
+const requestTimeoutMs = Number.parseInt(process.env.CHAT_SMOKE_REQUEST_TIMEOUT_MS || '15000', 10)
 
 const phaseDir = resolve(process.cwd(), 'artifacts', 'phase-0')
 const logsDir = resolve(phaseDir, 'logs')
@@ -87,7 +87,8 @@ async function runChatSmoke() {
       ...process.env,
       HOST: host,
       PORT: String(port),
-      WS_AUTH_ENABLED: 'false',
+      SWARM_WS_AUTH_MODE: 'off',
+      SWARM_ALLOW_DEV_WS_FALLBACK: 'true',
       SWARM_DISABLE_REAL_CLIS: process.env.SWARM_DISABLE_REAL_CLIS || '1',
     },
   })

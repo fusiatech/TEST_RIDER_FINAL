@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateTicketPrompt, parseGeneratedTickets, buildTicketHierarchy, estimateTotalEffort, type GeneratedTicket } from '@/lib/prd-parser'
 import { getProject, saveProject, getEffectiveSettingsForUser } from '@/server/storage'
-import { runAPIAgent } from '@/server/api-runner'
+import { runGenerationGateway } from '@/server/generation-gateway'
 import type { Ticket, TicketLevel } from '@/lib/types'
 import { z } from 'zod'
 import { auth } from '@/auth'
@@ -10,6 +10,75 @@ const GenerateTicketsOptionsSchema = z.object({
   preview: z.boolean().optional(),
   includeSubtasks: z.boolean().optional(),
 })
+
+function buildDeterministicTickets(prd: string): string {
+  const normalizedTitle =
+    prd
+      .split('\n')
+      .map((line) => line.trim())
+      .find((line) => line.startsWith('# '))
+      ?.replace(/^#\s+/, '') || 'Core Platform'
+
+  const payload: GeneratedTicket[] = [
+    {
+      title: `${normalizedTitle}: Foundation Epic`,
+      description: 'Establish baseline architecture, setup, and operational foundations.',
+      acceptanceCriteria: [
+        'Baseline architecture documented',
+        'Core services run locally and in CI',
+        'Health checks and logging are available',
+      ],
+      complexity: 'XL',
+      level: 'epic',
+      assignedRole: 'planner',
+      dependencies: [],
+    },
+    {
+      title: `${normalizedTitle}: Core Workflow Story`,
+      description: 'Implement the core user-facing workflow described by the PRD.',
+      acceptanceCriteria: [
+        'Primary workflow executes end-to-end',
+        'Validation errors are handled and surfaced',
+        'Artifacts are persisted correctly',
+      ],
+      complexity: 'L',
+      level: 'story',
+      assignedRole: 'coder',
+      parentTitle: `${normalizedTitle}: Foundation Epic`,
+      dependencies: [],
+    },
+    {
+      title: `${normalizedTitle}: API Contract Task`,
+      description: 'Implement and validate API contracts required for the core workflow.',
+      acceptanceCriteria: [
+        'API handlers return expected schema',
+        'Negative and edge cases are covered',
+        'Contract tests pass',
+      ],
+      complexity: 'M',
+      level: 'task',
+      assignedRole: 'validator',
+      parentTitle: `${normalizedTitle}: Core Workflow Story`,
+      dependencies: [],
+    },
+    {
+      title: `${normalizedTitle}: Observability Task`,
+      description: 'Add operational telemetry, metrics, and basic alerting thresholds.',
+      acceptanceCriteria: [
+        'Request/latency/error metrics are emitted',
+        'Critical errors are logged with correlation IDs',
+        'Dashboards can track health trends',
+      ],
+      complexity: 'M',
+      level: 'task',
+      assignedRole: 'synthesizer',
+      parentTitle: `${normalizedTitle}: Core Workflow Story`,
+      dependencies: [`${normalizedTitle}: API Contract Task`],
+    },
+  ]
+
+  return JSON.stringify(payload, null, 2)
+}
 
 export async function POST(
   request: NextRequest,
@@ -38,31 +107,15 @@ export async function POST(
     const body = await request.json().catch(() => ({}))
     const options = GenerateTicketsOptionsSchema.parse(body)
     
-    const settings = await getEffectiveSettingsForUser(session.user.id)
-    const apiKey = settings.apiKeys?.openai
-    
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured. Please add it in Settings.' },
-        { status: 400 }
-      )
-    }
-    
     const prompt = generateTicketPrompt(project.prd)
-    let response = ''
-    
-    await runAPIAgent({
-      provider: 'chatgpt',
+    const settings = await getEffectiveSettingsForUser(session.user.id)
+    const generation = await runGenerationGateway({
       prompt,
-      apiKey,
-      onOutput: (chunk) => {
-        response += chunk
-      },
-      onComplete: () => {},
-      onError: (error) => {
-        throw new Error(error)
-      },
+      settings,
+      artifactType: 'tickets',
+      deterministicFallback: () => buildDeterministicTickets(project.prd || ''),
     })
+    const response = generation.text
     
     if (!response) {
       return NextResponse.json(
@@ -86,6 +139,7 @@ export async function POST(
           orphans: hierarchy.orphans.length,
         },
         effort,
+        generation: generation.metadata,
       })
     }
     
@@ -169,6 +223,7 @@ export async function POST(
         orphans: hierarchy.orphans.length,
       },
       effort,
+      generation: generation.metadata,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)

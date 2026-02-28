@@ -1,0 +1,8 @@
+{
+  "checkedAt": "2026-02-28T09:50:10.315Z",
+  "risks": [
+    "Provider quotas and free-tier limits can change without notice.",
+    "Managed cloud sandbox isolation is not fully certified by this script.",
+    "Authenticated end-to-end artifact flows require environment user session setup."
+  ]
+}

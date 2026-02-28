@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { BRAND } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand-logo'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -40,8 +42,11 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-5">
         <div>
+          <div className="mb-3 inline-flex rounded-xl border border-border bg-background/80 p-2">
+            <BrandLogo className="h-8" />
+          </div>
           <h1 className="text-2xl font-bold text-foreground">Create account</h1>
-          <p className="text-sm text-muted mt-1">Register to access SwarmUI.</p>
+          <p className="text-sm text-muted mt-1">Register to access {BRAND.productName}.</p>
         </div>
         {error ? (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

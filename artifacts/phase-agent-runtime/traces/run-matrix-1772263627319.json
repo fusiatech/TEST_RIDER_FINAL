@@ -1,0 +1,1062 @@
+{
+  "summary": {
+    "timestamp": "2026-02-28T07:27:07.319Z",
+    "baseUrl": "http://localhost:4100",
+    "wsUrl": "ws://localhost:4100/api/ws",
+    "totals": {
+      "runs": 4,
+      "passed": 0,
+      "failed": 4
+    }
+  },
+  "results": [
+    {
+      "name": "normal-gemini",
+      "mode": "chat",
+      "providerRequested": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": false,
+      "reason": "provider runtime error",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini"
+      ],
+      "failovers": [],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "No usable provider output was generated. Last provider error: gemini: Gemini API model resolution failed: model=gemini-1.5-pro status=404 {"
+    },
+    {
+      "name": "swarm-gemini-primary",
+      "mode": "swarm",
+      "providerRequested": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": false,
+      "reason": "provider runtime error",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini"
+      ],
+      "failovers": [
+        "[security] Found 25 potential secret(s):\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:723 - Password in URL: \"text\": \"[api-runner] Error: Gemini API error (429): {\\n  \\\"error\\\": {\\n  \\\"code\\\": 42\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:847 - Password in URL: \"text\": \"[orchestrator] Failover gemini -> cursor: QUOTA_EXCEEDED: Gemini API error (4\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:993 - Password in URL: \"output\": \"[api-runner] Error: gemini: Gemini API error (429): {\\n  \\\"error\\\": {\\n\nC:\\RIDER FINAL\\TEST_RIDE"
+      ],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "[api-runner] Error: gemini: Gemini API model resolution failed: model=gemini-1.5-pro status=404 {\n  \"error\": {\n    \"code\": 404,\n    \"message\": \"models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.\",\n    \"status\": \"NOT_FOUND\"\n  }\n}\n\n"
+    },
+    {
+      "name": "swarm-failover-from-claude",
+      "mode": "swarm",
+      "providerRequested": "claude",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": false,
+      "reason": "provider runtime error",
+      "attempts": [
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude",
+        "[orchestrator] API attempt 1 using claude"
+      ],
+      "failovers": [
+        "[security] Found 25 potential secret(s):\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:723 - Password in URL: \"text\": \"[api-runner] Error: Gemini API error (429): {\\n  \\\"error\\\": {\\n  \\\"code\\\": 42\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:847 - Password in URL: \"text\": \"[orchestrator] Failover gemini -> cursor: QUOTA_EXCEEDED: Gemini API error (4\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:993 - Password in URL: \"output\": \"[api-runner] Error: gemini: Gemini API error (429): {\\n  \\\"error\\\": {\\n\nC:\\RIDER FINAL\\TEST_RIDE"
+      ],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "researcher-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-3",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-2",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "security-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "synthesizer-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n"
+    },
+    {
+      "name": "project-planner-tickets",
+      "mode": "project",
+      "providerRequested": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": false,
+      "reason": "provider runtime error",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini"
+      ],
+      "failovers": [],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "failed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "[api-runner] Error: gemini: Gemini API model resolution failed: model=gemini-1.5-pro status=404 {\n  \"error\": {\n    \"code\": 404,\n    \"message\": \"models/gemini-1.5-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.\",\n    \"status\": \"NOT_FOUND\"\n  }\n}\n\n"
+    }
+  ]
+}

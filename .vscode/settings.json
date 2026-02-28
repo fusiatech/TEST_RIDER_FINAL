@@ -1,3 +1,4 @@
 {
-  "debug.javascript.autoAttachFilter": "disabled"
+  "debug.javascript.autoAttachFilter": "disabled",
+  "vitest.disableWorkspaceWarning": true
 }

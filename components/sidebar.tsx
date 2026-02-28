@@ -11,30 +11,34 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { CreateProjectDialog } from '@/components/create-project-dialog'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { JobQueue } from '@/components/job-queue'
+import { TodoPanel } from '@/components/todo-panel'
 import { SchedulerPanel } from '@/components/scheduler-panel'
-import { IdeationBot } from '@/components/ideation-bot'
 import { PromptLibrary } from '@/components/prompt-library'
 import { DestructiveActionDialog } from '@/components/destructive-action-dialog'
-import { NotificationCenter } from '@/components/notification-center'
-import { Tooltip } from '@/components/ui/tooltip'
+import { SlidePanel } from '@/components/ui/slide-panel'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Plus,
   Trash2,
   Settings,
   PanelLeftClose,
-  PanelLeftOpen,
   MessageSquare,
   MessageCircle,
   Zap,
   FolderKanban,
+  LayoutDashboard,
+  Code2,
+  BarChart3,
   ListTodo,
   CalendarClock,
-  Lightbulb,
   Inbox,
   BookOpen,
-  Gauge,
+  Play,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -44,11 +48,12 @@ interface PendingDeletion {
   name: string
 }
 
-const MODE_OPTIONS: { value: AppMode; label: string; Icon: typeof MessageCircle }[] = [
-  { value: 'chat', label: 'Chat', Icon: MessageCircle },
-  { value: 'swarm', label: 'Swarm', Icon: Zap },
-  { value: 'project', label: 'Project', Icon: FolderKanban },
-]
+const SURFACE_NAV = [
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { id: 'chat', label: 'Conversations', Icon: MessageCircle },
+  { id: 'ide', label: 'IDE', Icon: Code2 },
+  { id: 'observability', label: 'Observability', Icon: BarChart3 },
+] as const
 
 const STATUS_COLORS: Record<string, string> = {
   planning: '#a78bfa',
@@ -69,62 +74,40 @@ export function Sidebar() {
   const toggleSidebar = useSwarmStore((s) => s.toggleSidebar)
   const mode = useSwarmStore((s) => s.mode)
   const setMode = useSwarmStore((s) => s.setMode)
+  const activeTab = useSwarmStore((s) => s.activeTab)
+  const setActiveTab = useSwarmStore((s) => s.setActiveTab)
   const sessionsLoading = useSwarmStore((s) => s.sessionsLoading)
   const projects = useSwarmStore((s) => s.projects)
   const currentProjectId = useSwarmStore((s) => s.currentProjectId)
   const switchProject = useSwarmStore((s) => s.switchProject)
   const deleteProject = useSwarmStore((s) => s.deleteProject)
-  const jobs = useSwarmStore((s) => s.jobs)
   const scheduledTasks = useSwarmStore((s) => s.scheduledTasks)
   const activePanel = useSwarmStore((s) => s.activePanel)
   const setActivePanel = useSwarmStore((s) => s.setActivePanel)
   const hydrateSidebar = useSwarmStore((s) => s.hydrateSidebar)
-  const contextTokensUsed = useSwarmStore((s) => s.contextTokensUsed)
-  const contextWindowTokens = useSwarmStore((s) => s.contextWindowTokens)
-  const contextTokenPercent = useSwarmStore((s) => s.contextTokenPercent)
-  const contextCompactionStatus = useSwarmStore((s) => s.contextCompactionStatus)
-  const lastContextCompactionAt = useSwarmStore((s) => s.lastContextCompactionAt)
-  const contextCompactionCount = useSwarmStore((s) => s.contextCompactionCount)
-  const tokenPressureEvents = useSwarmStore((s) => s.tokenPressureEvents)
-  
+
   const [showPromptLibrary, setShowPromptLibrary] = useState(false)
+  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false)
+  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null)
 
   useEffect(() => {
     hydrateSidebar()
   }, [hydrateSidebar])
 
-  const [pendingDeletion, setPendingDeletion] = useState<PendingDeletion | null>(null)
-
-  const enabledCLIs = CLI_REGISTRY.filter((cli) =>
-    settings.enabledCLIs.includes(cli.id)
-  )
-
+  const enabledCLIs = CLI_REGISTRY.filter((cli) => settings.enabledCLIs.includes(cli.id))
   const isProjectMode = mode === 'project'
+  const sessionsForMode = sessions.filter((session) => (session.mode ?? 'chat') === mode)
 
-  const jobCount = jobs.filter((j) => j.status === 'queued' || j.status === 'running').length
+  const taskCount = projects
+    .flatMap((project) => project.tickets)
+    .filter(
+      (ticket) =>
+        (ticket.level === 'task' || ticket.level === 'subtask' || ticket.level === 'subatomic') &&
+        ticket.status !== 'done' &&
+        ticket.status !== 'approved'
+    ).length
+
   const enabledTaskCount = scheduledTasks.filter((t) => t.enabled).length
-  const contextPercentRounded = Math.round(contextTokenPercent)
-  const contextStatusTone =
-    contextTokenPercent >= 95
-      ? 'text-red-400 border-red-500/40 bg-red-500/10'
-      : contextTokenPercent >= 85
-        ? 'text-amber-300 border-amber-500/40 bg-amber-500/10'
-        : contextTokenPercent >= 70
-          ? 'text-yellow-300 border-yellow-500/40 bg-yellow-500/10'
-          : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-  const lastCompactionLabel = lastContextCompactionAt
-    ? new Date(lastContextCompactionAt).toLocaleTimeString()
-    : 'Never'
-  const contextTooltip = [
-    'Codex Context',
-    `Window: ${contextWindowTokens.toLocaleString()} tokens`,
-    `Used: ${contextTokensUsed.toLocaleString()} (${contextPercentRounded}%)`,
-    `Status: ${contextCompactionStatus}`,
-    'Auto-compact: 70% warn · 85% soft · 95% hard',
-    `Compactions: ${contextCompactionCount}`,
-    `Pressure events: ${tokenPressureEvents}`,
-    `Last compacted: ${lastCompactionLabel}`,
-  ].join('\n')
 
   const handleDeleteSession = useCallback((id: string, title: string) => {
     setPendingDeletion({ type: 'session', id, name: title })
@@ -144,17 +127,34 @@ export function Sidebar() {
     setPendingDeletion(null)
   }, [pendingDeletion, deleteSession, deleteProject])
 
+  const startConversation = useCallback(() => {
+    setMode('chat')
+    setActiveTab('chat')
+    createSession()
+  }, [setMode, setActiveTab, createSession])
+
+  const startProject = useCallback(() => {
+    setMode('project')
+    setActiveTab('dashboard')
+    setShowCreateProjectDialog(true)
+  }, [setMode, setActiveTab])
+
+  const runInCurrentContext = useCallback(() => {
+    setMode('swarm')
+    setActiveTab('chat')
+    window.dispatchEvent(new CustomEvent('fusia:focus-composer'))
+  }, [setMode, setActiveTab])
+
   return (
     <>
       <aside
         className={cn(
-          'relative flex h-screen flex-col overflow-hidden transition-all duration-300',
-          sidebarOpen ? 'w-64' : 'w-0'
+          'fixed inset-y-0 left-0 z-40 flex h-full w-72 flex-col overflow-hidden border-r border-border bg-background/95 shadow-2xl backdrop-blur-xl transition-transform duration-300 md:static md:inset-auto md:z-10 md:shadow-none',
+          sidebarOpen ? 'translate-x-0 md:w-72' : '-translate-x-full md:translate-x-0 md:w-0'
         )}
-        style={{ backgroundColor: 'color-mix(in srgb, var(--color-background) 92%, black)' }}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <span className="text-lg font-bold text-foreground">SwarmUI</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Workspace</span>
           <Button
             variant="ghost"
             size="icon"
@@ -166,47 +166,78 @@ export function Sidebar() {
           </Button>
         </div>
 
-        <div className="px-3 pt-3 pb-1">
-          <div className="flex rounded-lg border border-border bg-secondary/30 p-0.5">
-            {MODE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setMode(opt.value)}
-                aria-label={`Switch to ${opt.label} mode`}
-                aria-pressed={mode === opt.value}
-                className={cn(
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all',
-                  mode === opt.value
-                    ? 'bg-primary text-background shadow-sm'
-                    : 'text-muted hover:text-foreground'
-                )}
-                data-testid={`mode-${opt.value}`}
+        <div className="px-3 py-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-9 w-full justify-start gap-2 border-primary/25 bg-primary/5 hover:bg-primary/10"
+                data-action-id="start-work-menu-trigger"
+                data-testid="new-session-button"
               >
-                <opt.Icon className="h-3.5 w-3.5" />
-                {opt.label}
-              </button>
-            ))}
-          </div>
+                <Plus className="h-4 w-4" />
+                Start work
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[240px]">
+              <DropdownMenuItem onClick={startConversation} data-action-id="start-work-new-conversation">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                New conversation
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setMode('swarm')
+                  setActiveTab('chat')
+                  createSession()
+                }}
+                data-action-id="start-work-new-swarm-run"
+              >
+                <Zap className="mr-2 h-4 w-4" />
+                New multi-agent run
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={startProject} data-action-id="start-work-new-project">
+                <FolderKanban className="mr-2 h-4 w-4" />
+                New project
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={runInCurrentContext} data-action-id="start-work-new-run">
+                <Play className="mr-2 h-4 w-4" />
+                Run in current context
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <div className="px-3 py-2">
-          {isProjectMode ? (
-            <CreateProjectDialog />
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => createSession()}
-              data-testid="new-session-button"
-            >
-              <Plus className="h-4 w-4" />
-              New Chat
-            </Button>
-          )}
+        <div className="px-3 pb-2">
+          <nav aria-label="Primary navigation" className="space-y-1">
+            {SURFACE_NAV.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors',
+                  activeTab === item.id
+                    ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]'
+                    : 'text-muted hover:bg-secondary/70 hover:text-foreground'
+                )}
+                data-action-id={`rail-nav-${item.id}`}
+                aria-label={`Open ${item.label}`}
+              >
+                <item.Icon className="h-3.5 w-3.5" />
+                {item.label}
+              </button>
+            ))}
+          </nav>
         </div>
 
         <ScrollArea className="flex-1 px-2">
-          <div className="space-y-1 py-1">
+          <div className="space-y-3 py-1">
+            <div className="px-1">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                {isProjectMode ? 'Projects' : 'Conversations'}
+              </p>
+            </div>
+
             {isProjectMode ? (
               projects.length === 0 ? (
                 <EmptyState
@@ -278,16 +309,16 @@ export function Sidebar() {
                   <Skeleton className="h-4 flex-1" />
                 </div>
               ))
-            ) : sessions.length === 0 ? (
+            ) : sessionsForMode.length === 0 ? (
               <EmptyState
                 icon={<Inbox />}
-                title="No chats yet"
+                title="No conversations yet"
                 description="Start a new conversation"
                 variant="compact"
                 className="py-8"
               />
             ) : (
-              sessions.map((session) => (
+              sessionsForMode.map((session) => (
                 <div
                   key={session.id}
                   className={cn(
@@ -304,7 +335,7 @@ export function Sidebar() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-                    aria-label={`Delete chat "${session.title}"`}
+                    aria-label={`Delete conversation "${session.title}"`}
                     onClick={(e) => {
                       e.stopPropagation()
                       handleDeleteSession(session.id, session.title)
@@ -315,147 +346,156 @@ export function Sidebar() {
                 </div>
               ))
             )}
+
+            <div className="border-t border-border/70 px-1 pt-3">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-muted">Utilities</p>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors',
+                    activePanel === 'todos'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted hover:bg-secondary/70 hover:text-foreground'
+                  )}
+                  onClick={() => setActivePanel('todos')}
+                  data-action-id="rail-tasks"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <ListTodo className="h-3.5 w-3.5" />
+                    Tasks
+                  </span>
+                  <Badge variant="outline" className="h-5 min-w-5 px-1 text-[10px]">{taskCount}</Badge>
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-xs font-medium transition-colors',
+                    activePanel === 'schedule'
+                      ? 'bg-primary/15 text-primary'
+                      : 'text-muted hover:bg-secondary/70 hover:text-foreground'
+                  )}
+                  onClick={() => setActivePanel('schedule')}
+                  data-action-id="rail-schedule"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    Schedule
+                  </span>
+                  <Badge variant="outline" className="h-5 min-w-5 px-1 text-[10px]">{enabledTaskCount}</Badge>
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-muted transition-colors hover:bg-secondary/70 hover:text-foreground"
+                  onClick={() => setShowPromptLibrary(true)}
+                  data-action-id="rail-prompt-library"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Prompt Library
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-muted transition-colors hover:bg-secondary/70 hover:text-foreground"
+                  onClick={() => router.push('/settings')}
+                  aria-label="Open settings"
+                  data-action-id="rail-settings"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Settings
+                </button>
+              </div>
+            </div>
           </div>
         </ScrollArea>
 
         <div className="border-t border-border p-3 space-y-2">
-          <div className="flex items-center gap-1.5 px-1" role="list" aria-label="CLI agent status">
-            {enabledCLIs.map((cli) => (
-              <div
-                key={cli.id}
-                role="listitem"
-                className="h-2.5 w-2.5 rounded-full"
-                style={{
-                  backgroundColor: cli.installed !== false ? '#22c55e' : '#ef4444',
-                }}
-                title={`${cli.name}${cli.installed !== false ? ' (detected)' : ' (not found)'}`}
-                aria-label={`${cli.name}: ${cli.installed !== false ? 'detected' : 'not found'}`}
-              />
-            ))}
-          </div>
-
-          <Tooltip content={contextTooltip} contentClassName="whitespace-pre-line max-w-sm" side="top">
-            <button
-              type="button"
-              className={cn(
-                'w-full rounded-md border px-2 py-1.5 text-left transition-colors',
-                contextStatusTone
+          <div className="rounded-md border border-border/70 bg-card/60 p-2">
+            <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Runtime connectors</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5" role="list" aria-label="Runtime connector status">
+              {enabledCLIs.length > 0 ? (
+                enabledCLIs.map((cli) => {
+                  const isInstalled = cli.installed !== false
+                  return (
+                    <div
+                      key={cli.id}
+                      role="listitem"
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px]',
+                        isInstalled
+                          ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'
+                          : 'border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-200'
+                      )}
+                      title={`${cli.name}${isInstalled ? ' runtime detected' : ' runtime not found'}`}
+                      aria-label={`${cli.name}: ${isInstalled ? 'runtime detected' : 'runtime not found'}`}
+                    >
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          isInstalled ? 'bg-emerald-400' : 'bg-rose-400'
+                        )}
+                      />
+                      <span>{cli.name}</span>
+                    </div>
+                  )
+                })
+              ) : (
+                <span className="text-[11px] text-muted">No runtime connectors enabled</span>
               )}
-              aria-label={`Codex Context ${contextPercentRounded}% used, status ${contextCompactionStatus}`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
-                  <Gauge className="h-3.5 w-3.5" />
-                  Codex Context
-                </span>
-                <span className="text-xs font-semibold">{contextPercentRounded}%</span>
-              </div>
-            </button>
-          </Tooltip>
-
-          <div className="flex items-center gap-1 px-1">
-            <Button
-              variant={activePanel === 'queue' ? 'default' : 'ghost'}
-              size="icon"
-              className="relative h-8 w-8"
-              onClick={() => setActivePanel('queue')}
-              aria-label={`Job Queue${jobCount > 0 ? ` (${jobCount} active)` : ''}`}
-              title="Job Queue"
-            >
-              <ListTodo className="h-4 w-4" />
-              {jobCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-background" aria-hidden="true">
-                  {jobCount}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant={activePanel === 'schedule' ? 'default' : 'ghost'}
-              size="icon"
-              className="relative h-8 w-8"
-              onClick={() => setActivePanel('schedule')}
-              aria-label={`Scheduled Tasks${enabledTaskCount > 0 ? ` (${enabledTaskCount} enabled)` : ''}`}
-              title="Scheduled Tasks"
-            >
-              <CalendarClock className="h-4 w-4" />
-              {enabledTaskCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-background" aria-hidden="true">
-                  {enabledTaskCount}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant={activePanel === 'ideas' ? 'default' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setActivePanel('ideas')}
-              aria-label="Idea Generator"
-              title="Idea Generator"
-            >
-              <Lightbulb className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setShowPromptLibrary(true)}
-              aria-label="Prompt Library"
-              title="Prompt Library"
-            >
-              <BookOpen className="h-4 w-4" />
-            </Button>
+            </div>
           </div>
-
-          <div className="flex items-center gap-1 px-1">
-            <NotificationCenter />
-            <ThemeToggle />
+          <div className="grid grid-cols-2 gap-1.5 px-1">
+            <div className="rounded-md border border-border/70 bg-card/60 px-2 py-1.5 text-center">
+              <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Open</p>
+              <p className="text-xs font-semibold text-foreground">{taskCount}</p>
+            </div>
+            <div className="rounded-md border border-border/70 bg-card/60 px-2 py-1.5 text-center">
+              <p className="text-[10px] uppercase tracking-[0.08em] text-muted">Schedules</p>
+              <p className="text-xs font-semibold text-foreground">{enabledTaskCount}</p>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-muted hover:text-foreground"
-            onClick={() => router.push('/settings')}
-            aria-label="Open settings"
-            data-testid="settings-button"
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Button>
         </div>
       </aside>
 
-      {activePanel === 'queue' && (
-        <JobQueue onClose={() => setActivePanel(null)} />
-      )}
-      {activePanel === 'schedule' && (
-        <SchedulerPanel onClose={() => setActivePanel(null)} />
-      )}
-      {activePanel === 'ideas' && (
-        <IdeationBot onClose={() => setActivePanel(null)} />
-      )}
-      
-      {showPromptLibrary && (
-        <PromptLibrary onClose={() => setShowPromptLibrary(false)} />
-      )}
+      <SlidePanel
+        open={activePanel === 'todos'}
+        onClose={() => setActivePanel(null)}
+        ariaLabel="Tasks panel"
+      >
+        <TodoPanel onClose={() => setActivePanel(null)} />
+      </SlidePanel>
 
-      {!sidebarOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
+      <SlidePanel
+        open={activePanel === 'schedule'}
+        onClose={() => setActivePanel(null)}
+        ariaLabel="Schedule panel"
+      >
+        <SchedulerPanel onClose={() => setActivePanel(null)} />
+      </SlidePanel>
+
+      {showPromptLibrary && <PromptLibrary onClose={() => setShowPromptLibrary(false)} />}
+
+      <CreateProjectDialog
+        open={showCreateProjectDialog}
+        onOpenChange={setShowCreateProjectDialog}
+        hideTrigger
+      />
+
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-label="Close navigation drawer"
           onClick={toggleSidebar}
-          className="fixed left-2 top-3 z-40 h-8 w-8 text-muted hover:text-foreground"
-          aria-label="Open sidebar"
-        >
-          <PanelLeftOpen className="h-4 w-4" />
-        </Button>
+        />
       )}
 
       <DestructiveActionDialog
         open={pendingDeletion !== null}
         onOpenChange={(open) => !open && setPendingDeletion(null)}
-        title={pendingDeletion?.type === 'session' ? 'Delete Chat?' : 'Delete Project?'}
+        title={pendingDeletion?.type === 'session' ? 'Delete conversation?' : 'Delete project?'}
         description={
           pendingDeletion?.type === 'session'
-            ? `Are you sure you want to delete "${pendingDeletion?.name}"? This action cannot be undone and all messages in this chat will be permanently lost.`
+            ? `Are you sure you want to delete "${pendingDeletion?.name}"? This action cannot be undone and all messages in this conversation will be permanently lost.`
             : `Are you sure you want to delete project "${pendingDeletion?.name}"? This action cannot be undone and all project data including tickets will be permanently lost.`
         }
         actionLabel="Delete"

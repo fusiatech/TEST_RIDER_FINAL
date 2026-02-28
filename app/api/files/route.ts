@@ -3,6 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { checkRateLimit, getClientIdentifier } from '@/lib/rate-limit'
 import { canCreateFile, getDefaultWorkspaceQuotaPolicy } from '@/server/workspace-quotas'
+import { toApiRelativePath } from '@/server/files/path-normalization'
+import { getSettings } from '@/server/storage'
 
 interface FileEntry {
   name: string
@@ -21,7 +23,16 @@ const BLOCKED_DIRS = new Set([
 
 const FILES_RATE_LIMIT = { interval: 60_000, limit: 100 }
 
-function getProjectPath(): string {
+async function getProjectPath(): Promise<string> {
+  try {
+    const settings = await getSettings()
+    const configuredPath = settings.projectPath?.trim()
+    if (configuredPath && fs.existsSync(configuredPath)) {
+      return configuredPath
+    }
+  } catch {
+    // fallback to env/cwd
+  }
   return process.env.PROJECT_PATH ?? process.cwd()
 }
 
@@ -63,7 +74,7 @@ export async function GET(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse
   const searchParams = request.nextUrl.searchParams
   const dirPath = searchParams.get('path')
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
 
   const target = dirPath ? path.resolve(projectRoot, dirPath) : projectRoot
 
@@ -81,7 +92,7 @@ export async function GET(request: NextRequest) {
       .map((entry) => ({
         name: entry.name,
         type: entry.isDirectory() ? 'directory' as const : 'file' as const,
-        path: path.relative(projectRoot, path.join(target, entry.name)),
+        path: toApiRelativePath(projectRoot, path.join(target, entry.name)),
       }))
       .sort((a, b) => {
         if (a.type !== b.type) return a.type === 'directory' ? -1 : 1
@@ -100,7 +111,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const rateLimitResponse = await applyRateLimit(request)
   if (rateLimitResponse) return rateLimitResponse
-  const projectRoot = getProjectPath()
+  const projectRoot = await getProjectPath()
 
   try {
     const body = await request.json()
@@ -159,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      path: path.relative(projectRoot, targetPath),
+      path: toApiRelativePath(projectRoot, targetPath),
       name,
       type,
     })

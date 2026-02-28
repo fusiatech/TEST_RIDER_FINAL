@@ -143,3 +143,27 @@ export async function auditUserLogout(userId: string, email: string): Promise<vo
 export async function auditEmergencyStop(reason?: string): Promise<void> {
   await createAuditEntry('emergency_stop', 'system', 'global', reason ? { reason } : undefined)
 }
+
+export async function auditIntegrationConnect(provider: string, details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('integration_connect', 'integration', provider, details)
+}
+
+export async function auditIntegrationDisconnect(provider: string, details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('integration_disconnect', 'integration', provider, details)
+}
+
+export async function auditIntegrationSecretRotate(provider: string, details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('integration_secret_rotate', 'integration', provider, details)
+}
+
+export async function auditBillingCheckout(details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('billing_checkout', 'billing', undefined, details)
+}
+
+export async function auditBillingPortal(details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('billing_portal', 'billing', undefined, details)
+}
+
+export async function auditBillingWebhook(details?: Record<string, unknown>): Promise<void> {
+  await createAuditEntry('billing_webhook', 'billing', undefined, details)
+}

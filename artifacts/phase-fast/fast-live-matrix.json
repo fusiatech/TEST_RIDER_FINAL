@@ -1,0 +1,88 @@
+{
+  "summary": {
+    "timestamp": "2026-02-28T10:14:56.343Z",
+    "baseUrl": "http://localhost:4100",
+    "wsUrl": "ws://localhost:4100/api/ws",
+    "totals": {
+      "runs": 5,
+      "passed": 2,
+      "failed": 3
+    }
+  },
+  "results": [
+    {
+      "name": "normal-gemini",
+      "mode": "chat",
+      "providerRequested": "gemini",
+      "providerUsed": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": true,
+      "reason": "ok",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini\n"
+      ],
+      "failovers": [],
+      "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nCHAT_OK_GEMINI\n\nFix: Add a check for empty input.CHAT_OK_GEMINI\n\nFix: Add a check for empty input."
+    },
+    {
+      "name": "normal-openai",
+      "mode": "chat",
+      "providerRequested": "codex",
+      "providerUsed": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": true,
+      "reason": "ok",
+      "attempts": [
+        "[orchestrator] API attempt 1 using codex\n",
+        "[orchestrator] API attempt 2 using gemini\n"
+      ],
+      "failovers": [
+        "[orchestrator] Failover codex -> gemini: QUOTA_EXCEEDED: OpenAI API model resolution failed: model=gpt-3.5-turbo status=429 {\n    \"error\": {\n        \"message\": \"You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.\",\n        \"type\": \"insufficient_quota\",\n        \"param\": null,\n        \"code\": \"insufficient_quota\"\n    }\n}\n\n"
+      ],
+      "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nCHAT_OK_OPENAICHAT_OK_OPENAI"
+    },
+    {
+      "name": "swarm-gemini",
+      "mode": "swarm",
+      "providerRequested": "gemini",
+      "providerUsed": null,
+      "runAccepted": false,
+      "finalType": null,
+      "pass": false,
+      "reason": "timeout on swarm-gemini",
+      "attempts": [],
+      "failovers": [],
+      "outputPreview": ""
+    },
+    {
+      "name": "swarm-claude",
+      "mode": "swarm",
+      "providerRequested": "claude",
+      "providerUsed": null,
+      "runAccepted": false,
+      "finalType": null,
+      "pass": false,
+      "reason": "timeout on swarm-claude",
+      "attempts": [],
+      "failovers": [],
+      "outputPreview": ""
+    },
+    {
+      "name": "project-planner-tickets",
+      "mode": "project",
+      "providerRequested": "gemini",
+      "providerUsed": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": false,
+      "reason": "project output too short",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini\n"
+      ],
+      "failovers": [],
+      "outputPreview": "Swarm cancelled."
+    }
+  ]
+}

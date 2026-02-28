@@ -1,13 +1,13 @@
-const CACHE_NAME = 'swarmui-v1';
-const STATIC_CACHE_NAME = 'swarmui-static-v1';
-const API_CACHE_NAME = 'swarmui-api-v1';
+const CACHE_NAME = 'fusia-ai-v1';
+const STATIC_CACHE_NAME = 'fusia-ai-static-v1';
+const API_CACHE_NAME = 'fusia-ai-api-v1';
 
 const STATIC_ASSETS = [
   '/',
   '/offline.html',
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
 ];
 
 const API_ROUTES = [
@@ -33,7 +33,7 @@ self.addEventListener('activate', (event) => {
         cacheNames
           .filter((name) => {
             return (
-              name.startsWith('swarmui-') &&
+              name.startsWith('fusia-ai-') &&
               name !== CACHE_NAME &&
               name !== STATIC_CACHE_NAME &&
               name !== API_CACHE_NAME
@@ -160,7 +160,7 @@ self.addEventListener('message', (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((name) => name.startsWith('swarmui-'))
+            .filter((name) => name.startsWith('fusia-ai-'))
             .map((name) => caches.delete(name))
         );
       })

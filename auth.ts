@@ -6,6 +6,7 @@ import type { NextAuthConfig, User, Session } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import type { NextRequest } from 'next/server'
 import type { UserRole, AuditLogEntry } from '@/lib/types'
+import { getEffectiveAuthSecret } from '@/lib/auth-env'
 
 async function logAuditEntryAsync(entry: AuditLogEntry): Promise<void> {
   if (typeof window !== 'undefined') return
@@ -127,6 +128,7 @@ function buildAuthProviders(): NonNullable<NextAuthConfig['providers']> {
 }
 
 export const authConfig: NextAuthConfig = {
+  secret: getEffectiveAuthSecret(),
   providers: buildAuthProviders(),
   session: {
     strategy: 'jwt',
@@ -138,6 +140,33 @@ export const authConfig: NextAuthConfig = {
   },
   events: {
     async signIn({ user, account }) {
+      if (user.email) {
+        try {
+          const { getUserByEmail, saveUser } = await import('@/server/storage')
+          const existing = await getUserByEmail(user.email)
+          const now = Date.now()
+          if (existing) {
+            await saveUser({
+              ...existing,
+              name: user.name ?? existing.name ?? user.email.split('@')[0],
+              role: user.role ?? existing.role,
+              updatedAt: now,
+            })
+          } else {
+            await saveUser({
+              id: user.id ?? `oauth-${now}`,
+              email: user.email,
+              name: user.name ?? user.email.split('@')[0],
+              role: user.role ?? 'editor',
+              createdAt: now,
+              updatedAt: now,
+            })
+          }
+        } catch (err) {
+          console.error('[auth] Failed to persist signed-in user:', err)
+        }
+      }
+
       const entry: AuditLogEntry = {
         id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         timestamp: new Date().toISOString(),

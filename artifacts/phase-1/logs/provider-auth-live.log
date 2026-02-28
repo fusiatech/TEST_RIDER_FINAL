@@ -1,0 +1,39 @@
+{
+  "outPath": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-fast\\provider-auth-diagnostics.json",
+  "diagnostics": [
+    {
+      "provider": "openai",
+      "configured": true,
+      "ok": true,
+      "status": 200,
+      "reason": "ok"
+    },
+    {
+      "provider": "gemini",
+      "configured": true,
+      "ok": true,
+      "status": 200,
+      "reason": "ok"
+    },
+    {
+      "provider": "claude",
+      "configured": true,
+      "ok": false,
+      "status": 401,
+      "reason": "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011CYaFyLUv9LwtCMVj4Spom\"}"
+    }
+  ]
+}
+{
+  "timestamp": "2026-02-28T09:50:10.305Z",
+  "email": "rorybrowne@mail.com",
+  "source": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-fast\\provider-auth-diagnostics.json",
+  "output": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-agent-runtime\\provider-auth-diagnostics.json",
+  "ok": true
+}
+
+[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)
+[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)
+[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)
+[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)
+[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)

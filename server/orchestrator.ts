@@ -146,11 +146,24 @@ export interface SwarmPipelineOptions {
   intent?: ChatIntent
   agentSelectionMode?: AgentSelectionMode
   preferredAgent?: CLIProvider
+  selectedModelId?: string
+  reasoningMode?: 'standard' | 'deep'
   settings: Settings
   projectPath: string
   mode?: PipelineMode
   onAgentOutput: (agentId: string, data: string) => void
-  onAgentStatus: (agentId: string, status: string, exitCode?: number) => void
+  onAgentStatus: (
+    agentId: string,
+    status: string,
+    exitCode?: number,
+    meta?: {
+      providerRequested?: CLIProvider
+      providerActive?: CLIProvider
+      attempt?: number
+      failoverFrom?: CLIProvider
+      failureCode?: string
+    }
+  ) => void
   /** Callback for MCP tool call results */
   onMCPToolResult?: (serverId: string, toolName: string, result: unknown, error?: string) => void
   /** Set by pipeline at start for evidence ledger (T8). */
@@ -162,9 +175,36 @@ export interface SwarmPipelineOptions {
 let cancelled = false
 const activeProcesses: CLIRunnerHandle[] = []
 let lastPipelineRunTime: number | null = null
+type ProviderFailureCode =
+  | 'AUTH_INVALID'
+  | 'QUOTA_EXCEEDED'
+  | 'RATE_LIMIT'
+  | 'MODEL_UNAVAILABLE'
+  | 'NETWORK'
+  | 'UNKNOWN'
+interface ProviderFailureState {
+  code: ProviderFailureCode
+  message: string
+  failedAt: number
+  cooldownUntil?: number
+}
+const providerFailureState = new Map<CLIProvider, ProviderFailureState>()
+const IN_APP_API_PROVIDERS: CLIProvider[] = ['gemini', 'codex', 'claude']
+
+function isInAppAPIProvider(provider: CLIProvider): boolean {
+  return IN_APP_API_PROVIDERS.includes(provider)
+}
 
 export function getLastPipelineRunTime(): number | null {
   return lastPipelineRunTime
+}
+
+export function getProviderFailureSnapshot(): Record<string, ProviderFailureState> {
+  const snapshot: Record<string, ProviderFailureState> = {}
+  for (const [provider, state] of providerFailureState.entries()) {
+    snapshot[provider] = { ...state }
+  }
+  return snapshot
 }
 
 /** T2.3: Unified cancellation - stops both orchestrator (user jobs) and pipeline-engine (scheduler jobs) */
@@ -230,29 +270,68 @@ async function resolveAvailableCLIs(
 
   // In normal app mode we force server-managed providers and avoid local CLI execution.
   if (!localRuntimeAllowed) {
-    const inAppProviders = enabledCLIs.filter((id) => {
+    const defaultServerProviders: CLIProvider[] = [...IN_APP_API_PROVIDERS]
+    const priority = settings.providerPriority?.length
+      ? settings.providerPriority
+      : [...enabledCLIs, ...defaultServerProviders]
+    const dedupedPriority = [...new Set(priority)]
+
+    const configuredByPriority = dedupedPriority.filter((id) => {
+      if (!isInAppAPIProvider(id)) return false
       const apiProvider = mapProviderToAPI(id)
       if (!apiProvider) return false
       const apiKey = getAPIKeyForProvider(id, settings)
       return Boolean(apiKey && apiKey.trim().length > 0)
     })
+    const configuredEnabled = enabledCLIs.filter((id) => configuredByPriority.includes(id))
+    const inAppProviders = configuredEnabled.length > 0 ? configuredEnabled : configuredByPriority
     const freeEligible = settings.freeOnlyMode
       ? inAppProviders.filter((id) => id === 'gemini')
       : inAppProviders
-    const priority = settings.providerPriority ?? enabledCLIs
-    const ordered = [
-      ...priority.filter((id): id is CLIProvider => freeEligible.includes(id)),
-      ...freeEligible.filter((id) => !priority.includes(id)),
+    let ordered = [
+      ...dedupedPriority.filter((id): id is CLIProvider => freeEligible.includes(id)),
+      ...freeEligible.filter((id) => !dedupedPriority.includes(id)),
     ]
-
+    if (settings.freeOnlyMode && freeEligible.length > 0) {
+      const preferredFirst = [
+        ...freeEligible,
+        ...ordered.filter((id) => !freeEligible.includes(id)),
+      ]
+      ordered = [...new Set(preferredFirst)]
+    }
     if (agentSelectionMode === 'manual' && preferredAgent) {
-      if (ordered.includes(preferredAgent)) return [preferredAgent]
-      throw new ValidationError(
-        `Preferred agent '${preferredAgent}' is unavailable in server-managed mode. Configure a valid key or choose another provider.`
-      )
+      if (!isInAppAPIProvider(preferredAgent)) {
+        throw new ValidationError(
+          `Preferred agent '${preferredAgent}' is a local connector only. In app mode, select an in-app provider (gemini/codex/claude).`
+        )
+      }
+      const preferredKey = getAPIKeyForProvider(preferredAgent, settings)
+      if (!preferredKey || preferredKey.trim().length === 0) {
+        throw new ValidationError(
+          `Preferred agent '${preferredAgent}' is unavailable in server-managed mode. Configure a valid API key for this provider in Settings > Providers.`
+        )
+      }
+      const preferredFirst = [
+        preferredAgent,
+        ...ordered.filter((id) => id !== preferredAgent),
+      ]
+      return [...new Set(preferredFirst)]
     }
 
-    if (ordered.length > 0) return ordered
+    const availableOrdered = ordered.filter((provider) => !isProviderCoolingDown(provider))
+    if (availableOrdered.length > 0) return availableOrdered
+
+    if (ordered.length > 0) {
+      // Avoid hard-locking runs when all configured providers are cooling down.
+      // Keep configured providers in play so failover can retry deterministically.
+      return ordered
+    }
+
+    if (settings.freeOnlyMode) {
+      throw new ValidationError(
+        'Free-only mode is enabled but no free in-app provider is configured. Add a Gemini key or disable free-only mode.'
+      )
+    }
 
     throw new ValidationError(
       'No server-managed AI provider is configured for this user profile. Add API keys in Settings > API Keys and enable codex/gemini/claude providers.'
@@ -265,18 +344,35 @@ async function resolveAvailableCLIs(
   )
 
   const initiallyAvailable = enabledCLIs.filter((id) => installedIds.has(id))
-  const freeEligible = settings.freeOnlyMode
+  const strictFreeOnly = settings.freeOnlyMode && process.env.NODE_ENV === 'production'
+  const freePreferred = settings.freeOnlyMode
     ? initiallyAvailable.filter((id) => id === 'gemini' || id === 'cursor' || id === 'custom')
     : initiallyAvailable
+  const freeEligible = strictFreeOnly
+    ? freePreferred
+    : [
+        ...freePreferred,
+        ...initiallyAvailable.filter((id) => !freePreferred.includes(id)),
+      ]
 
   const priority = settings.providerPriority ?? enabledCLIs
-  const ordered = [
+  let ordered = [
     ...priority.filter((id): id is CLIProvider => freeEligible.includes(id)),
     ...freeEligible.filter((id) => !priority.includes(id)),
   ]
+  if (settings.freeOnlyMode && freePreferred.length > 0) {
+    const preferredFirst = [
+      ...freePreferred,
+      ...ordered.filter((id) => !freePreferred.includes(id)),
+    ]
+    ordered = [...new Set(preferredFirst)]
+  }
 
-  if (agentSelectionMode === 'manual' && preferredAgent && ordered.includes(preferredAgent)) {
-    return [preferredAgent]
+  if (agentSelectionMode === 'manual' && preferredAgent) {
+    if (ordered.includes(preferredAgent)) return [preferredAgent]
+    throw new ValidationError(
+      `Preferred agent '${preferredAgent}' is unavailable in local runtime mode. Install/enable this provider or choose another one.`
+    )
   }
 
   if (ordered.length > 0) return ordered
@@ -356,7 +452,6 @@ function mapProviderToAPI(
 ): 'chatgpt' | 'gemini-api' | 'claude' | null {
   switch (provider) {
     case 'codex':
-    case 'cursor':
       return 'chatgpt'
     case 'gemini':
       return 'gemini-api'
@@ -382,7 +477,7 @@ function getAPIKeyForProvider(
     case 'codex':
       return apiKeys.codex ?? apiKeys.openai ?? null
     case 'cursor':
-      return apiKeys.openai ?? apiKeys.codex ?? null
+      return apiKeys.cursor ?? null
     case 'gemini':
       return apiKeys.gemini ?? apiKeys.google ?? null
     case 'claude':
@@ -392,6 +487,85 @@ function getAPIKeyForProvider(
     default:
       return null
   }
+}
+
+function isProviderCoolingDown(provider: CLIProvider): boolean {
+  const state = providerFailureState.get(provider)
+  if (!state?.cooldownUntil) return false
+  if (Date.now() >= state.cooldownUntil) {
+    providerFailureState.delete(provider)
+    return false
+  }
+  return true
+}
+
+function classifyProviderFailure(message: string): ProviderFailureCode {
+  const lower = message.toLowerCase()
+  if (lower.includes('401') || lower.includes('invalid api key') || lower.includes('authentication failed')) {
+    return 'AUTH_INVALID'
+  }
+  if (lower.includes('insufficient_quota') || lower.includes('quota') || lower.includes('resource_exhausted')) {
+    return 'QUOTA_EXCEEDED'
+  }
+  if (lower.includes('429') || lower.includes('rate limit') || lower.includes('rate limited')) {
+    return 'RATE_LIMIT'
+  }
+  if (lower.includes('model') && (lower.includes('not found') || lower.includes('resolution failed') || lower.includes('unsupported'))) {
+    return 'MODEL_UNAVAILABLE'
+  }
+  if (lower.includes('network') || lower.includes('fetch failed') || lower.includes('timeout') || lower.includes('econn') || lower.includes('enotfound')) {
+    return 'NETWORK'
+  }
+  return 'UNKNOWN'
+}
+
+function registerProviderFailure(
+  provider: CLIProvider,
+  code: ProviderFailureCode,
+  message: string,
+  settings: Settings,
+): void {
+  const failoverPolicy = settings.providerFailoverPolicy
+  const shouldCooldown =
+    code === 'QUOTA_EXCEEDED' || code === 'RATE_LIMIT'
+  const cooldownUntil =
+    shouldCooldown && failoverPolicy?.enabled
+      ? Date.now() + (failoverPolicy.cooldownMs ?? 30_000)
+      : undefined
+  providerFailureState.set(provider, {
+    code,
+    message,
+    failedAt: Date.now(),
+    cooldownUntil,
+  })
+}
+
+function clearProviderFailure(provider: CLIProvider): void {
+  providerFailureState.delete(provider)
+}
+
+function buildApiProviderCandidates(
+  preferredProvider: CLIProvider,
+  settings: Settings,
+): CLIProvider[] {
+  const priority = settings.providerPriority?.length
+    ? settings.providerPriority
+    : settings.enabledCLIs
+  const ordered = [preferredProvider, ...priority.filter((p) => p !== preferredProvider)]
+  const nonCooling: CLIProvider[] = []
+  const cooling: CLIProvider[] = []
+  for (const provider of ordered) {
+    if (!isInAppAPIProvider(provider)) continue
+    const apiProvider = mapProviderToAPI(provider)
+    const apiKey = getAPIKeyForProvider(provider, settings)
+    if (!apiProvider || !apiKey) continue
+    if (isProviderCoolingDown(provider)) {
+      if (!cooling.includes(provider)) cooling.push(provider)
+      continue
+    }
+    if (!nonCooling.includes(provider)) nonCooling.push(provider)
+  }
+  return [...nonCooling, ...cooling]
 }
 
 /**
@@ -468,6 +642,24 @@ async function enforceEvidenceGuardrails(
     return {
       ...result,
       evidenceStatus,
+    }
+  }
+
+  const failClosedEvidence =
+    process.env.SWARM_FAIL_CLOSED_EVIDENCE === '1' ||
+    process.env.SWARM_FAIL_CLOSED_EVIDENCE === 'true'
+
+  if (!failClosedEvidence) {
+    onAgentOutput(
+      'system',
+      `[orchestrator] Evidence guardrail warning (non-blocking): ${decision.reason ?? 'insufficient evidence'} (trace: ${decision.traceId ?? 'n/a'})\n`,
+    )
+    return {
+      ...result,
+      evidenceStatus: {
+        ...evidenceStatus,
+        sufficient: false,
+      },
     }
   }
 
@@ -598,6 +790,136 @@ interface StageRunResult {
   confidenceGate?: ConfidenceGateResult
 }
 
+async function runAPIAgentWithFailover(options: {
+  initialProvider: CLIProvider
+  settings: Settings
+  prompt: string
+  onOutput: (data: string) => void
+  onAttempt: (provider: CLIProvider, attempt: number) => void
+  onFailover: (fromProvider: CLIProvider, toProvider: CLIProvider, reason: string) => void
+}): Promise<{ output: string; providerUsed: CLIProvider; failed: boolean; failureMessage?: string }> {
+  const { initialProvider, settings, prompt, onOutput, onAttempt, onFailover } = options
+  const candidates = buildApiProviderCandidates(initialProvider, settings)
+  const maxSwitches = settings.providerFailoverPolicy?.maxSwitchesPerRun ?? 6
+  const ordered = candidates.slice(0, Math.max(1, maxSwitches))
+  if (ordered.length === 0) {
+    return {
+      output: '',
+      providerUsed: initialProvider,
+      failed: true,
+      failureMessage: 'No API provider candidates available (missing keys or provider cooldown active).',
+    }
+  }
+
+  let lastFailure = 'No successful provider response'
+  let lastProviderTried: CLIProvider = ordered[0] ?? initialProvider
+  for (let idx = 0; idx < ordered.length; idx++) {
+    const provider = ordered[idx]
+    lastProviderTried = provider
+    const mapped = mapProviderToAPI(provider)
+    const apiKey = getAPIKeyForProvider(provider, settings)
+    if (!mapped || !apiKey) continue
+
+    onAttempt(provider, idx + 1)
+    let attemptOutput = ''
+    let attemptError: string | null = null
+    // eslint-disable-next-line no-await-in-loop
+    await runAPIAgent({
+      provider: mapped,
+      prompt,
+      apiKey,
+      onOutput: (data: string) => {
+        attemptOutput += data
+        onOutput(data)
+      },
+      onComplete: (fullOutput: string) => {
+        attemptOutput = fullOutput || attemptOutput
+      },
+      onError: (error: string) => {
+        attemptError = error
+      },
+    })
+
+    if (attemptError) {
+      const code = classifyProviderFailure(attemptError)
+      registerProviderFailure(provider, code, attemptError, settings)
+      const nextProvider = ordered[idx + 1]
+      if (nextProvider) {
+        onFailover(provider, nextProvider, `${code}: ${attemptError}`)
+      }
+      lastFailure = `${provider}: ${attemptError}`
+      continue
+    }
+
+    const trimmed = attemptOutput.trim()
+    const hasUsableOutput = trimmed.length > 0 && !/^\[api-runner\]\s*error:/i.test(trimmed)
+    if (hasUsableOutput) {
+      clearProviderFailure(provider)
+      return { output: attemptOutput, providerUsed: provider, failed: false }
+    }
+
+    const emptyReason = 'Provider returned empty output'
+    registerProviderFailure(provider, 'UNKNOWN', emptyReason, settings)
+    const nextProvider = ordered[idx + 1]
+    if (nextProvider) {
+      onFailover(provider, nextProvider, emptyReason)
+    }
+    lastFailure = `${provider}: ${emptyReason}`
+  }
+
+  return {
+    output: '',
+    providerUsed: lastProviderTried,
+    failed: true,
+    failureMessage: lastFailure,
+  }
+}
+
+function isUsableProviderOutput(output: string): boolean {
+  const trimmed = output.trim()
+  if (!trimmed) return false
+  const withoutErrors = trimmed.replace(/\[api-runner\]\s*Error:[^\n]*\n?/gi, '').trim()
+  if (withoutErrors.length === 0 && /\[api-runner\]\s*Error:/i.test(trimmed)) {
+    return false
+  }
+  if (/^\[api-runner\]\s*error:/i.test(trimmed)) return false
+  return true
+}
+
+function extractProviderErrorLine(output: string): string | null {
+  const match = output.match(/\[api-runner\]\s*Error:\s*([^\n]+)/i)
+  return match?.[1]?.trim() || null
+}
+
+function buildRunMetaFromAgents(agents: AgentInstance[]): {
+  providerUsed?: CLIProvider
+  failoverChain?: Array<{ from: CLIProvider; to: CLIProvider; reason: string }>
+} {
+  const failoverChain: Array<{ from: CLIProvider; to: CLIProvider; reason: string }> = []
+
+  for (const agent of agents) {
+    const lines = agent.output.split('\n')
+    for (const line of lines) {
+      const match = line.match(/\[orchestrator\]\s*Failover\s+([a-z0-9_-]+)\s*->\s*([a-z0-9_-]+):\s*(.+)$/i)
+      if (!match) continue
+      const from = match[1] as CLIProvider
+      const to = match[2] as CLIProvider
+      const reason = match[3].trim()
+      failoverChain.push({ from, to, reason })
+    }
+  }
+
+  const providerUsed = agents
+    .slice()
+    .reverse()
+    .find((agent) => agent.output.trim().length > 0)?.provider
+
+  return {
+    ...(providerUsed ? { providerUsed } : {}),
+    ...(failoverChain.length > 0 ? { failoverChain } : {}),
+  }
+}
+
 async function runStage(
   role: AgentRole,
   count: number,
@@ -634,7 +956,10 @@ async function runStage(
       startedAt: Date.now(),
     }
     agents.push(agent)
-    options.onAgentStatus(agentId, 'spawning')
+    options.onAgentStatus(agentId, 'spawning', undefined, {
+      providerRequested: provider,
+      providerActive: provider,
+    })
   }
 
   const promises = agents.map((agent, i) => {
@@ -642,7 +967,10 @@ async function runStage(
       setTimeout(() => {
         if (cancelled) {
           agent.status = 'cancelled'
-          options.onAgentStatus(agent.id, 'cancelled')
+          options.onAgentStatus(agent.id, 'cancelled', undefined, {
+            providerRequested: agent.provider,
+            providerActive: agent.provider,
+          })
           resolve('')
           return
         }
@@ -658,7 +986,10 @@ async function runStage(
           agent.output = cached.output
           agent.exitCode = 0
           agent.finishedAt = Date.now()
-          options.onAgentStatus(agent.id, 'completed', 0)
+          options.onAgentStatus(agent.id, 'completed', 0, {
+            providerRequested: agent.provider,
+            providerActive: agent.provider,
+          })
           resolve(cached.output)
           return
         }
@@ -674,7 +1005,10 @@ async function runStage(
           }
         }
 
-        options.onAgentStatus(agent.id, 'running')
+        options.onAgentStatus(agent.id, 'running', undefined, {
+          providerRequested: agent.provider,
+          providerActive: agent.provider,
+        })
         agent.status = 'running'
         agentSpawnsTotal.inc({ provider: agent.provider, role })
 
@@ -683,96 +1017,128 @@ async function runStage(
         const apiKey = getAPIKeyForProvider(agent.provider, settings)
 
         if (useAPI && apiProvider && apiKey) {
-          options.onAgentOutput(
-            agent.id,
-            `[orchestrator] Using API mode for ${agent.provider} (${apiProvider})\n`,
-          )
-
           const chatOutputs: string[] = new Array<string>(chatsPerAgent).fill('')
           let completedChats = 0
           let hasFailure = false
+          const requestedProvider = options.preferredAgent ?? agent.provider
 
           for (let c = 0; c < chatsPerAgent; c++) {
             const chatIndex = c
-            runAPIAgent({
-              provider: apiProvider,
+            runAPIAgentWithFailover({
+              initialProvider: agent.provider,
+              settings,
               prompt,
-              apiKey,
               onOutput: (data: string) => {
                 chatOutputs[chatIndex] += data
                 options.onAgentOutput(agent.id, data)
               },
-              onComplete: (fullOutput: string) => {
-                completedChats++
-
-                if (completedChats === chatsPerAgent) {
-                  const merged =
-                    chatsPerAgent === 1
-                      ? chatOutputs[0]
-                      : chatOutputs
-                          .map(
-                            (o, idx) =>
-                              `--- chat ${idx + 1}/${chatsPerAgent} ---\n${o}`,
-                          )
-                          .join('\n\n')
-
-                  agent.finishedAt = Date.now()
-                  agent.exitCode = hasFailure ? 1 : 0
-                  agent.output = merged
-                  agent.status = hasFailure ? 'failed' : 'completed'
-                  options.onAgentStatus(agent.id, agent.status, agent.exitCode)
-
-                  if (agent.startedAt) {
-                    const durationSec = (agent.finishedAt - agent.startedAt) / 1000
-                    agentResponseTime.observe({ agent: agent.provider, stage: role }, durationSec)
-                  }
-                  if (hasFailure) {
-                    agentFailuresTotal.inc({ provider: agent.provider, role })
-                  }
-
-                  if (!hasFailure && merged.length > 0) {
-                    const conf = computeConfidence([merged])
-                    setCachedOutput(prompt, agent.provider, merged, conf)
-                  }
-
-                  resolve(merged)
-                }
+              onAttempt: (provider, attempt) => {
+                options.onAgentStatus(agent.id, 'running', undefined, {
+                  providerRequested: requestedProvider,
+                  providerActive: provider,
+                  attempt,
+                })
+                options.onAgentOutput(
+                  agent.id,
+                  `[orchestrator] API attempt ${attempt} using ${provider}\n`,
+                )
               },
-              onError: (error: string) => {
-                options.onAgentOutput(agent.id, `[api-runner] Error: ${error}\n`)
+              onFailover: (fromProvider, toProvider, reason) => {
+                const failureCode = reason.split(':')[0]?.trim()
+                options.onAgentStatus(agent.id, 'running', undefined, {
+                  providerRequested: requestedProvider,
+                  providerActive: toProvider,
+                  failoverFrom: fromProvider,
+                  ...(failureCode ? { failureCode } : {}),
+                })
+                options.onAgentOutput(
+                  agent.id,
+                  `[orchestrator] Failover ${fromProvider} -> ${toProvider}: ${reason}\n`,
+                )
+              },
+            }).then((attemptResult) => {
+              if (attemptResult.providerUsed !== agent.provider) {
+                agent.provider = attemptResult.providerUsed
+              }
+              if (attemptResult.output) {
+                chatOutputs[chatIndex] += attemptResult.output
+              }
+              if (attemptResult.failed) {
                 hasFailure = true
-                completedChats++
+                const reason = attemptResult.failureMessage ?? 'Provider attempts failed'
+                chatOutputs[chatIndex] += `[api-runner] Error: ${reason}\n`
+              }
 
-                if (completedChats === chatsPerAgent) {
-                  const merged =
-                    chatsPerAgent === 1
-                      ? chatOutputs[0]
-                      : chatOutputs
-                          .map(
-                            (o, idx) =>
-                              `--- chat ${idx + 1}/${chatsPerAgent} ---\n${o}`,
-                          )
-                          .join('\n\n')
+              completedChats++
+              if (completedChats === chatsPerAgent) {
+                const merged =
+                  chatsPerAgent === 1
+                    ? chatOutputs[0]
+                    : chatOutputs
+                        .map(
+                          (o, idx) =>
+                            `--- chat ${idx + 1}/${chatsPerAgent} ---\n${o}`,
+                        )
+                        .join('\n\n')
 
-                  agent.finishedAt = Date.now()
-                  agent.exitCode = 1
-                  agent.output = merged
-                  agent.status = 'failed'
-                  options.onAgentStatus(agent.id, 'failed', 1)
-                  if (agent.startedAt) {
-                    const durationSec = (agent.finishedAt - agent.startedAt) / 1000
-                    agentResponseTime.observe({ agent: agent.provider, stage: role }, durationSec)
-                  }
-                  agentFailuresTotal.inc({ provider: agent.provider, role })
-                  resolve(merged)
+                agent.finishedAt = Date.now()
+                agent.exitCode = hasFailure ? 1 : 0
+                agent.output = merged
+                agent.status = hasFailure ? 'failed' : 'completed'
+                options.onAgentStatus(agent.id, agent.status, agent.exitCode, {
+                  providerRequested: requestedProvider,
+                  providerActive: agent.provider,
+                })
+
+                if (agent.startedAt) {
+                  const durationSec = (agent.finishedAt - agent.startedAt) / 1000
+                  agentResponseTime.observe({ agent: agent.provider, stage: role }, durationSec)
                 }
-              },
+                if (hasFailure) {
+                  agentFailuresTotal.inc({ provider: agent.provider, role })
+                }
+
+                if (!hasFailure && merged.length > 0) {
+                  const conf = computeConfidence([merged])
+                  setCachedOutput(prompt, agent.provider, merged, conf)
+                }
+
+                resolve(merged)
+              }
             }).catch((err: unknown) => {
               const message = err instanceof Error ? err.message : String(err)
               options.onAgentOutput(
                 agent.id,
                 `[orchestrator] API call failed for ${agent.id}: ${message}\n`,
               )
+              hasFailure = true
+              completedChats++
+              if (completedChats === chatsPerAgent) {
+                const merged =
+                  chatsPerAgent === 1
+                    ? chatOutputs[0]
+                    : chatOutputs
+                        .map(
+                          (o, idx) =>
+                            `--- chat ${idx + 1}/${chatsPerAgent} ---\n${o}`,
+                        )
+                        .join('\n\n')
+
+                agent.finishedAt = Date.now()
+                agent.exitCode = 1
+                agent.output = merged
+                agent.status = 'failed'
+                options.onAgentStatus(agent.id, 'failed', 1, {
+                  providerRequested: requestedProvider,
+                  providerActive: agent.provider,
+                })
+                if (agent.startedAt) {
+                  const durationSec = (agent.finishedAt - agent.startedAt) / 1000
+                  agentResponseTime.observe({ agent: agent.provider, stage: role }, durationSec)
+                }
+                agentFailuresTotal.inc({ provider: agent.provider, role })
+                resolve(merged)
+              }
             })
           }
         } else {
@@ -822,7 +1188,10 @@ async function runStage(
                     agent.exitCode = hasFailure ? 1 : 0
                     agent.output = merged
                     agent.status = hasFailure ? 'failed' : 'completed'
-                    options.onAgentStatus(agent.id, agent.status, agent.exitCode)
+                    options.onAgentStatus(agent.id, agent.status, agent.exitCode, {
+                      providerRequested: agent.provider,
+                      providerActive: agent.provider,
+                    })
 
                     if (agent.startedAt) {
                       const durationSec = (agent.finishedAt - agent.startedAt) / 1000
@@ -867,7 +1236,10 @@ async function runStage(
                 agent.exitCode = 1
                 agent.output = merged
                 agent.status = 'failed'
-                options.onAgentStatus(agent.id, 'failed', 1)
+                options.onAgentStatus(agent.id, 'failed', 1, {
+                  providerRequested: agent.provider,
+                  providerActive: agent.provider,
+                })
                 if (agent.startedAt) {
                   const durationSec = (agent.finishedAt - agent.startedAt) / 1000
                   agentResponseTime.observe({ agent: agent.provider, stage: role }, durationSec)
@@ -1020,11 +1392,21 @@ async function runChatMode(
   }
 
   return {
-    finalOutput: outputs[0] ?? 'No output received.',
-    confidence: 50,
+    finalOutput: isUsableProviderOutput(outputs[0] ?? '')
+      ? (outputs[0] ?? '')
+      : (() => {
+          const providerError =
+            extractProviderErrorLine(agents[0]?.output ?? '') ??
+            extractProviderErrorLine(outputs[0] ?? '')
+          if (providerError) {
+            return `No usable provider output was generated. Last provider error: ${providerError}`
+          }
+          return 'No usable provider output was generated. Check provider key validity/quotas and selected provider settings.'
+        })(),
+    confidence: isUsableProviderOutput(outputs[0] ?? '') ? 50 : 0,
     agents,
-    sources: extractSources(outputs[0] ?? ''),
-    validationPassed: true,
+    sources: extractSources(isUsableProviderOutput(outputs[0] ?? '') ? (outputs[0] ?? '') : ''),
+    validationPassed: isUsableProviderOutput(outputs[0] ?? ''),
   }
 }
 
@@ -1389,7 +1771,10 @@ async function runSwarmMode(
 
     return {
       finalOutput:
-        synthesizerOutput || bestCodeOutput || combinedCode || 'No output generated.',
+        synthesizerOutput ||
+        bestCodeOutput ||
+        combinedCode ||
+        'No usable provider output was generated. Check provider keys, quotas, and failover logs.',
       confidence: finalConfidence,
       agents: allAgents,
       sources,
@@ -1411,7 +1796,9 @@ async function runSwarmMode(
     allOutputs.filter((o) => o.length > 0),
   )
   return {
-    finalOutput: allOutputs.filter((o) => o.length > 0).pop() || 'No output generated.',
+    finalOutput:
+      allOutputs.filter((o) => o.length > 0).pop() ||
+      'No usable provider output was generated. Check provider keys, quotas, and failover logs.',
     confidence: fallbackConfidence,
     agents: allAgents,
     sources: extractSources(allOutputs.filter((o) => o.length > 0).join('\n')),
@@ -1681,7 +2068,9 @@ async function runProjectMode(
     )
 
     return {
-      finalOutput: selectBestOutput(allOutputs) || 'No output generated.',
+      finalOutput:
+        selectBestOutput(allOutputs) ||
+        'No usable provider output was generated. Check provider keys, quotas, and failover logs.',
       confidence,
       agents: allAgents,
       sources: extractSources(allJoined),
@@ -1745,6 +2134,22 @@ export async function runSwarmPipeline(
         'system',
         `[orchestrator] Resolved CLIs: ${resolvedCLIs.join(', ')}\n`,
       )
+      const preflight = resolvedCLIs.map((provider) => {
+        const apiProvider = mapProviderToAPI(provider)
+        const keyConfigured = Boolean(getAPIKeyForProvider(provider, effectiveOptions.settings))
+        const cooldown = providerFailureState.get(provider)?.cooldownUntil
+        return {
+          provider,
+          apiProvider,
+          configured: keyConfigured,
+          runtimeAvailable: Boolean(apiProvider),
+          cooldownUntil: cooldown ?? null,
+        }
+      })
+      effectiveOptions.onAgentOutput(
+        'system',
+        `[orchestrator] Provider preflight: ${JSON.stringify(preflight)}\n`,
+      )
       if (resolvedCLIs.length === 1) {
         effectiveOptions.onAgentOutput(
           'system',
@@ -1773,9 +2178,14 @@ export async function runSwarmPipeline(
 
       effectiveOptions.evidenceId = await createPipelineEvidence(effectiveOptions.projectPath)
 
+      const baseRuntimeMs = Math.max(15_000, (effectiveOptions.settings.maxRuntimeSeconds ?? 120) * 1000)
+      const modePaddingMs =
+        mode === 'chat' ? 10_000 : mode === 'swarm' ? 120_000 : 180_000
+      const modeCapMs =
+        mode === 'chat' ? 120_000 : mode === 'swarm' ? 420_000 : 480_000
       const pipelineTimeoutMs = Math.max(
         15_000,
-        Math.min(120_000, (effectiveOptions.settings.maxRuntimeSeconds ?? 120) * 1000 + 10_000),
+        Math.min(modeCapMs, baseRuntimeMs + modePaddingMs),
       )
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
@@ -1813,15 +2223,21 @@ export async function runSwarmPipeline(
         throw error
       }
 
-        result = await enforceEvidenceGuardrails(
-          result,
-          effectiveOptions.evidenceId,
-          effectiveOptions.onAgentOutput,
-        )
+      result = await enforceEvidenceGuardrails(
+        result,
+        effectiveOptions.evidenceId,
+        effectiveOptions.onAgentOutput,
+      )
+      if (!result.runMeta) {
+        result = {
+          ...result,
+          runMeta: buildRunMetaFromAgents(result.agents),
+        }
+      }
 
-        pipelineSpan.setAttributes({
-          'swarm.confidence': result.confidence,
-          'swarm.validation_passed': result.validationPassed,
+      pipelineSpan.setAttributes({
+        'swarm.confidence': result.confidence,
+        'swarm.validation_passed': result.validationPassed,
         'swarm.agent_count': result.agents.length,
         'swarm.sources_count': result.sources.length,
       })

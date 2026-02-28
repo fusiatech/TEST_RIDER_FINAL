@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-02-28T09:50:10.313Z",
+  "checks": [
+    {
+      "name": "prd_route_exists",
+      "path": "app/api/projects/[id]/prd/route.ts",
+      "pass": true
+    },
+    {
+      "name": "tickets_route_exists",
+      "path": "app/api/projects/[id]/generate-tickets/route.ts",
+      "pass": true
+    },
+    {
+      "name": "prd_route_provider_agnostic",
+      "path": "app/api/projects/[id]/prd/route.ts",
+      "pass": true
+    },
+    {
+      "name": "tickets_route_provider_agnostic",
+      "path": "app/api/projects/[id]/generate-tickets/route.ts",
+      "pass": true
+    },
+    {
+      "name": "workflow_route_provider_agnostic",
+      "path": "server/prd-workflow.ts",
+      "pass": true
+    },
+    {
+      "name": "test_runner_route_exists",
+      "path": "app/api/tests/route.ts",
+      "pass": true
+    },
+    {
+      "name": "repo_edit_route_exists",
+      "path": "app/api/files/[...path]/route.ts",
+      "pass": true
+    }
+  ]
+}

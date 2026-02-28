@@ -9,6 +9,7 @@ import { ErrorPanel } from '@/components/error-panel'
 import { ROLE_COLORS, ROLE_LABELS } from '@/lib/types'
 import type { AgentRole, AgentInstance } from '@/lib/types'
 import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Zap, ChevronDown, ChevronUp, Terminal, MessageCircle } from 'lucide-react'
@@ -330,6 +331,8 @@ export function AgentDashboard() {
   const isRunning = useSwarmStore((s) => s.isRunning)
   const confidence = useSwarmStore((s) => s.confidence)
   const setActiveTab = useSwarmStore((s) => s.setActiveTab)
+  const uiPreferences = useSwarmStore((s) => s.uiPreferences)
+  const updateUIPreferences = useSwarmStore((s) => s.updateUIPreferences)
 
   const swarmStartedAt = useMemo(() => {
     if (agents.length === 0) return null
@@ -338,6 +341,12 @@ export function AgentDashboard() {
       .filter((t): t is number => t != null)
     return timestamps.length > 0 ? Math.min(...timestamps) : null
   }, [agents])
+
+  const activeCount = agents.filter((a) => a.status === 'running' || a.status === 'spawning').length
+  const failedCount = agents.filter((a) => a.status === 'failed').length
+  const completedCount = agents.filter((a) => a.status === 'completed').length
+  const successRate = agents.length > 0 ? Math.round((completedCount / agents.length) * 100) : 0
+  const experienceLabel = uiPreferences.experienceLevel === 'expert' ? 'Expert' : 'Guided'
 
   if (agents.length === 0) {
     return (
@@ -352,31 +361,105 @@ export function AgentDashboard() {
           No active agents
         </h3>
         <p className="mt-2 max-w-sm text-sm text-muted">
-          Send a prompt to start a swarm of AI agents working on your task in parallel.
+          Start in Chat to plan, build, test, and validate with adaptive multi-agent execution.
         </p>
-        <Button
-          variant="outline"
-          className="mt-4 gap-2"
-          onClick={() => setActiveTab('chat')}
-        >
-          <MessageCircle className="h-4 w-4" />
-          Go to Chat
-        </Button>
+        <div className="mt-4 flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setActiveTab('chat')}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Go to Chat
+          </Button>
+          <Button
+            variant="ghost"
+            className="gap-2"
+            onClick={() =>
+              void updateUIPreferences({
+                experienceLevel: uiPreferences.experienceLevel === 'expert' ? 'guided' : 'expert',
+              })
+            }
+          >
+            {experienceLabel} Mode
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-4 p-6">
-      {/* Pipeline Progress + Stats Ring */}
+      <Card className="border-border bg-card/70 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.14em] text-muted">Mission Control</p>
+            <h2 className="text-xl font-semibold text-foreground">Main Dashboard</h2>
+            <p className="text-sm text-muted">
+              {uiPreferences.experienceLevel === 'guided'
+                ? 'Follow the next actions to move from plan to shipped output with fewer decisions.'
+                : 'Inspect execution telemetry, compare outcomes, and drive fast iteration loops.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{experienceLabel} Experience</Badge>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setActiveTab('chat')}>
+              <MessageCircle className="h-4 w-4" />
+              Prompt Agents
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setActiveTab('observability')}>
+              <Terminal className="h-4 w-4" />
+              Open Observability
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                void updateUIPreferences({
+                  experienceLevel: uiPreferences.experienceLevel === 'expert' ? 'guided' : 'expert',
+                })
+              }
+            >
+              Switch to {uiPreferences.experienceLevel === 'expert' ? 'Guided' : 'Expert'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Active</p>
+          <p className="text-2xl font-semibold text-foreground">{activeCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Completed</p>
+          <p className="text-2xl font-semibold text-foreground">{completedCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Failures</p>
+          <p className="text-2xl font-semibold text-foreground">{failedCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Success Rate</p>
+          <p className="text-2xl font-semibold text-foreground">{successRate}%</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Confidence</p>
+          <p className="text-2xl font-semibold text-foreground">{confidence ?? 0}%</p>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_200px]">
-        <Card className="p-4">
+        <Card className="border-border p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Execution Lane</h3>
+            <span className="text-xs text-muted">{isRunning ? 'Run in progress' : 'Idle'}</span>
+          </div>
           <PipelineProgress agents={agents} isRunning={isRunning} />
         </Card>
         <StatsRing agents={agents} />
       </div>
 
-      {/* Monitoring Stats Row */}
       <MonitoringStats
         agents={agents}
         isRunning={isRunning}
@@ -384,7 +467,6 @@ export function AgentDashboard() {
         startedAt={swarmStartedAt}
       />
 
-      {/* Agent Activity Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <AnimatePresence>
           {agents.map((agent) => (
@@ -393,16 +475,25 @@ export function AgentDashboard() {
         </AnimatePresence>
       </div>
 
-      {/* Confidence Chart */}
       {(confidence != null || agents.some((a) => a.status === 'completed')) && (
         <ConfidenceChart agents={agents} confidence={confidence} />
       )}
 
-      {/* Live Log Feed */}
-      <LiveLogFeed agents={agents} />
-
-      {/* Error Panel */}
-      <ErrorPanel />
+      {uiPreferences.experienceLevel === 'expert' ? (
+        <>
+          <LiveLogFeed agents={agents} />
+          <ErrorPanel />
+        </>
+      ) : (
+        <Card className="border-border p-4">
+          <CardHeader className="px-0 pb-2 pt-0">
+            <CardTitle className="text-sm font-semibold">Diagnostics</CardTitle>
+          </CardHeader>
+          <p className="text-sm text-muted">
+            Expert diagnostics are hidden in Guided mode. Switch to Expert for raw logs and detailed failure traces.
+          </p>
+        </Card>
+      )}
     </div>
   )
 }

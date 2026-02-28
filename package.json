@@ -1,8 +1,8 @@
 {
-  "name": "swarm-ui",
+  "name": "fusia-ai",
   "version": "1.0.0",
   "private": true,
-  "description": "SwarmUI — parallel CLI agent orchestrator with Grok/Gemini-style web UI",
+  "description": "Fusia AI - adaptive multi-agent engineering workspace",
   "scripts": {
     "dev": "node ./scripts/dev-local.mjs",
     "dev:local": "node ./scripts/dev-local.mjs",
@@ -44,13 +44,31 @@
     "perf:ci": "tsx scripts/run-performance-tests.ts --env=ci --vitest-only",
     "verify:startup": "node ./scripts/startup-smoke.mjs",
     "verify:chat": "node ./scripts/chat-smoke.mjs",
+    "audit:brand": "node ./scripts/brand-audit.mjs",
+    "audit:action-matrix": "node ./scripts/action-matrix.mjs",
+    "audit:logo-integrity": "node ./scripts/logo-integrity.mjs",
+    "audit:settings-coverage": "node ./scripts/settings-coverage.mjs",
+    "audit:settings-language": "node ./scripts/settings-language.mjs",
+    "audit:screen-states": "node ./scripts/screen-states.mjs",
+    "verify:ui-smoke": "node ./scripts/ui-smoke.mjs",
     "verify:phase0": "node ./scripts/mode-smoke.mjs",
+    "verify:phase1": "node ./scripts/phase1-certify.mjs",
     "verify:agents": "node ./scripts/verify-agents.mjs",
     "verify:providers-runtime": "node ./scripts/verify-providers-runtime.mjs",
+    "verify:provider-auth": "tsx ./scripts/diagnose-profile-providers.ts",
+    "verify:provider-auth-live": "node ./scripts/verify-provider-auth.mjs",
+    "verify:profile-runs": "tsx ./scripts/verify-profile-runs.ts",
+    "verify:fast-live": "node ./scripts/verify-fast-live.mjs",
+    "verify:run-matrix": "node ./scripts/verify-run-matrix.mjs",
+    "verify:provider-failover": "node ./scripts/verify-provider-failover.mjs",
+    "verify:phase-agent-runtime": "npm run verify:provider-auth-live && npm run verify:run-matrix && npm run verify:provider-failover",
     "verify:ws-run": "node ./scripts/ws-run-smoke.mjs",
     "verify:v7": "tsx ./scripts/execute-v7.ts",
-    "test:contract": "vitest run tests/contract/*.consumer.test.ts",
+    "test:contract": "vitest run tests/contract",
     "test:contract:verify": "vitest run tests/contract/provider.verify.test.ts",
+    "report:api-inventory": "node ./scripts/report-api-inventory.mjs",
+    "openapi:sync-missing": "node ./scripts/sync-openapi-missing.mjs",
+    "migrate:integrations": "node ./scripts/migrate-global-integrations-to-user-scope.mjs",
     "lighthouse": "lhci autorun",
     "lighthouse:collect": "lhci collect",
     "lighthouse:assert": "lhci assert"
@@ -139,3 +157,4 @@
     "vitest": "^3.2.4"
   }
 }
+

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSwarmStore } from '@/lib/store'
 import { useGlobalShortcuts, SHORTCUT_LABELS } from '@/hooks/use-keyboard-shortcuts'
@@ -11,8 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { HelpCircle } from 'lucide-react'
 
 interface Shortcut {
   keys: string
@@ -23,7 +21,7 @@ const SHORTCUTS: Shortcut[] = [
   { keys: SHORTCUT_LABELS.commandPalette, description: 'Open command palette' },
   { keys: SHORTCUT_LABELS.toggleSidebar, description: 'Toggle sidebar' },
   { keys: SHORTCUT_LABELS.sendMessage, description: 'Send message' },
-  { keys: SHORTCUT_LABELS.newChat, description: 'New chat / project' },
+  { keys: SHORTCUT_LABELS.newChat, description: 'New conversation' },
   { keys: SHORTCUT_LABELS.openSettings, description: 'Open settings' },
   { keys: SHORTCUT_LABELS.toggleDashboard, description: 'Toggle dashboard' },
   { keys: SHORTCUT_LABELS.escape, description: 'Cancel swarm / Close dialogs' },
@@ -36,24 +34,20 @@ export function KeyboardShortcuts() {
   const router = useRouter()
   const [helpOpen, setHelpOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
-  const triggerRef = useRef<HTMLButtonElement>(null)
 
   const createSession = useSwarmStore((s) => s.createSession)
   const toggleSidebar = useSwarmStore((s) => s.toggleSidebar)
   const activeTab = useSwarmStore((s) => s.activeTab)
   const setActiveTab = useSwarmStore((s) => s.setActiveTab)
+  const setMode = useSwarmStore((s) => s.setMode)
   const isRunning = useSwarmStore((s) => s.isRunning)
   const cancelSwarm = useSwarmStore((s) => s.cancelSwarm)
 
   const handleSendMessage = useCallback(() => {
-    const textarea = document.querySelector<HTMLTextAreaElement>(
-      'textarea[placeholder="Describe your task..."]'
-    )
+    const textarea = document.querySelector<HTMLTextAreaElement>('#chat-input')
     if (textarea && textarea.value.trim()) {
-      const form = textarea.closest('form')
-      if (form) {
-        form.requestSubmit()
-      }
+      const sendButton = document.querySelector<HTMLButtonElement>('[data-action-id="composer-send"]')
+      sendButton?.click()
     }
   }, [])
 
@@ -76,35 +70,27 @@ export function KeyboardShortcuts() {
     onToggleSidebar: toggleSidebar,
     onSendMessage: handleSendMessage,
     onEscape: handleEscape,
-    onNewChat: createSession,
+    onNewChat: () => {
+      setMode('chat')
+      setActiveTab('chat')
+      createSession()
+    },
     onOpenSettings: () => router.push('/settings'),
     onToggleDashboard: () => setActiveTab(activeTab === 'dashboard' ? 'chat' : 'dashboard'),
     onShowHelp: () => setHelpOpen(true),
   })
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    setHelpOpen(open)
-    if (!open) {
-      setTimeout(() => triggerRef.current?.focus(), 0)
+  useEffect(() => {
+    const handler = () => setHelpOpen(true)
+    window.addEventListener('fusia:open-keyboard-shortcuts', handler as EventListener)
+    return () => {
+      window.removeEventListener('fusia:open-keyboard-shortcuts', handler as EventListener)
     }
   }, [])
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        variant="ghost"
-        size="icon"
-        className="fixed bottom-4 right-4 z-40 h-10 w-10 rounded-full bg-secondary/80 text-muted hover:text-foreground shadow-lg focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        onClick={() => setHelpOpen(true)}
-        aria-label="Keyboard shortcuts help (press ? key)"
-        aria-haspopup="dialog"
-        aria-expanded={helpOpen}
-      >
-        <HelpCircle className="h-5 w-5" aria-hidden="true" />
-      </Button>
-
-      <Dialog open={helpOpen} onOpenChange={handleOpenChange}>
+      <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent className="max-w-sm" aria-describedby="shortcuts-description">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Keyboard Shortcuts</DialogTitle>

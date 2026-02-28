@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jobQueue } from '@/server/job-queue'
 import { detectInstalledCLIs } from '@/server/cli-detect'
-import { getLastPipelineRunTime } from '@/server/orchestrator'
+import { getLastPipelineRunTime, getProviderFailureSnapshot } from '@/server/orchestrator'
 import { getCacheStats } from '@/server/output-cache'
 import { getRateLimitStats } from '@/lib/rate-limit'
 import { startRequestMetrics, endRequestMetrics, getTraceId } from '@/lib/api-metrics'
-import { getDb, getSettings } from '@/server/storage'
+import { getDb, getEffectiveSettingsForUser, getSettings } from '@/server/storage'
 import { getApiVersion, addVersionHeaders } from '@/lib/api-version'
+import { auth } from '@/auth'
+import { isFeatureEnabled } from '@/server/feature-flags'
+import { getProviderCatalogForUser, getProviderModelsForUser } from '@/server/providers/catalog'
 
 let cachedCLIs: { id: string; installed: boolean }[] | null = null
 let cliCacheTime = 0
@@ -228,33 +231,57 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const cacheStats = getCacheStats()
   const rateLimitStats = getRateLimitStats()
   const systemMemory = jobQueue.getMemoryStats()
-  const settings = await getSettings()
+  const session = await auth().catch(() => null)
+  const settings = session?.user?.id
+    ? await getEffectiveSettingsForUser(session.user.id)
+    : await getSettings()
   const executionRuntime = settings.executionRuntime ?? 'server_managed'
   const providerPriority = settings.providerPriority ?? settings.enabledCLIs
   const apiKeys = settings.apiKeys ?? {}
+  const providerFailures = getProviderFailureSnapshot()
   const providerReadiness = providerPriority.map((provider) => {
     const installed = clis.find((c) => c.id === provider)?.installed ?? false
+    const failure = providerFailures[provider]
     const configured = (() => {
-      if (provider === 'cursor' || provider === 'codex') return Boolean(apiKeys.openai || apiKeys.codex)
+      if (provider === 'codex') return Boolean(apiKeys.openai || apiKeys.codex)
       if (provider === 'gemini') return Boolean(apiKeys.gemini || apiKeys.google)
       if (provider === 'claude') return Boolean(apiKeys.claude || apiKeys.anthropic)
+      if (provider === 'cursor') return Boolean(apiKeys.cursor)
       if (provider === 'copilot') return Boolean(apiKeys.copilot || apiKeys.github)
+      if (provider === 'rovo') return Boolean(apiKeys.rovo)
       return Boolean(apiKeys.custom)
     })()
     const runtimeAvailable =
       executionRuntime === 'server_managed'
-        ? ['cursor', 'codex', 'gemini', 'claude'].includes(provider)
+        ? ['codex', 'gemini', 'claude'].includes(provider)
         : installed
     return {
       provider,
       installed,
       configured,
-      authValid: null,
-      quotaOk: null,
+      authValid: failure?.code === 'AUTH_INVALID' ? false : null,
+      quotaOk: failure?.code === 'QUOTA_EXCEEDED' ? false : null,
       runtimeAvailable,
-      lastFailureCode: null,
+      lastFailureCode: failure?.code ?? null,
+      cooldownUntil: failure?.cooldownUntil ?? null,
     }
   })
+
+  let providerCatalog: Awaited<ReturnType<typeof getProviderCatalogForUser>> | null = null
+  let providerModelSummary: { totalModels: number; apiBackedModels: number } | null = null
+  if (isFeatureEnabled('PROVIDER_CATALOG') && session?.user?.id) {
+    try {
+      providerCatalog = await getProviderCatalogForUser(session.user.id)
+      const models = await getProviderModelsForUser(session.user.id)
+      providerModelSummary = {
+        totalModels: models.length,
+        apiBackedModels: models.filter((model) => model.source === 'api').length,
+      }
+    } catch {
+      providerCatalog = null
+      providerModelSummary = null
+    }
+  }
 
   const response = NextResponse.json({
     status: overallStatus,
@@ -271,6 +298,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       queueDepth,
       installedCLIs: clis,
       providerReadiness,
+      providerCatalog,
+      providerModelSummary,
       executionRuntime,
       freeOnlyMode: settings.freeOnlyMode ?? false,
       lastPipelineRunTime: getLastPipelineRunTime(),

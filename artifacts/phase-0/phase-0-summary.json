@@ -1,8 +1,8 @@
 {
   "phase": 0,
-  "timestamp": "2026-02-27T23:23:51.493Z",
-  "baseUrl": "http://127.0.0.1:59627",
-  "wsUrl": "ws://127.0.0.1:59627/api/ws",
+  "timestamp": "2026-02-28T09:50:03.836Z",
+  "baseUrl": "http://127.0.0.1:4100",
+  "wsUrl": "ws://127.0.0.1:4100/api/ws",
   "checks": {
     "runAccepted": true,
     "finalMessageType": "swarm-result",

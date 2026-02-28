@@ -206,6 +206,8 @@ export const ChatIntentSchema = z.enum([
   'debug',
 ])
 export type ChatIntent = z.infer<typeof ChatIntentSchema>
+export const ReasoningModeSchema = z.enum(['standard', 'deep'])
+export type ReasoningMode = z.infer<typeof ReasoningModeSchema>
 
 export const RunLogEntrySchema = z.object({
   timestamp: z.number(),
@@ -263,6 +265,7 @@ export const SessionSchema = z.object({
   updatedAt: z.number(),
   messages: z.array(ChatMessageSchema),
   chatIntent: ChatIntentSchema.optional(),
+  mode: z.enum(['chat', 'swarm', 'project']).default('chat'),
 })
 export type Session = z.infer<typeof SessionSchema>
 
@@ -357,6 +360,11 @@ export type FigmaConfig = z.infer<typeof FigmaConfigSchema>
 
 export const SettingsSchema = z.object({
   executionRuntime: z.enum(['server_managed', 'local_dev']).optional().default('server_managed'),
+  artifactGenerationMode: z.enum(['system', 'byok_standard', 'auto_hybrid']).optional().default('auto_hybrid'),
+  runtimeMode: z.enum(['standard', 'managed_cloud']).optional().default('standard'),
+  artifactSourceOverrides: z
+    .record(z.string(), z.enum(['system', 'byok_standard', 'auto_hybrid']))
+    .optional(),
   enabledCLIs: z.array(CLIProvider),
   parallelCounts: z.record(AgentRole, z.number().min(0).max(6)),
   worktreeIsolation: z.boolean(),
@@ -405,6 +413,37 @@ export const SettingsSchema = z.object({
     cooldownMs: z.number().min(1000).max(600_000).default(30_000),
     maxSwitchesPerRun: z.number().min(1).max(20).default(6),
   }).optional(),
+  modelRoutingPolicy: z.object({
+    preferredProviders: z.array(CLIProvider).optional(),
+    allowPaidFallback: z.boolean().default(true),
+    maxFallbackHops: z.number().min(1).max(10).default(4),
+  }).optional(),
+  creditPolicy: z.object({
+    enabled: z.boolean().default(true),
+    dailyHardCapUsd: z.number().min(0).default(2),
+    monthlyHardCapUsd: z.number().min(0).default(20),
+    stopOnCap: z.boolean().default(true),
+  }).optional(),
+  abusePolicy: z.object({
+    maxPromptChars: z.number().min(256).max(200000).default(20000),
+    maxRequestsPerMinute: z.number().min(1).max(2000).default(120),
+    maxConcurrentRuns: z.number().min(1).max(100).default(8),
+  }).optional(),
+  sandboxPolicy: z.object({
+    enabled: z.boolean().default(false),
+    ttlMinutes: z.number().min(1).max(240).default(30),
+    egressAllowlistEnabled: z.boolean().default(true),
+  }).optional(),
+  clarificationPolicy: z.object({
+    enabled: z.boolean().default(true),
+    maxQuestionsPerPrompt: z.number().min(0).max(3).default(3),
+  }).optional(),
+  autonomyPolicy: z.object({
+    runPolicy: z.enum(['manual', 'capped_auto', 'unlimited_auto_guarded']).default('manual'),
+    allowAutoEdits: z.boolean().default(false),
+    allowLocalAccess: z.boolean().default(false),
+    requireApprovalForSensitiveActions: z.boolean().default(true),
+  }).optional(),
   testingMode: z.enum(['auto', 'manual']).optional().default('manual'),
   onboardingState: z.object({
     completed: z.boolean().default(false),
@@ -426,6 +465,8 @@ export type Settings = z.infer<typeof SettingsSchema>
 
 export const DEFAULT_SETTINGS: Settings = {
   executionRuntime: 'server_managed',
+  artifactGenerationMode: 'auto_hybrid',
+  runtimeMode: 'standard',
   enabledCLIs: ['gemini', 'codex', 'claude'],
   parallelCounts: {
     researcher: 1,
@@ -455,6 +496,36 @@ export const DEFAULT_SETTINGS: Settings = {
     cooldownMs: 30_000,
     maxSwitchesPerRun: 6,
   },
+  modelRoutingPolicy: {
+    allowPaidFallback: true,
+    maxFallbackHops: 4,
+  },
+  creditPolicy: {
+    enabled: true,
+    dailyHardCapUsd: 2,
+    monthlyHardCapUsd: 20,
+    stopOnCap: true,
+  },
+  abusePolicy: {
+    maxPromptChars: 20000,
+    maxRequestsPerMinute: 120,
+    maxConcurrentRuns: 8,
+  },
+  sandboxPolicy: {
+    enabled: false,
+    ttlMinutes: 30,
+    egressAllowlistEnabled: true,
+  },
+  clarificationPolicy: {
+    enabled: true,
+    maxQuestionsPerPrompt: 3,
+  },
+  autonomyPolicy: {
+    runPolicy: 'manual',
+    allowAutoEdits: false,
+    allowLocalAccess: false,
+    requireApprovalForSensitiveActions: true,
+  },
   testingMode: 'manual',
   onboardingState: {
     completed: false,
@@ -466,12 +537,78 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /* ── Swarm Result ──────────────────────────────────────────────── */
 
+export const UIModeSchema = z.enum(['chat', 'swarm', 'project'])
+export type UIMode = z.infer<typeof UIModeSchema>
+
+export const UITabSchema = z.enum(['chat', 'dashboard', 'ide', 'testing', 'eclipse', 'observability'])
+export type UITab = z.infer<typeof UITabSchema>
+
+export const UIExperienceLevelSchema = z.enum(['guided', 'expert'])
+export type UIExperienceLevel = z.infer<typeof UIExperienceLevelSchema>
+
+export const UIThemePresetSchema = z.enum(['fusia', 'graphite', 'atlas'])
+export type UIThemePreset = z.infer<typeof UIThemePresetSchema>
+
+export const UserUIPreferencesSchema = z.object({
+  defaultMode: UIModeSchema.default('chat'),
+  defaultTab: UITabSchema.default('chat'),
+  experienceLevel: UIExperienceLevelSchema.default('guided'),
+  themePreset: UIThemePresetSchema.default('fusia'),
+  responseStyle: z.enum(['non_technical', 'balanced', 'technical', 'adaptive']).default('adaptive'),
+  codeSnippetPolicy: z.enum(['adaptive', 'always', 'on_demand']).default('adaptive'),
+  showAccountId: z.boolean().default(true),
+  leftRailCollapsed: z.boolean().default(false),
+  density: z.enum(['comfortable', 'compact']).default('comfortable'),
+  fontScale: z.enum(['sm', 'md', 'lg']).default('md'),
+  pinnedQuickActions: z.array(z.string()).default([]),
+  preferredDashboardWidgets: z.array(z.string()).default([]),
+  keyboardHelpVisible: z.boolean().default(true),
+  showAdvancedSettings: z.boolean().default(false),
+  reducedMotion: z.boolean().nullable().default(null),
+  preview: z.object({
+    defaultUrl: z.string().default(''),
+    openByDefault: z.boolean().default(false),
+    blockSelfPreview: z.boolean().default(false),
+    workspaceOverrides: z.record(z.string(), z.string()).default({}),
+  }).default({}),
+  observability: z.object({
+    widgetOrder: z.array(z.string()).default([
+      'request-rate',
+      'latency',
+      'error-rate',
+      'status-distribution',
+      'jobs',
+      'agents',
+      'events',
+    ]),
+    collapsedWidgets: z.array(z.string()).default([]),
+    refreshIntervalSec: z.number().min(5).max(300).default(15),
+    defaultTimeRange: z.enum(['15m', '1h', '6h', '24h']).default('1h'),
+  }).default({}),
+  composer: z.object({
+    defaultProvider: CLIProvider.default('codex'),
+    defaultModelId: z.string().default('codex-gpt-5'),
+    reasoningByModel: z.record(z.string(), ReasoningModeSchema).default({}),
+  }).default({}),
+})
+export type UserUIPreferences = z.infer<typeof UserUIPreferencesSchema>
+
+export const DEFAULT_UI_PREFERENCES: UserUIPreferences = UserUIPreferencesSchema.parse({})
+
 export const SwarmResultSchema = z.object({
   finalOutput: z.string(),
   confidence: z.number().min(0).max(100),
   agents: z.array(AgentInstanceSchema),
   sources: z.array(z.string()),
   validationPassed: z.boolean(),
+  runMeta: z.object({
+    providerUsed: CLIProvider.optional(),
+    failoverChain: z.array(z.object({
+      from: CLIProvider,
+      to: CLIProvider,
+      reason: z.string(),
+    })).optional(),
+  }).optional(),
   refusal: z.object({
     reason: z.string(),
     requiredEvidence: z.array(z.string()),
@@ -893,6 +1030,8 @@ export const SwarmJobSchema = z.object({
   intent: ChatIntentSchema.optional(),
   agentSelectionMode: AgentSelectionModeSchema.optional(),
   preferredAgent: CLIProvider.optional(),
+  selectedModelId: z.string().optional(),
+  reasoningMode: ReasoningModeSchema.optional(),
   idempotencyKey: z.string().optional(),
   traceModeValidation: z.boolean().optional(),
   status: SwarmJobStatus,
@@ -1086,6 +1225,8 @@ export const AuditActionSchema = z.enum([
   'extension_install', 'extension_uninstall',
   'file_create', 'file_update', 'file_delete',
   'git_commit', 'git_push', 'git_pull',
+  'integration_connect', 'integration_disconnect', 'integration_secret_rotate',
+  'billing_checkout', 'billing_portal', 'billing_webhook',
 ])
 export type AuditAction = z.infer<typeof AuditActionSchema>
 
@@ -1171,6 +1312,8 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     intent: ChatIntentSchema.optional(),
     agentSelectionMode: AgentSelectionModeSchema.optional(),
     preferredAgent: CLIProvider.optional(),
+    selectedModelId: z.string().optional(),
+    reasoningMode: ReasoningModeSchema.optional(),
     idempotencyKey: z.string().optional(),
     attachments: z.array(EnqueueAttachmentSchema).max(MAX_ATTACHMENTS).optional(),
     priority: z.number().optional(),
@@ -1181,10 +1324,38 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('resume-job'), jobId: z.string() }),
   z.object({ type: z.literal('cancel-all-queued') }),
   z.object({ type: z.literal('emergency-stop'), reason: z.string().optional() }),
-  z.object({ type: z.literal('agent-output'), agentId: z.string(), data: z.string() }),
-  z.object({ type: z.literal('agent-status'), agentId: z.string(), status: AgentStatus, exitCode: z.number().optional() }),
-  z.object({ type: z.literal('swarm-result'), result: SwarmResultSchema }),
-  z.object({ type: z.literal('swarm-error'), error: z.string() }),
+  z.object({
+    type: z.literal('agent-output'),
+    agentId: z.string(),
+    data: z.string(),
+    runId: z.string().optional(),
+    sessionId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('agent-status'),
+    agentId: z.string(),
+    status: AgentStatus,
+    runId: z.string().optional(),
+    sessionId: z.string().optional(),
+    exitCode: z.number().optional(),
+    providerRequested: CLIProvider.optional(),
+    providerActive: CLIProvider.optional(),
+    attempt: z.number().optional(),
+    failoverFrom: CLIProvider.optional(),
+    failureCode: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('swarm-result'),
+    result: SwarmResultSchema,
+    runId: z.string().optional(),
+    sessionId: z.string().optional(),
+  }),
+  z.object({
+    type: z.literal('swarm-error'),
+    error: z.string(),
+    runId: z.string().optional(),
+    sessionId: z.string().optional(),
+  }),
   z.object({ type: z.literal('confirm-write'), filespath: z.string(), diff: z.string(), requestId: z.string() }),
   z.object({ type: z.literal('confirm-response'), requestId: z.string(), approved: z.boolean() }),
   z.object({ type: z.literal('insert-code'), code: z.string(), filePath: z.string().optional() }),

@@ -1,0 +1,36 @@
+{
+  "phase": 1,
+  "checkedAt": "2026-02-28T09:50:10.315Z",
+  "status": "pass",
+  "steps": [
+    {
+      "name": "mode-smoke",
+      "pass": true,
+      "status": 0,
+      "signal": null,
+      "durationMs": 553210,
+      "logPath": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-1\\logs\\mode-smoke.log"
+    },
+    {
+      "name": "chat-smoke",
+      "pass": true,
+      "status": 0,
+      "signal": null,
+      "durationMs": 14766,
+      "logPath": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-1\\logs\\chat-smoke.log"
+    },
+    {
+      "name": "provider-auth-live",
+      "pass": true,
+      "status": 0,
+      "signal": null,
+      "durationMs": 6055,
+      "logPath": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\artifacts\\phase-1\\logs\\provider-auth-live.log"
+    }
+  ],
+  "aggregates": {
+    "modeChecks": 3,
+    "providerChecks": 3,
+    "apiChecks": 7
+  }
+}

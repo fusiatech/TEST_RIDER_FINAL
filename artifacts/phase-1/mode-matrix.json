@@ -1,0 +1,80 @@
+{
+  "phase": 0,
+  "matrix": [
+    {
+      "mode": "chat",
+      "pass": true,
+      "primary": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "repeated": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "reconnect": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "wsChecks": {
+        "reconnect": true,
+        "repeatedRuns": true,
+        "sendBeforeOpen": true,
+        "noDroppedSubmissions": true
+      }
+    },
+    {
+      "mode": "swarm",
+      "pass": true,
+      "primary": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "repeated": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "reconnect": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "wsChecks": {
+        "reconnect": true,
+        "repeatedRuns": true,
+        "sendBeforeOpen": true,
+        "noDroppedSubmissions": true
+      }
+    },
+    {
+      "mode": "project",
+      "pass": true,
+      "primary": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "repeated": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "reconnect": {
+        "runAccepted": true,
+        "finalMessageType": "swarm-result",
+        "pass": true
+      },
+      "wsChecks": {
+        "reconnect": true,
+        "repeatedRuns": true,
+        "sendBeforeOpen": true,
+        "noDroppedSubmissions": true
+      }
+    }
+  ]
+}

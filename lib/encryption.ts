@@ -264,10 +264,10 @@ export function getCurrentKeyVersion(): number {
  * Get the encryption secret from environment
  */
 export function getEncryptionSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET
   if (!secret) {
-    console.warn('[encryption] NEXTAUTH_SECRET not set, using fallback key (not secure for production)')
-    return 'swarm-ui-default-encryption-key-change-me'
+    console.warn('[encryption] NEXTAUTH_SECRET/AUTH_SECRET not set, using fallback key (not secure for production)')
+    return 'swarm-ui-local-dev-secret-not-for-production'
   }
   return secret
 }

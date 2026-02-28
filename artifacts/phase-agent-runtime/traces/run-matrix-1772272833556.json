@@ -1,0 +1,364 @@
+{
+  "summary": {
+    "timestamp": "2026-02-28T10:00:33.556Z",
+    "baseUrl": "http://localhost:4100",
+    "wsUrl": "ws://localhost:4100/api/ws",
+    "totals": {
+      "runs": 4,
+      "passed": 2,
+      "failed": 2
+    }
+  },
+  "results": [
+    {
+      "name": "normal-gemini",
+      "mode": "chat",
+      "providerRequested": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": true,
+      "reason": "ok",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini"
+      ],
+      "failovers": [],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nTwo plus two equals four.Two plus two equals four."
+    },
+    {
+      "name": "swarm-gemini-primary",
+      "mode": "swarm",
+      "providerRequested": "gemini",
+      "runAccepted": false,
+      "finalType": null,
+      "pass": false,
+      "reason": "timeout: swarm-gemini-primary",
+      "attempts": [],
+      "failovers": [],
+      "statusTrace": [],
+      "outputPreview": ""
+    },
+    {
+      "name": "swarm-failover-from-claude",
+      "mode": "swarm",
+      "providerRequested": "claude",
+      "runAccepted": false,
+      "finalType": null,
+      "pass": false,
+      "reason": "timeout: swarm-failover-from-claude",
+      "attempts": [],
+      "failovers": [],
+      "statusTrace": [],
+      "outputPreview": ""
+    },
+    {
+      "name": "project-planner-tickets",
+      "mode": "project",
+      "providerRequested": "gemini",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "pass": true,
+      "reason": "ok",
+      "attempts": [
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini",
+        "[orchestrator] API attempt 1 using gemini"
+      ],
+      "failovers": [],
+      "statusTrace": [
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "running",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "planner-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "coder-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "spawning",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "running",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": 1,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "validator-1",
+          "status": "completed",
+          "providerRequested": "gemini",
+          "providerActive": "gemini",
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        },
+        {
+          "agentId": "system",
+          "status": "completed",
+          "providerRequested": null,
+          "providerActive": null,
+          "attempt": null,
+          "failoverFrom": null,
+          "failureCode": null
+        }
+      ],
+      "outputPreview": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nOkay, I’ve reviewed the research (which I’ll assume is a whitepaper or technical report about Gemini model optimization for API execution – I’ll need to actually *read* it to be certain, but based on the prompt, it’s likely a discussion of techniques like quantization, distillation, and optimized inference pipelines).\n\nHere’s the research summary:\n\n**Research Summary - Gemini Model Optimization for API Execution**\n\nThe research highlights several key strategies for improving the performance and efficiency of Gemini model inference, particularly when deployed through APIs.  The core findings center around the following:\n\n1. **Quantization:**  Reducing the precision of model weights (e.g., from FP16 to INT8) significantly reduces memory footp"
+    }
+  ]
+}

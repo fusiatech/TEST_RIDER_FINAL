@@ -1,3 +1,5 @@
+const DEV_AUTH_FALLBACK_SECRET = 'swarm-ui-local-dev-auth-secret'
+
 export function getEffectiveAuthSecret(): string | undefined {
   const authSecret = process.env.AUTH_SECRET?.trim()
   if (authSecret) {
@@ -7,6 +9,10 @@ export function getEffectiveAuthSecret(): string | undefined {
   const nextAuthSecret = process.env.NEXTAUTH_SECRET?.trim()
   if (nextAuthSecret) {
     return nextAuthSecret
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return DEV_AUTH_FALLBACK_SECRET
   }
 
   return undefined

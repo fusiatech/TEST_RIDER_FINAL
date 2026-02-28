@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -64,8 +63,8 @@ export function AgentCard({ agent }: AgentCardProps) {
   const cleanOutput = stripAnsi(agent.output)
   const lineCount = cleanOutput ? cleanOutput.split('\n').length : 0
 
-  const handleCopy = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleCopy = useCallback(async (e?: { stopPropagation: () => void }) => {
+    e?.stopPropagation()
     try {
       await navigator.clipboard.writeText(cleanOutput)
       setCopied(true)
@@ -131,6 +130,12 @@ export function AgentCard({ agent }: AgentCardProps) {
                   {STAGE_MAP[agent.role]}
                 </Badge>
               </Tooltip>
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 uppercase tracking-wide"
+              >
+                {agent.provider}
+              </Badge>
               <div className="ml-auto flex items-center gap-2">
                 {lineCount > 0 && (
                   <span className="flex items-center gap-1 text-[10px] text-muted">
@@ -138,18 +143,27 @@ export function AgentCard({ agent }: AgentCardProps) {
                     {lineCount} lines
                   </span>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={handleCopy}
-                  className="h-6 w-6 p-0 text-muted hover:text-foreground"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      void handleCopy()
+                    }
+                  }}
+                  className={cn(
+                    'inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm p-0 text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
+                  )}
+                  aria-label="Copy agent output"
                 >
                   {copied ? (
                     <Check className="h-3 w-3 text-green-400" />
                   ) : (
                     <Copy className="h-3 w-3" />
                   )}
-                </Button>
+                </span>
                 <Badge
                   variant="outline"
                   className={cn('text-xs', STATUS_STYLES[agent.status])}

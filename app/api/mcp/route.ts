@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getSettings } from '@/server/storage'
+import { auth } from '@/auth'
 import {
   connectMCPServer,
   listMCPTools,
@@ -17,6 +17,7 @@ import {
   type MCPServerHealth,
   type MCPConnectionLog,
 } from '@/server/mcp-client'
+import { getEffectiveMCPServersForUser } from '@/server/integrations/mcp-service'
 
 const CallToolRequestSchema = z.object({
   serverId: z.string(),
@@ -50,6 +51,11 @@ interface ServerWithTools {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await auth().catch(() => null)
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { searchParams } = new URL(request.url)
     const serverId = searchParams.get('serverId')
     const includeLogs = searchParams.get('logs') === 'true'
@@ -62,8 +68,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(status)
     }
 
-    const settings = await getSettings()
-    const mcpServers = settings.mcpServers ?? []
+    const mcpServers = await getEffectiveMCPServersForUser(userId)
     const enabledServers = mcpServers.filter((s) => s.enabled)
 
     const results: ServerWithTools[] = []
@@ -151,6 +156,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await auth().catch(() => null)
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const body = await request.json()
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
@@ -165,8 +175,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       const { serverId } = parsed.data
-      const settings = await getSettings()
-      const mcpServers = settings.mcpServers ?? []
+      const mcpServers = await getEffectiveMCPServersForUser(userId)
       const serverConfig = mcpServers.find((s) => s.id === serverId)
 
       if (!serverConfig) {
@@ -225,8 +234,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       const { serverId, uri } = parsed.data
-      const settings = await getSettings()
-      const mcpServers = settings.mcpServers ?? []
+      const mcpServers = await getEffectiveMCPServersForUser(userId)
       const serverConfig = mcpServers.find((s) => s.id === serverId)
 
       if (!serverConfig) {
@@ -265,8 +273,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { serverId, toolName, args } = parsed.data
-    const settings = await getSettings()
-    const mcpServers = settings.mcpServers ?? []
+    const mcpServers = await getEffectiveMCPServersForUser(userId)
     const serverConfig = mcpServers.find((s) => s.id === serverId)
 
     if (!serverConfig) {
@@ -280,6 +287,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         { error: `Server ${serverId} is disabled` },
         { status: 400 }
+      )
+    }
+
+    const toolAllowlist = serverConfig.policy?.toolAllowlist ?? []
+    if (toolAllowlist.length > 0 && !toolAllowlist.includes(toolName)) {
+      return NextResponse.json(
+        { error: `Tool ${toolName} is not allowed by policy for server ${serverId}` },
+        { status: 403 }
       )
     }
 
@@ -308,6 +323,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await auth().catch(() => null)
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const { searchParams } = new URL(request.url)
     const serverId = searchParams.get('serverId')
 
@@ -318,8 +338,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    const settings = await getSettings()
-    const mcpServers = settings.mcpServers ?? []
+    const mcpServers = await getEffectiveMCPServersForUser(userId)
     const serverConfig = mcpServers.find((s) => s.id === serverId)
 
     if (!serverConfig) {

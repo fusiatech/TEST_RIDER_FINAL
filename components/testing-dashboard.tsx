@@ -757,7 +757,15 @@ export function TestingDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full py-20">
-        <LoadingState variant="spinner" size="lg" text="Loading test data..." />
+        <div className="w-full max-w-2xl rounded-2xl border border-border/70 bg-card/40 p-5">
+          <LoadingState
+            variant="workflow"
+            size="lg"
+            text="Loading quality data..."
+            steps={['Discover', 'Analyze', 'Compose', 'Ready']}
+            activeStep={2}
+          />
+        </div>
       </div>
     )
   }

@@ -70,11 +70,21 @@ async function runChatGPT(
   onError: (error: string) => void,
 ): Promise<string> {
   let fullOutput = ''
+  const candidateModels = [
+    'gpt-4o',
+    'gpt-4o-mini',
+    'gpt-4.1-mini',
+    'gpt-3.5-turbo',
+  ]
 
   try {
-    const response = await fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
+    let response: Response | null = null
+    let selectedModel: string | null = null
+    let lastError = ''
+
+    for (const model of candidateModels) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         headers: {
@@ -82,18 +92,32 @@ async function runChatGPT(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model,
           messages: [{ role: 'user', content: prompt }],
           stream: true,
         }),
-      },
-    )
+      })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      onError(`OpenAI API error (${response.status}): ${errorText}`)
+      if (res.ok) {
+        response = res
+        selectedModel = model
+        break
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      const errorText = await res.text()
+      lastError = `model=${model} status=${res.status} ${errorText}`
+      if (res.status === 401) {
+        onError(`OpenAI API authentication failed (401): Invalid API key`)
+        return ''
+      }
+    }
+
+    if (!response || !selectedModel) {
+      onError(`OpenAI API model resolution failed: ${lastError || 'no compatible model found'}`)
       return ''
     }
+    onOutput(`[api-runner] OpenAI model: ${selectedModel}\n`)
 
     const body = response.body
     if (!body) {
@@ -156,6 +180,67 @@ interface GeminiResponse {
   }>
 }
 
+interface GeminiModelDescriptor {
+  name?: string
+  supportedGenerationMethods?: string[]
+}
+
+interface GeminiListModelsResponse {
+  models?: GeminiModelDescriptor[]
+}
+
+const GEMINI_STATIC_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
+]
+
+const GEMINI_API_VERSIONS = ['v1beta', 'v1'] as const
+
+function normalizeGeminiModelName(name: string): string {
+  return name.startsWith('models/') ? name.slice('models/'.length) : name
+}
+
+async function getGeminiCandidateModels(apiKey: string): Promise<string[]> {
+  try {
+    const discovered = new Set<string>()
+    for (const version of GEMINI_API_VERSIONS) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/${version}/models?key=${encodeURIComponent(apiKey)}`,
+        { method: 'GET', signal: AbortSignal.timeout(12_000) },
+      )
+      if (!res.ok) continue
+      // eslint-disable-next-line no-await-in-loop
+      const payload = (await res.json()) as GeminiListModelsResponse
+      for (const entry of payload.models ?? []) {
+        const methods = entry.supportedGenerationMethods ?? []
+        const canGenerate =
+          methods.includes('generateContent') || methods.includes('streamGenerateContent')
+        if (!canGenerate) continue
+        const normalized = normalizeGeminiModelName(entry.name ?? '')
+        if (normalized) discovered.add(normalized)
+      }
+    }
+
+    if (discovered.size === 0) return GEMINI_STATIC_MODELS
+
+    const available = Array.from(discovered)
+    const preferred = GEMINI_STATIC_MODELS.filter((model) => available.includes(model))
+    const remaining = available.filter((model) => !preferred.includes(model))
+    // Always append static fallbacks so we don't get stuck on a single stale discovered model.
+    const staticFallbacks = GEMINI_STATIC_MODELS.filter(
+      (model) => !preferred.includes(model) && !remaining.includes(model),
+    )
+    return [...preferred, ...remaining, ...staticFallbacks]
+  } catch {
+    return GEMINI_STATIC_MODELS
+  }
+}
+
 async function runGemini(
   prompt: string,
   apiKey: string,
@@ -164,95 +249,74 @@ async function runGemini(
   onError: (error: string) => void,
 ): Promise<string> {
   let fullOutput = ''
-  const candidateModels = [
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-  ]
   let lastError = ''
+  let quotaError = ''
 
   try {
-    let response: Response | null = null
-    let selectedModel: string | null = null
+    const candidateModels = await getGeminiCandidateModels(apiKey)
+
     for (const model of candidateModels) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${encodeURIComponent(apiKey)}&alt=sse`
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, {
-        method: 'POST',
-        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      })
-      if (res.ok) {
-        response = res
-        selectedModel = model
-        break
-      }
-      const errorText = await res.text()
-      lastError = `model=${model} status=${res.status} ${errorText}`
-      // For invalid key or quota, fail fast instead of trying next model.
-      if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 429) {
-        onError(`Gemini API error (${res.status}): ${errorText}`)
-        return ''
+      for (const version of GEMINI_API_VERSIONS) {
+        const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
+        // eslint-disable-next-line no-await-in-loop
+        const res = await fetch(url, {
+          method: 'POST',
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        })
+
+        if (!res.ok) {
+          // eslint-disable-next-line no-await-in-loop
+          const errorText = await res.text()
+          lastError = `api=${version} model=${model} status=${res.status} ${errorText}`
+          if (res.status === 429 && !quotaError) {
+            quotaError = lastError
+          }
+          // 404/400 can be model+version mismatch; keep trying next version/model.
+          if (res.status === 401 || res.status === 403) {
+            onError(`Gemini API error (${res.status}): ${errorText}`)
+            return ''
+          }
+          continue
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const parsed = (await res.json()) as GeminiResponse
+        const text = parsed.candidates?.[0]?.content?.parts
+          ?.map((part) => part.text ?? '')
+          .join('')
+          .trim()
+        if (!text) {
+          lastError = `api=${version} model=${model} status=200 empty-output`
+          continue
+        }
+
+        onOutput(`[api-runner] Gemini model: ${model} (${version})\n`)
+        fullOutput = text
+        onOutput(text)
+        onComplete(fullOutput)
+        return fullOutput
       }
     }
-    if (!response || !selectedModel) {
-      onError(`Gemini API model resolution failed: ${lastError || 'no compatible model found'}`)
+
+    if (quotaError) {
+      onError(`Gemini API quota/rate limit: ${quotaError}`)
       return ''
     }
-    onOutput(`[api-runner] Gemini model: ${selectedModel}\n`)
 
-    const body = response.body
-    if (!body) {
-      onError('No response body received from Gemini')
+    if (lastError) {
+      onError(`Gemini API model resolution failed: ${lastError}`)
       return ''
     }
 
-    const reader = body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      buffer = processSSELines(buffer, (payload) => {
-        try {
-          const parsed: GeminiResponse = JSON.parse(payload) as GeminiResponse
-          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
-          if (text) {
-            fullOutput += text
-            onOutput(text)
-          }
-        } catch {
-          // Skip malformed SSE chunks
-        }
-      })
-    }
-
-    if (buffer.trim()) {
-      processSSELines(buffer + '\n', (payload) => {
-        try {
-          const parsed: GeminiResponse = JSON.parse(payload) as GeminiResponse
-          const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
-          if (text) {
-            fullOutput += text
-            onOutput(text)
-          }
-        } catch {
-          // Skip
-        }
-      })
-    }
-
-    onComplete(fullOutput)
-    return fullOutput
+    onError('Gemini API model resolution failed: no compatible model found')
+    return ''
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
-    onError(`Gemini streaming error: ${message}`)
+    onError(`Gemini API error: ${message}`)
     return fullOutput
   }
 }

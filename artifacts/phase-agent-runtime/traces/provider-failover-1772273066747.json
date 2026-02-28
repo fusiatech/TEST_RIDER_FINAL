@@ -1,0 +1,129 @@
+{
+  "timestamp": "2026-02-28T10:04:26.746Z",
+  "baseUrl": "http://localhost:4100",
+  "wsUrl": "ws://localhost:4100/api/ws",
+  "runAccepted": true,
+  "finalType": "swarm-result",
+  "passed": true,
+  "attempts": [
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 2 using gemini"
+  ],
+  "failovers": [
+    "[orchestrator] Failover claude -> gemini: AUTH_INVALID: Claude API authentication failed (401): Invalid API key"
+  ],
+  "statusEvents": [
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "claude",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "claude",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "claude",
+      "attempt": 1,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "gemini",
+      "attempt": null,
+      "failoverFrom": "claude",
+      "failureCode": "AUTH_INVALID",
+      "status": "running"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "gemini",
+      "attempt": 2,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "claude",
+      "providerActive": "gemini",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "completed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "completed"
+    }
+  ],
+  "finalPayload": {
+    "type": "swarm-result",
+    "result": {
+      "finalOutput": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nFAILOVER_OKFAILOVER_OK",
+      "confidence": 50,
+      "agents": [
+        {
+          "id": "coder-1",
+          "role": "coder",
+          "label": "Coder #1",
+          "provider": "gemini",
+          "status": "completed",
+          "output": "[api-runner] Gemini model: gemma-3-1b-it (v1beta)\nFAILOVER_OKFAILOVER_OK",
+          "startedAt": 1772273062891,
+          "finishedAt": 1772273066556,
+          "exitCode": 0
+        }
+      ],
+      "sources": [],
+      "validationPassed": true,
+      "evidenceStatus": {
+        "sufficient": true,
+        "traceId": "fd17ae9bb89ddf50bec96ff69d132d36",
+        "references": 2
+      },
+      "runMeta": {
+        "providerUsed": "gemini"
+      }
+    },
+    "runId": "a91a2351-c507-4472-997b-28abe21cafb1",
+    "sessionId": "failover-1772273062526"
+  }
+}

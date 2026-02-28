@@ -193,7 +193,7 @@ function WelcomeScreen({ onOpenFolder, onCloneGitHub, onOpenRecent }: WelcomeScr
             <Code2 className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Welcome to SwarmUI IDE
+            Welcome to Fusia AI IDE
           </h1>
           <p className="text-muted text-sm">
             Get started by opening a project

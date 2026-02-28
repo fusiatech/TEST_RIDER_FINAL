@@ -9,36 +9,65 @@ type TestFixtures = {
 
 export const test = base.extend<TestFixtures>({
   authenticatedPage: async ({ page }, use) => {
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    
-    const emailInput = page.getByLabel(/email/i).or(page.locator('input[type="email"]'));
-    const passwordInput = page.getByLabel(/password/i).or(page.locator('input[type="password"]'));
-    
-    if (await emailInput.isVisible()) {
-      await emailInput.fill('admin@swarmui.local');
-      await passwordInput.fill('admin123');
+    const fallbackEmail = `e2e-${Date.now()}-${Math.floor(Math.random() * 10000)}@fusia.local`;
+    const fallbackPassword = 'E2Epass123!';
+
+    const signIn = async (email: string, password: string) => {
+      await page.goto('/login?callbackUrl=/app');
+      await page.waitForLoadState('networkidle');
+
+      const emailInput = page.locator('input[type="email"]').first();
+      const passwordInput = page.locator('input[type="password"]').first();
+      await emailInput.fill(email);
+      await passwordInput.fill(password);
       await page.getByRole('button', { name: /sign in|log in|login/i }).click();
-      await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 10000 });
+
+      try {
+        await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });
+      } catch {
+        // handled by caller
+      }
+    };
+
+    await signIn('admin@swarmui.local', 'admin123');
+    const stillOnLogin = page.url().includes('/login');
+
+    if (stillOnLogin) {
+      await page.goto('/register');
+      await page.waitForLoadState('networkidle');
+
+      await page.locator('#name').fill('E2E User');
+      await page.locator('#email').fill(fallbackEmail);
+      await page.locator('#password').fill(fallbackPassword);
+      await page.getByRole('button', { name: /create account/i }).click();
+      await page.waitForURL((url) => url.pathname.includes('/login'), { timeout: 10000 });
+
+      await signIn(fallbackEmail, fallbackPassword);
     }
-    
+
+    await page.goto('/app');
+    await page.waitForLoadState('networkidle');
+    if (page.url().includes('/login')) {
+      throw new Error('Authentication failed for E2E fixture.');
+    }
     await use(page);
   },
 
   testProject: async ({ authenticatedPage }, use) => {
     const projectName = `Test Project ${Date.now()}`;
     
-    await authenticatedPage.goto('/');
-    
-    const createButton = authenticatedPage.getByRole('button', { name: /new project|create project/i });
-    if (await createButton.isVisible()) {
-      await createButton.click();
-      
-      const nameInput = authenticatedPage.getByLabel(/name/i).or(authenticatedPage.locator('input[name="name"]'));
+    await authenticatedPage.goto('/app');
+    await authenticatedPage.waitForLoadState('networkidle');
+
+    const startWork = authenticatedPage.locator('[data-action-id="start-work-menu-trigger"]');
+    if (await startWork.isVisible()) {
+      await startWork.click();
+      await authenticatedPage.locator('[data-action-id="start-work-new-project"]').click();
+      const nameInput = authenticatedPage.getByLabel(/name/i).or(authenticatedPage.locator('input[name="name"]')).first();
       if (await nameInput.isVisible()) {
         await nameInput.fill(projectName);
-        await authenticatedPage.getByRole('button', { name: /create|save/i }).click();
-        await authenticatedPage.waitForTimeout(1000);
+        await authenticatedPage.getByRole('button', { name: /create|save/i }).first().click();
+        await authenticatedPage.waitForTimeout(800);
       }
     }
     
@@ -69,35 +98,48 @@ export class ChatPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/');
+    await this.page.goto('/app');
     await this.page.waitForLoadState('networkidle');
   }
 
   async sendMessage(message: string) {
-    const input = this.page.getByPlaceholder(/message|type|ask/i).or(
-      this.page.locator('textarea').first()
-    );
+    const input = this.page.locator('textarea#chat-input, [data-testid="chat-input"] textarea, textarea').first();
     await input.fill(message);
     await this.page.keyboard.press('Enter');
   }
 
   async waitForResponse() {
-    await this.page.waitForSelector('[data-testid="message"], .message, [class*="message"]', {
+    await this.page.waitForSelector('[data-testid="message"]', {
       timeout: 30000,
     });
   }
 
   async getMessages() {
-    return this.page.locator('[data-testid="message"], .message, [class*="message"]').all();
+    return this.page.locator('[data-testid="message"]').all();
+  }
+
+  async startWork(action: 'conversation' | 'project' | 'run' | 'multi-agent') {
+    await this.page.locator('[data-action-id="start-work-menu-trigger"]').click();
+    const actionId = action === 'conversation'
+      ? 'start-work-new-conversation'
+      : action === 'project'
+        ? 'start-work-new-project'
+        : action === 'multi-agent'
+          ? 'start-work-new-swarm-run'
+          : 'start-work-new-run'
+    await this.page.locator(`[data-action-id="${actionId}"]`).click();
   }
 
   async switchMode(mode: 'chat' | 'swarm' | 'project') {
-    const modeSelector = this.page.getByRole('button', { name: new RegExp(mode, 'i') }).or(
-      this.page.locator(`[data-mode="${mode}"]`)
-    );
-    if (await modeSelector.isVisible()) {
-      await modeSelector.click();
+    if (mode === 'chat') {
+      await this.startWork('conversation')
+      return
     }
+    if (mode === 'swarm') {
+      await this.startWork('multi-agent')
+      return
+    }
+    await this.startWork('project')
   }
 }
 
@@ -105,13 +147,8 @@ export class IDEPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/');
-    const ideTab = this.page.getByRole('tab', { name: /ide/i }).or(
-      this.page.getByText(/ide/i).first()
-    );
-    if (await ideTab.isVisible()) {
-      await ideTab.click();
-    }
+    await this.page.goto('/app');
+    await this.page.locator('[data-action-id="rail-nav-ide"]').click();
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -139,13 +176,8 @@ export class ProjectPage {
   constructor(private page: Page) {}
 
   async goto() {
-    await this.page.goto('/');
-    const projectTab = this.page.getByRole('tab', { name: /project|dashboard/i }).or(
-      this.page.getByText(/project/i).first()
-    );
-    if (await projectTab.isVisible()) {
-      await projectTab.click();
-    }
+    await this.page.goto('/app');
+    await this.page.locator('[data-action-id="rail-nav-dashboard"]').click();
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -181,26 +213,22 @@ export class SettingsPage {
   constructor(private page: Page) {}
 
   async open() {
-    const settingsButton = this.page.getByRole('button', { name: /settings/i }).or(
-      this.page.locator('[data-testid="settings-button"], [aria-label*="settings" i]')
-    );
-    await settingsButton.click();
-    await this.page.waitForSelector('[role="dialog"], [data-testid="settings-dialog"], [class*="settings"]');
+    await this.page.goto('/settings');
+    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForSelector('h1, h2');
   }
 
   async close() {
-    const closeButton = this.page.getByRole('button', { name: /close|cancel/i }).or(
-      this.page.locator('[data-testid="close-button"]')
-    );
-    if (await closeButton.isVisible()) {
-      await closeButton.click();
+    const backButton = this.page.locator('[data-action-id="settings-back-to-app"]');
+    if (await backButton.isVisible()) {
+      await backButton.click();
     } else {
-      await this.page.keyboard.press('Escape');
+      await this.page.goto('/app');
     }
   }
 
   async getDialog() {
-    return this.page.locator('[role="dialog"], [data-testid="settings-dialog"]');
+    return this.page.locator('main, [data-testid="settings-page"], body');
   }
 
   async toggleSetting(settingName: string) {

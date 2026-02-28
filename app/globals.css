@@ -3,9 +3,9 @@
 @theme {
   --color-background: #ffffff;
   --color-foreground: #09090b;
-  --color-card: #f4f4f5;
-  --color-primary: #7c3aed;
-  --color-secondary: #e4e4e7;
+  --color-card: #f7f7fb;
+  --color-primary: #6d28d9;
+  --color-secondary: #ece8f8;
   /* Gap ID: G-A11Y-02 - Updated for ~4.5:1 contrast ratio */
   --color-muted: #71717a;
   --color-border: #d4d4d8;
@@ -39,9 +39,9 @@
 .dark {
   --color-background: #09090b;
   --color-foreground: #fafafa;
-  --color-card: #18181b;
-  --color-primary: #a78bfa;
-  --color-secondary: #27272a;
+  --color-card: #13131a;
+  --color-primary: #8b5cf6;
+  --color-secondary: #1c1a2a;
   /* Gap ID: G-A11Y-02 - Updated for ~4.5:1 contrast ratio */
   --color-muted: #a1a1aa;
   --color-border: #3f3f46;
@@ -50,12 +50,57 @@
   --color-popover-foreground: #fafafa;
 }
 
+/* Curated preset palettes (applies on authenticated app surfaces) */
+:root[data-theme-preset="fusia"] {
+  --color-primary: #6d28d9;
+  --color-secondary: #ece8f8;
+}
+
+.dark[data-theme-preset="fusia"] {
+  --color-primary: #8b5cf6;
+  --color-secondary: #1c1a2a;
+}
+
+:root[data-theme-preset="graphite"] {
+  --color-primary: #0f766e;
+  --color-secondary: #d8eeea;
+  --color-card: #f3f7f6;
+}
+
+.dark[data-theme-preset="graphite"] {
+  --color-primary: #14b8a6;
+  --color-secondary: #0f2624;
+  --color-card: #0f1717;
+}
+
+:root[data-theme-preset="atlas"] {
+  --color-primary: #0b63ce;
+  --color-secondary: #dde9fb;
+  --color-card: #f5f8ff;
+}
+
+.dark[data-theme-preset="atlas"] {
+  --color-primary: #38bdf8;
+  --color-secondary: #10203a;
+  --color-card: #0b1220;
+}
+
 body {
-  background: var(--color-background);
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 32%),
+    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 30%),
+    var(--color-background);
   color: var(--color-foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Manrope", "Segoe UI", "SF Pro Display", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Space Grotesk", "Manrope", "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* ── Theme transitions ─────────────────────────────────────────── */
@@ -317,6 +362,41 @@ main,
 
 .sidebar-item-hover {
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Adaptive UI preferences */
+[data-font-scale="sm"] {
+  font-size: 14px;
+}
+
+[data-font-scale="md"] {
+  font-size: 16px;
+}
+
+[data-font-scale="lg"] {
+  font-size: 17px;
+}
+
+[data-density="compact"] .rounded-xl {
+  border-radius: 0.6rem;
+}
+
+[data-density="compact"] .p-4 {
+  padding: 0.8rem;
+}
+
+[data-density="compact"] .py-3 {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
 }
 
 @keyframes count-up {

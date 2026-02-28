@@ -61,6 +61,9 @@ const env = {
   // SWARM_WS_AUTH_MODE=off is set for debugging.
   WS_AUTH_ENABLED: process.env.SWARM_WS_AUTH_MODE === 'off' ? 'false' : 'true',
   SWARM_DEV_PROFILE_FALLBACK: process.env.SWARM_DEV_PROFILE_FALLBACK === 'false' ? 'false' : 'true',
+  SWARM_ALLOW_DEV_WS_FALLBACK:
+    process.env.SWARM_ALLOW_DEV_WS_FALLBACK ||
+    (process.env.SWARM_DEV_PROFILE_FALLBACK === 'false' ? 'false' : 'true'),
   SWARM_CLI_DETECT_SKIP_VERSION: process.env.SWARM_CLI_DETECT_SKIP_VERSION || '1',
   SWARM_ENABLE_SYSTEM_CLIS: process.env.SWARM_ENABLE_SYSTEM_CLIS || '0',
 }

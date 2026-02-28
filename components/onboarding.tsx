@@ -28,7 +28,7 @@ const STEPS: StepInfo[] = [
     icon: Settings,
     title: 'Configure your agents',
     description:
-      'Open Settings to enable CLI agents (Cursor, Claude, Gemini, etc.), set parallel counts, and configure testing & security guardrails.',
+      'Open Settings to choose model providers and optional local runtime connectors, set parallel counts, and configure testing and security guardrails.',
     color: 'var(--color-role-planner)',
   },
   {
@@ -101,7 +101,7 @@ export function Onboarding() {
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
               <Sparkles className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-xl font-bold text-foreground">Welcome to SwarmUI</h2>
+            <h2 className="text-xl font-bold text-foreground">Welcome to Fusia AI</h2>
             <p className="mt-1 text-sm text-muted">
               Multi-agent orchestration for AI-powered development
             </p>

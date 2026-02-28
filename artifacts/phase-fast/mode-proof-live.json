@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-02-28T05:39:00.745Z",
+  "wsUrl": "ws://127.0.0.1:4100/api/ws",
+  "allPass": false,
+  "results": [
+    {
+      "mode": "chat",
+      "runAccepted": true,
+      "finalType": "swarm-result",
+      "ok": true,
+      "durationMs": 3722,
+      "snippet": "{\"type\":\"swarm-result\",\"result\":{\"finalOutput\":\"[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\\n\",\"confidence\":50,\"agents\":[{\"id\":\"coder-1\",\"role\":\"coder\",\"label\":\"Coder #1\",\"provider\":\"gemini\",\"status\":"
+    },
+    {
+      "mode": "swarm",
+      "runAccepted": true,
+      "finalType": "swarm-error",
+      "ok": false,
+      "durationMs": 197,
+      "snippet": "{\"type\":\"swarm-error\",\"error\":\"All configured providers are temporarily cooling down after recent failures: gemini, cursor, codex, claude. Please retry shortly.\"}"
+    },
+    {
+      "mode": "project",
+      "runAccepted": true,
+      "finalType": "swarm-error",
+      "ok": false,
+      "durationMs": 183,
+      "snippet": "{\"type\":\"swarm-error\",\"error\":\"All configured providers are temporarily cooling down after recent failures: gemini, cursor, codex, claude. Please retry shortly.\"}"
+    }
+  ]
+}

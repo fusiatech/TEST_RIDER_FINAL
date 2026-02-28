@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -13,7 +13,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   Code,
-  TestTube,
+  BarChart3,
   Moon,
   Sun,
   PanelLeftClose,
@@ -116,13 +116,27 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
   const actions = useMemo((): CommandAction[] => {
     const items: CommandAction[] = [
       {
-        id: 'new-chat',
-        label: 'New Chat',
-        description: 'Start a new conversation',
+        id: 'new-conversation',
+        label: 'New Conversation',
+        description: 'Start a fresh conversation context',
         icon: <Plus className="h-4 w-4" />,
-        shortcut: '⌘N',
+        shortcut: 'Cmd/Ctrl+N',
         action: () => {
+          setMode('chat' as AppMode)
+          setActiveTab('chat')
           createSession()
+          close()
+        },
+        category: 'actions',
+      },
+      {
+        id: 'new-project-workspace',
+        label: 'New Project Workspace',
+        description: 'Switch to project dashboard to start a project',
+        icon: <FolderKanban className="h-4 w-4" />,
+        action: () => {
+          setMode('project' as AppMode)
+          setActiveTab('dashboard')
           close()
         },
         category: 'actions',
@@ -132,7 +146,7 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
         label: 'Open Settings',
         description: 'Configure application settings',
         icon: <Settings className="h-4 w-4" />,
-        shortcut: '⌘,',
+        shortcut: 'Cmd/Ctrl+,',
         action: () => {
           router.push('/settings')
           close()
@@ -144,7 +158,7 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
         label: sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar',
         description: 'Toggle the sidebar visibility',
         icon: sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />,
-        shortcut: '⌘/',
+        shortcut: 'Cmd/Ctrl+/',
         action: () => {
           toggleSidebar()
           close()
@@ -153,8 +167,8 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
       },
       {
         id: 'mode-chat',
-        label: 'Switch to Chat Mode',
-        description: 'Single agent conversation',
+        label: 'Switch to Conversation Mode',
+        description: 'Focused conversation workflow',
         icon: <MessageCircle className="h-4 w-4" />,
         action: () => {
           setMode('chat' as AppMode)
@@ -186,8 +200,8 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
       },
       {
         id: 'tab-chat',
-        label: 'Go to Chat',
-        description: 'View chat interface',
+        label: 'Go to Conversations',
+        description: 'Open the conversation workspace',
         icon: <MessageCircle className="h-4 w-4" />,
         action: () => {
           setActiveTab('chat')
@@ -198,9 +212,9 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
       {
         id: 'tab-dashboard',
         label: 'Go to Dashboard',
-        description: 'View agent dashboard',
+        description: 'Open unified control center',
         icon: <LayoutDashboard className="h-4 w-4" />,
-        shortcut: '⇧⌘D',
+        shortcut: 'Shift+Cmd/Ctrl+D',
         action: () => {
           setActiveTab('dashboard')
           close()
@@ -219,12 +233,12 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
         category: 'navigation',
       },
       {
-        id: 'tab-testing',
-        label: 'Go to Testing',
-        description: 'View test dashboard',
-        icon: <TestTube className="h-4 w-4" />,
+        id: 'tab-observability',
+        label: 'Go to Observability',
+        description: 'View runtime and platform metrics',
+        icon: <BarChart3 className="h-4 w-4" />,
         action: () => {
-          setActiveTab('testing')
+          setActiveTab('observability')
           close()
         },
         category: 'navigation',
@@ -459,7 +473,7 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-[10px] text-muted">
           <div className="flex items-center gap-3">
             <span>
-              <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">↑↓</kbd> Navigate
+              <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">Up/Down</kbd> Navigate
             </span>
             <span>
               <kbd className="rounded bg-secondary px-1.5 py-0.5 font-mono">Enter</kbd> Select
@@ -474,3 +488,4 @@ export function ActionCommandPalette({ open, onOpenChange }: ActionCommandPalett
     </div>
   )
 }
+

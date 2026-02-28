@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-02-28T10:00:33.556Z",
+  "baseUrl": "http://localhost:4100",
+  "wsUrl": "ws://localhost:4100/api/ws",
+  "totals": {
+    "runs": 4,
+    "passed": 2,
+    "failed": 2
+  }
+}

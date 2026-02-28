@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSwarmStore } from '@/lib/store'
 import {
   Dialog,
@@ -15,11 +15,35 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
-export function CreateProjectDialog() {
-  const [open, setOpen] = useState(false)
+interface CreateProjectDialogProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
+  triggerLabel?: string
+  triggerClassName?: string
+}
+
+export function CreateProjectDialog({
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+  triggerLabel = 'New Project',
+  triggerClassName,
+}: CreateProjectDialogProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const createProject = useSwarmStore((s) => s.createProject)
+
+  const open = controlledOpen ?? internalOpen
+  const setOpen = useMemo(
+    () =>
+      onOpenChange ??
+      ((nextOpen: boolean) => {
+        setInternalOpen(nextOpen)
+      }),
+    [onOpenChange]
+  )
 
   const handleCreate = () => {
     const trimmedName = name.trim()
@@ -33,12 +57,14 @@ export function CreateProjectDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="w-full justify-start gap-2">
-          <Plus className="h-4 w-4" />
-          New Project
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger ? (
+        <DialogTrigger asChild>
+          <Button variant="outline" className={triggerClassName ?? 'w-full justify-start gap-2'}>
+            <Plus className="h-4 w-4" />
+            {triggerLabel}
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>

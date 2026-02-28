@@ -1,0 +1,106 @@
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"fast-live-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] emergency-stop received {"reason":"verify-run-matrix-reset"}
+[audit] Failed to create audit entry: Error: `headers` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at createAuditEntry (lib\audit.ts:13:27)
+    at auditEmergencyStop (lib\audit.ts:144:9)
+    at <unknown> (server\ws-server.ts:276:14)
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+[33mWARN [0m [ws-server] WebSocket auth failed in development; allowing unauthenticated connection with fallback profile {"error":"No authentication token provided","ip":"::1"}
+[33mWARN [0m [ws-server] Using dev profile fallback for unauthenticated websocket run {"userId":"69f39c52-7b3e-4db7-8b04-eeb14fe8aade"}
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\7.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\client-development\7.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\4.pack.gz_' -> 'C:\RIDER FINAL\TEST_RIDER_FINAL\.tmp\.next-dev\cache\webpack\server-development\4.pack.gz'

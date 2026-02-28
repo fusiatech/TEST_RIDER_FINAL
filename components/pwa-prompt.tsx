@@ -84,7 +84,7 @@ export function PWAPrompt() {
               <Download className="h-5 w-5 text-emerald-500" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Install SwarmUI</p>
+              <p className="text-sm font-medium text-foreground">Install Fusia AI</p>
               <p className="text-xs text-muted">Add to home screen for quick access</p>
             </div>
             <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export function PWAPrompt() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-foreground">Update Available</p>
-              <p className="text-xs text-muted">A new version of SwarmUI is ready</p>
+              <p className="text-xs text-muted">A new version of Fusia AI is ready</p>
             </div>
             <Button size="sm" onClick={handleUpdate}>
               Update

@@ -1,0 +1,498 @@
+{
+  "timestamp": "2026-02-28T07:29:09.130Z",
+  "baseUrl": "http://localhost:4100",
+  "wsUrl": "ws://localhost:4100/api/ws",
+  "runAccepted": true,
+  "finalType": "swarm-result",
+  "passed": true,
+  "attempts": [
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude",
+    "[orchestrator] API attempt 1 using claude"
+  ],
+  "failovers": [
+    "[security] Found 25 potential secret(s):\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:723 - Password in URL: \"text\": \"[api-runner] Error: Gemini API error (429): {\\n  \\\"error\\\": {\\n  \\\"code\\\": 42\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:847 - Password in URL: \"text\": \"[orchestrator] Failover gemini -> cursor: QUOTA_EXCEEDED: Gemini API error (4\nC:\\RIDER FINAL\\TEST_RIDER_FINAL\\db.json:993 - Password in URL: \"output\": \"[api-runner] Error: gemini: Gemini API error (429): {\\n  \\\"error\\\": {\\n\nC:\\RIDER FINAL\\TEST_RIDE"
+  ],
+  "statusEvents": [
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "failed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "completed"
+    }
+  ],
+  "finalPayload": {
+    "type": "swarm-result",
+    "result": {
+      "finalOutput": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+      "confidence": 95,
+      "agents": [
+        {
+          "id": "researcher-1",
+          "role": "researcher",
+          "label": "Researcher #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263664094,
+          "finishedAt": 1772263665014,
+          "exitCode": 1
+        },
+        {
+          "id": "planner-1",
+          "role": "planner",
+          "label": "Planner #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263666502,
+          "finishedAt": 1772263667010,
+          "exitCode": 1
+        },
+        {
+          "id": "planner-2",
+          "role": "planner",
+          "label": "Planner #2",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263666502,
+          "finishedAt": 1772263667410,
+          "exitCode": 1
+        },
+        {
+          "id": "coder-1",
+          "role": "coder",
+          "label": "Coder #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263670033,
+          "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-1",
+          "finishedAt": 1772263671935,
+          "exitCode": 1
+        },
+        {
+          "id": "coder-2",
+          "role": "coder",
+          "label": "Coder #2",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263670033,
+          "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-2",
+          "finishedAt": 1772263671936,
+          "exitCode": 1
+        },
+        {
+          "id": "coder-3",
+          "role": "coder",
+          "label": "Coder #3",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263670033,
+          "worktree": "C:\\RIDER FINAL\\TEST_RIDER_FINAL\\worktrees\\coder-3",
+          "finishedAt": 1772263673160,
+          "exitCode": 1
+        },
+        {
+          "id": "validator-1",
+          "role": "validator",
+          "label": "Validator #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263677725,
+          "finishedAt": 1772263679930,
+          "exitCode": 1
+        },
+        {
+          "id": "validator-2",
+          "role": "validator",
+          "label": "Validator #2",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263677725,
+          "finishedAt": 1772263680138,
+          "exitCode": 1
+        },
+        {
+          "id": "validator-1-rerun",
+          "role": "validator",
+          "label": "Validator #1 (rerun)",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263681873,
+          "finishedAt": 1772263684427,
+          "exitCode": 1
+        },
+        {
+          "id": "validator-2-rerun",
+          "role": "validator",
+          "label": "Validator #2 (rerun)",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263681873,
+          "finishedAt": 1772263684833,
+          "exitCode": 1
+        },
+        {
+          "id": "security-1",
+          "role": "security",
+          "label": "Security #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263743566,
+          "finishedAt": 1772263744492,
+          "exitCode": 1
+        },
+        {
+          "id": "synthesizer-1",
+          "role": "synthesizer",
+          "label": "Synthesizer #1",
+          "provider": "claude",
+          "status": "failed",
+          "output": "[api-runner] Error: claude: Claude API authentication failed (401): Invalid API key\n",
+          "startedAt": 1772263745873,
+          "finishedAt": 1772263746364,
+          "exitCode": 1
+        }
+      ],
+      "sources": [],
+      "validationPassed": false,
+      "evidenceStatus": {
+        "sufficient": true,
+        "traceId": "b68b16279385e88c4fd25cd5796b414a",
+        "references": 13
+      }
+    }
+  }
+}

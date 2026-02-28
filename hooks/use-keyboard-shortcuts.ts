@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useCallback, useRef } from 'react'
 
@@ -141,7 +141,7 @@ export function useGlobalShortcuts(actions: GlobalShortcutActions) {
       key: 'n',
       ctrl: true,
       handler: actions.onNewChat,
-      description: 'New chat',
+      description: 'New conversation',
     })
   }
 
@@ -176,14 +176,15 @@ export function useGlobalShortcuts(actions: GlobalShortcutActions) {
 }
 
 export const SHORTCUT_LABELS = {
-  commandPalette: '⌘/Ctrl + K',
-  toggleSidebar: '⌘/Ctrl + /',
-  sendMessage: '⌘/Ctrl + Enter',
+  commandPalette: 'Cmd/Ctrl + K',
+  toggleSidebar: 'Cmd/Ctrl + /',
+  sendMessage: 'Cmd/Ctrl + Enter',
   escape: 'Escape',
-  newChat: '⌘/Ctrl + N',
-  openSettings: '⌘/Ctrl + ,',
+  newChat: 'Cmd/Ctrl + N',
+  openSettings: 'Cmd/Ctrl + ,',
   toggleDashboard: 'Ctrl + Shift + D',
   showHelp: '?',
   navigate: 'Tab / Shift + Tab',
-  arrowKeys: '↑↓ Arrow keys',
+  arrowKeys: 'Up/Down Arrow keys',
 }
+

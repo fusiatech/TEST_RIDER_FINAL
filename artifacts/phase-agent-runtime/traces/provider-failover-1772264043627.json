@@ -1,0 +1,108 @@
+{
+  "timestamp": "2026-02-28T07:34:03.626Z",
+  "baseUrl": "http://127.0.0.1:4100",
+  "wsUrl": "ws://127.0.0.1:4100/api/ws",
+  "runAccepted": true,
+  "finalType": "swarm-result",
+  "passed": false,
+  "attempts": [
+    "[orchestrator] API attempt 1 using gemini"
+  ],
+  "failovers": [],
+  "statusEvents": [
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "gemini",
+      "providerActive": "gemini",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "spawning"
+    },
+    {
+      "providerRequested": "gemini",
+      "providerActive": "gemini",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "gemini",
+      "providerActive": "gemini",
+      "attempt": 1,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "running"
+    },
+    {
+      "providerRequested": "gemini",
+      "providerActive": "gemini",
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "completed"
+    },
+    {
+      "providerRequested": null,
+      "providerActive": null,
+      "attempt": null,
+      "failoverFrom": null,
+      "failureCode": null,
+      "status": "completed"
+    }
+  ],
+  "finalPayload": {
+    "type": "swarm-result",
+    "result": {
+      "finalOutput": "[api-runner] Gemini model: gemma-3-1b-it\nTwo plus two equals four.Two plus two equals four.",
+      "confidence": 50,
+      "agents": [
+        {
+          "id": "coder-1",
+          "role": "coder",
+          "label": "Coder #1",
+          "provider": "gemini",
+          "status": "completed",
+          "output": "[api-runner] Gemini model: gemma-3-1b-it\nTwo plus two equals four.Two plus two equals four.",
+          "startedAt": 1772264041858,
+          "finishedAt": 1772264043496,
+          "exitCode": 0
+        }
+      ],
+      "sources": [],
+      "validationPassed": true,
+      "evidenceStatus": {
+        "sufficient": true,
+        "traceId": "6a446b244be1d0a97a5950b79820b153",
+        "references": 2
+      },
+      "runMeta": {
+        "providerUsed": "gemini"
+      }
+    }
+  }
+}

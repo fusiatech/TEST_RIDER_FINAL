@@ -1,0 +1,13 @@
+﻿{
+    "timestamp":  "2026-02-28T05:53:12.9180851+00:00",
+    "app":  "http://localhost:4100",
+    "rootStatus":  307,
+    "rootLocation":  "/login?callbackUrl=%2Fapp",
+    "healthLive":  200,
+    "healthReady":  200,
+    "wsRunAccepted":  true,
+    "wsFinalType":  "swarm-result",
+    "wsPass":  true,
+    "wsHasMockOutput":  false,
+    "storageRenameErrorDetected":  false
+}

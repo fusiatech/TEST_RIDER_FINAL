@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getFigmaFile, parseFigmaUrl, testFigmaConnection } from '@/server/figma-client'
-import { getSettings } from '@/server/storage'
+import { auth } from '@/auth'
+import { getFigmaAccessTokenForUser } from '@/server/integrations/figma-service'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -10,8 +11,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'URL required' }, { status: 400 })
   }
 
-  const settings = await getSettings()
-  const accessToken = settings.figmaConfig?.accessToken
+  const session = await auth().catch(() => null)
+  const userId = session?.user?.id
+  const accessToken = await getFigmaAccessTokenForUser(userId)
 
   if (!accessToken) {
     return NextResponse.json(

@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSwarmStore } from '@/lib/store'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { motion, AnimatePresence } from 'framer-motion'
+import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { OfflineState } from '@/components/ui/offline-state'
+import { NoDataState } from '@/components/ui/no-data-state'
+import { motion } from 'framer-motion'
 import {
   LineChart,
   Line,
@@ -37,7 +43,6 @@ import {
   Wifi,
   WifiOff,
   TrendingUp,
-  TrendingDown,
   BarChart3,
   PieChart as PieChartIcon,
   Server,
@@ -534,22 +539,43 @@ function RecentErrorsList({ errors }: { errors: Array<{ timestamp: number; type:
 }
 
 export function ObservabilityDashboard() {
+  const uiPreferences = useSwarmStore((s) => s.uiPreferences)
+  const updateUIPreferences = useSwarmStore((s) => s.updateUIPreferences)
+
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isOffline, setIsOffline] = useState(false)
+  const [timeRange, setTimeRange] = useState(uiPreferences.observability.defaultTimeRange)
+  const [collapsedWidgets, setCollapsedWidgets] = useState<string[]>(uiPreferences.observability.collapsedWidgets)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   
   const fetchMetrics = useCallback(async () => {
-    try {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    const execute = async (attempt = 0): Promise<void> => {
       const res = await fetch('/api/metrics/dashboard')
-      if (res.ok) {
-        const data = await res.json()
-        setMetrics(data)
-        setLastUpdated(new Date())
+      if (!res.ok) {
+        if (attempt < 2) {
+          await wait(350 * (attempt + 1))
+          return execute(attempt + 1)
+        }
+        throw new Error(`Metrics endpoint returned ${res.status}`)
       }
-    } catch {
-      // API may not be available
+      const data = await res.json()
+      setMetrics(data)
+      setLastUpdated(new Date())
+      setErrorMessage(null)
+      setIsOffline(false)
+    }
+
+    try {
+      await execute()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setErrorMessage(message)
+      setIsOffline(typeof navigator !== 'undefined' && navigator.onLine === false)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -559,12 +585,17 @@ export function ObservabilityDashboard() {
   useEffect(() => {
     fetchMetrics()
   }, [fetchMetrics])
+
+  useEffect(() => {
+    setTimeRange(uiPreferences.observability.defaultTimeRange)
+    setCollapsedWidgets(uiPreferences.observability.collapsedWidgets)
+  }, [uiPreferences.observability.defaultTimeRange, uiPreferences.observability.collapsedWidgets])
   
   useEffect(() => {
     if (!autoRefresh) return
-    const interval = setInterval(fetchMetrics, 15000)
+    const interval = setInterval(fetchMetrics, uiPreferences.observability.refreshIntervalSec * 1000)
     return () => clearInterval(interval)
-  }, [autoRefresh, fetchMetrics])
+  }, [autoRefresh, fetchMetrics, uiPreferences.observability.refreshIntervalSec])
   
   const handleRefresh = () => {
     setRefreshing(true)
@@ -584,6 +615,33 @@ export function ObservabilityDashboard() {
     freeMemMB: 0,
     totalMemMB: 0,
   }
+
+  const rangeMinutes = {
+    '15m': 15,
+    '1h': 60,
+    '6h': 360,
+    '24h': 1440,
+  }[timeRange]
+
+  const filterSeries = useCallback((series: TimeSeriesPoint[]): TimeSeriesPoint[] => {
+    const cutoff = Date.now() - rangeMinutes * 60 * 1000
+    return series.filter((point) => point.timestamp >= cutoff)
+  }, [rangeMinutes])
+
+  const isCollapsed = useCallback((id: string) => collapsedWidgets.includes(id), [collapsedWidgets])
+
+  const toggleWidget = useCallback((id: string) => {
+    const next = collapsedWidgets.includes(id)
+      ? collapsedWidgets.filter((entry) => entry !== id)
+      : [...collapsedWidgets, id]
+    setCollapsedWidgets(next)
+    void updateUIPreferences({
+      observability: {
+        ...uiPreferences.observability,
+        collapsedWidgets: next,
+      },
+    })
+  }, [collapsedWidgets, updateUIPreferences, uiPreferences.observability])
   
   const getHealthStatus = (): HealthStatus => {
     if (loading || !metrics) return 'loading'
@@ -600,13 +658,48 @@ export function ObservabilityDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[600px]">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
-          <Loader2 className="h-12 w-12 text-primary" />
-        </motion.div>
+        <div className="w-full max-w-2xl rounded-2xl border border-border/70 bg-card/40 p-5">
+          <LoadingState
+            variant="workflow"
+            size="lg"
+            text="Loading observability data..."
+            steps={['Collect', 'Correlate', 'Render', 'Ready']}
+            activeStep={2}
+          />
+        </div>
       </div>
+    )
+  }
+
+  if (isOffline) {
+    return (
+      <OfflineState
+        title="Observability is offline"
+        description="Network connectivity is unavailable. Reconnect and retry."
+        onRetry={handleRefresh}
+        className="h-[600px]"
+      />
+    )
+  }
+
+  if (errorMessage && !metrics) {
+    return (
+      <ErrorState
+        title="Failed to load observability metrics"
+        description={errorMessage}
+        onRetry={handleRefresh}
+        className="h-[600px]"
+      />
+    )
+  }
+
+  if (!metrics) {
+    return (
+      <NoDataState
+        title="No observability data yet"
+        description="Run a task to start collecting metrics for this workspace."
+        className="h-[600px]"
+      />
     )
   }
   
@@ -628,6 +721,45 @@ export function ObservabilityDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={timeRange}
+            onChange={(event) => {
+              const next = event.target.value as '15m' | '1h' | '6h' | '24h'
+              setTimeRange(next)
+              void updateUIPreferences({
+                observability: {
+                  ...uiPreferences.observability,
+                  defaultTimeRange: next,
+                },
+              })
+            }}
+            className="h-9 rounded-lg border border-border bg-card px-2 text-xs"
+            aria-label="Observability time range"
+          >
+            <option value="15m">15m</option>
+            <option value="1h">1h</option>
+            <option value="6h">6h</option>
+            <option value="24h">24h</option>
+          </select>
+          <select
+            value={uiPreferences.observability.refreshIntervalSec}
+            onChange={(event) => {
+              const next = Number(event.target.value)
+              void updateUIPreferences({
+                observability: {
+                  ...uiPreferences.observability,
+                  refreshIntervalSec: next,
+                },
+              })
+            }}
+            className="h-9 rounded-lg border border-border bg-card px-2 text-xs"
+            aria-label="Auto refresh interval"
+          >
+            <option value={10}>10s</option>
+            <option value={15}>15s</option>
+            <option value={30}>30s</option>
+            <option value={60}>60s</option>
+          </select>
           <StatusBadge status={getHealthStatus()} />
           <Button
             variant="outline"
@@ -657,6 +789,51 @@ export function ObservabilityDashboard() {
           Last updated: {lastUpdated.toLocaleTimeString()}
         </p>
       )}
+      {errorMessage && metrics && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Latest refresh warning: {errorMessage}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {[
+          ['request-rate', 'Request Rate'],
+          ['latency', 'Latency'],
+          ['error-rate', 'Errors'],
+          ['status-distribution', 'Status'],
+          ['jobs', 'Jobs'],
+          ['agents', 'Agents'],
+          ['events', 'Events'],
+        ].map(([id, label]) => (
+          <Button
+            key={id}
+            size="sm"
+            variant={isCollapsed(id) ? 'outline' : 'default'}
+            className="h-8 text-xs"
+            onClick={() => toggleWidget(id)}
+          >
+            {isCollapsed(id) ? `Show ${label}` : `Hide ${label}`}
+          </Button>
+        ))}
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs"
+          onClick={() => {
+            const next = [...uiPreferences.observability.widgetOrder]
+            const first = next.shift()
+            if (first) next.push(first)
+            void updateUIPreferences({
+              observability: {
+                ...uiPreferences.observability,
+                widgetOrder: next,
+              },
+            })
+          }}
+        >
+          Cycle Order
+        </Button>
+      </div>
       
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -734,7 +911,10 @@ export function ObservabilityDashboard() {
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Request Rate Chart */}
-            <Card>
+            <Card
+              className={cn(isCollapsed('request-rate') && 'hidden')}
+              style={{ order: uiPreferences.observability.widgetOrder.indexOf('request-rate') }}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
@@ -742,12 +922,15 @@ export function ObservabilityDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {metrics && <RequestRateChart data={metrics.timeSeries.requestRate} />}
+                {metrics && <RequestRateChart data={filterSeries(metrics.timeSeries.requestRate)} />}
               </CardContent>
             </Card>
             
             {/* Latency Chart */}
-            <Card>
+            <Card
+              className={cn(isCollapsed('latency') && 'hidden')}
+              style={{ order: uiPreferences.observability.widgetOrder.indexOf('latency') }}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Timer className="h-5 w-5 text-primary" />
@@ -755,12 +938,15 @@ export function ObservabilityDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {metrics && <LatencyChart data={metrics.timeSeries.latency} />}
+                {metrics && <LatencyChart data={filterSeries(metrics.timeSeries.latency)} />}
               </CardContent>
             </Card>
             
             {/* Error Rate Chart */}
-            <Card>
+            <Card
+              className={cn(isCollapsed('error-rate') && 'hidden')}
+              style={{ order: uiPreferences.observability.widgetOrder.indexOf('error-rate') }}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-rose-500" />
@@ -768,12 +954,15 @@ export function ObservabilityDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {metrics && <ErrorRateChart data={metrics.timeSeries.errorRate} />}
+                {metrics && <ErrorRateChart data={filterSeries(metrics.timeSeries.errorRate)} />}
               </CardContent>
             </Card>
             
             {/* Status Distribution */}
-            <Card>
+            <Card
+              className={cn(isCollapsed('status-distribution') && 'hidden')}
+              style={{ order: uiPreferences.observability.widgetOrder.indexOf('status-distribution') }}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <PieChartIcon className="h-5 w-5 text-primary" />
@@ -815,7 +1004,7 @@ export function ObservabilityDashboard() {
                 <CardTitle className="text-lg">Request Rate Over Time</CardTitle>
               </CardHeader>
               <CardContent>
-                {metrics && <RequestRateChart data={metrics.timeSeries.requestRate} />}
+                {metrics && <RequestRateChart data={filterSeries(metrics.timeSeries.requestRate)} />}
               </CardContent>
             </Card>
             
@@ -824,12 +1013,12 @@ export function ObservabilityDashboard() {
                 <CardTitle className="text-lg">Latency Distribution</CardTitle>
               </CardHeader>
               <CardContent>
-                {metrics && <LatencyChart data={metrics.timeSeries.latency} />}
+                {metrics && <LatencyChart data={filterSeries(metrics.timeSeries.latency)} />}
               </CardContent>
             </Card>
           </div>
           
-          <Card>
+          <Card className={cn(isCollapsed('events') && 'hidden')}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-rose-500" />
@@ -932,7 +1121,7 @@ export function ObservabilityDashboard() {
             </Card>
           </div>
           
-          <Card>
+          <Card className={cn(isCollapsed('jobs') && 'hidden')}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Job Queue Status</CardTitle>
             </CardHeader>
@@ -988,11 +1177,11 @@ export function ObservabilityDashboard() {
             />
           </div>
           
-          <Card>
+          <Card className={cn(isCollapsed('agents') && 'hidden')}>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Bot className="h-5 w-5 text-primary" />
-                CLI Agent Status
+                Runtime Assistant Status
               </CardTitle>
             </CardHeader>
             <CardContent>

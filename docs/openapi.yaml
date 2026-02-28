@@ -3,7 +3,7 @@ info:
   title: SwarmUI API
   description: |
     API documentation for SwarmUI - AI-powered development environment with parallel CLI agent orchestration.
-    
+
     ## Overview
     SwarmUI provides a comprehensive API for managing:
     - Chat sessions with AI agents
@@ -13,10 +13,10 @@ info:
     - File system operations
     - Terminal sessions
     - Testing and debugging
-    
+
     ## Authentication
     Most endpoints require authentication via NextAuth.js session cookies.
-    
+
     ## WebSocket
     Real-time updates are available via WebSocket at `ws://localhost:3000/api/ws`.
     See [WebSocket API documentation](./WEBSOCKET_API.md) for details.
@@ -26,13 +26,11 @@ info:
     url: https://opensource.org/licenses/MIT
   contact:
     name: SwarmUI Team
-
 servers:
   - url: http://localhost:3000
     description: Development server
   - url: http://localhost:4000
     description: Alternative dev port
-
 tags:
   - name: Health
     description: Health check and monitoring endpoints
@@ -68,11 +66,17 @@ tags:
     description: Model Context Protocol operations
   - name: Metrics
     description: Prometheus metrics
-
+  - name: Billing
+    description: Billing, subscriptions, and entitlements
+  - name: Integrations
+    description: Third-party integration lifecycle endpoints
+  - name: Providers
+    description: Provider catalog and model discovery
 paths:
   /api/health:
     get:
-      tags: [Health]
+      tags:
+        - Health
       summary: Comprehensive health check
       description: Returns detailed health status including dependency checks, memory usage, and system metrics
       operationId: getHealth
@@ -83,10 +87,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
-
   /api/health/live:
     get:
-      tags: [Health]
+      tags:
+        - Health
       summary: Liveness probe
       description: Simple liveness check for Kubernetes probes
       operationId: getLiveness
@@ -101,10 +105,10 @@ paths:
                   status:
                     type: string
                     example: ok
-
   /api/health/ready:
     get:
-      tags: [Health]
+      tags:
+        - Health
       summary: Readiness probe
       description: Readiness check for Kubernetes probes - verifies service can accept traffic
       operationId: getReadiness
@@ -121,10 +125,10 @@ paths:
                     example: ready
         '503':
           description: Service not ready
-
   /api/metrics:
     get:
-      tags: [Metrics]
+      tags:
+        - Metrics
       summary: Prometheus metrics
       description: Returns Prometheus-format metrics for monitoring
       operationId: getMetrics
@@ -135,10 +139,10 @@ paths:
             text/plain:
               schema:
                 type: string
-
   /api/sessions:
     get:
-      tags: [Sessions]
+      tags:
+        - Sessions
       summary: List all sessions
       operationId: listSessions
       responses:
@@ -151,7 +155,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Session'
     post:
-      tags: [Sessions]
+      tags:
+        - Sessions
       summary: Create a new session
       operationId: createSession
       requestBody:
@@ -170,10 +175,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
-
   /api/sessions/{id}:
     get:
-      tags: [Sessions]
+      tags:
+        - Sessions
       summary: Get session by ID
       operationId: getSession
       parameters:
@@ -192,7 +197,8 @@ paths:
         '404':
           description: Session not found
     patch:
-      tags: [Sessions]
+      tags:
+        - Sessions
       summary: Update session
       operationId: updateSession
       parameters:
@@ -217,7 +223,8 @@ paths:
         '200':
           description: Session updated
     delete:
-      tags: [Sessions]
+      tags:
+        - Sessions
       summary: Delete session
       operationId: deleteSession
       parameters:
@@ -229,10 +236,10 @@ paths:
       responses:
         '200':
           description: Session deleted
-
   /api/projects:
     get:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: List all projects
       operationId: listProjects
       responses:
@@ -245,7 +252,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Project'
     post:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Create a new project
       operationId: createProject
       requestBody:
@@ -261,10 +269,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
-
   /api/projects/{id}:
     get:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Get project by ID
       operationId: getProject
       parameters:
@@ -283,7 +291,8 @@ paths:
         '404':
           description: Project not found
     patch:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Update project
       operationId: updateProject
       parameters:
@@ -301,7 +310,8 @@ paths:
         '200':
           description: Project updated
     delete:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Delete project
       operationId: deleteProject
       parameters:
@@ -313,10 +323,10 @@ paths:
       responses:
         '200':
           description: Project deleted
-
   /api/projects/{id}/tickets:
     get:
-      tags: [Tickets]
+      tags:
+        - Tickets
       summary: List tickets for a project
       operationId: listProjectTickets
       parameters:
@@ -343,7 +353,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Ticket'
     post:
-      tags: [Tickets]
+      tags:
+        - Tickets
       summary: Create a ticket
       operationId: createTicket
       parameters:
@@ -365,10 +376,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Ticket'
-
   /api/projects/{id}/epics:
     get:
-      tags: [Epics]
+      tags:
+        - Epics
       summary: List epics for a project
       operationId: listProjectEpics
       parameters:
@@ -387,7 +398,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Epic'
     post:
-      tags: [Epics]
+      tags:
+        - Epics
       summary: Create an epic
       operationId: createEpic
       parameters:
@@ -405,10 +417,10 @@ paths:
       responses:
         '201':
           description: Epic created
-
   /api/projects/{id}/prd:
     get:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Get project PRD
       operationId: getProjectPrd
       parameters:
@@ -429,9 +441,13 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: [draft, approved, rejected]
+                    enum:
+                      - draft
+                      - approved
+                      - rejected
     put:
-      tags: [Projects]
+      tags:
+        - Projects
       summary: Update project PRD
       operationId: updateProjectPrd
       parameters:
@@ -450,14 +466,17 @@ paths:
                   type: string
                 status:
                   type: string
-                  enum: [draft, approved, rejected]
+                  enum:
+                    - draft
+                    - approved
+                    - rejected
       responses:
         '200':
           description: PRD updated
-
   /api/jobs:
     get:
-      tags: [Jobs]
+      tags:
+        - Jobs
       summary: List all jobs
       operationId: listJobs
       parameters:
@@ -480,7 +499,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/SwarmJob'
     post:
-      tags: [Jobs]
+      tags:
+        - Jobs
       summary: Create a new job
       operationId: createJob
       requestBody:
@@ -489,7 +509,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [prompt, sessionId]
+              required:
+                - prompt
+                - sessionId
               properties:
                 prompt:
                   type: string
@@ -497,7 +519,10 @@ paths:
                   type: string
                 mode:
                   type: string
-                  enum: [chat, swarm, project]
+                  enum:
+                    - chat
+                    - swarm
+                    - project
                 priority:
                   type: integer
       responses:
@@ -507,10 +532,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SwarmJob'
-
   /api/jobs/{id}:
     get:
-      tags: [Jobs]
+      tags:
+        - Jobs
       summary: Get job by ID
       operationId: getJob
       parameters:
@@ -529,7 +554,8 @@ paths:
         '404':
           description: Job not found
     delete:
-      tags: [Jobs]
+      tags:
+        - Jobs
       summary: Cancel job
       operationId: cancelJob
       parameters:
@@ -541,10 +567,10 @@ paths:
       responses:
         '200':
           description: Job cancelled
-
   /api/scheduler:
     get:
-      tags: [Scheduler]
+      tags:
+        - Scheduler
       summary: List scheduled tasks
       operationId: listScheduledTasks
       responses:
@@ -557,7 +583,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/ScheduledTask'
     post:
-      tags: [Scheduler]
+      tags:
+        - Scheduler
       summary: Create scheduled task
       operationId: createScheduledTask
       requestBody:
@@ -569,10 +596,10 @@ paths:
       responses:
         '201':
           description: Task created
-
   /api/scheduler/{id}:
     get:
-      tags: [Scheduler]
+      tags:
+        - Scheduler
       summary: Get scheduled task
       operationId: getScheduledTask
       parameters:
@@ -585,7 +612,8 @@ paths:
         '200':
           description: Task details
     patch:
-      tags: [Scheduler]
+      tags:
+        - Scheduler
       summary: Update scheduled task
       operationId: updateScheduledTask
       parameters:
@@ -608,7 +636,8 @@ paths:
         '200':
           description: Task updated
     delete:
-      tags: [Scheduler]
+      tags:
+        - Scheduler
       summary: Delete scheduled task
       operationId: deleteScheduledTask
       parameters:
@@ -620,10 +649,10 @@ paths:
       responses:
         '200':
           description: Task deleted
-
   /api/git/status:
     get:
-      tags: [Git]
+      tags:
+        - Git
       summary: Get git status
       operationId: getGitStatus
       parameters:
@@ -639,10 +668,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GitStatus'
-
   /api/git/diff:
     get:
-      tags: [Git]
+      tags:
+        - Git
       summary: Get git diff
       operationId: getGitDiff
       parameters:
@@ -664,10 +693,10 @@ paths:
                 properties:
                   diff:
                     type: string
-
   /api/git/commit:
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Create a commit
       operationId: createGitCommit
       requestBody:
@@ -676,7 +705,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [message]
+              required:
+                - message
               properties:
                 message:
                   type: string
@@ -694,10 +724,10 @@ paths:
                     type: string
                   message:
                     type: string
-
   /api/git/stage:
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Stage files
       operationId: stageFiles
       requestBody:
@@ -715,10 +745,10 @@ paths:
       responses:
         '200':
           description: Files staged
-
   /api/git/discard:
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Discard changes
       operationId: discardChanges
       requestBody:
@@ -734,10 +764,10 @@ paths:
       responses:
         '200':
           description: Changes discarded
-
   /api/git/push:
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Push to remote
       operationId: gitPush
       requestBody:
@@ -754,10 +784,10 @@ paths:
       responses:
         '200':
           description: Push successful
-
   /api/git/pull:
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Pull from remote
       operationId: gitPull
       requestBody:
@@ -774,10 +804,10 @@ paths:
       responses:
         '200':
           description: Pull successful
-
   /api/git/branches:
     get:
-      tags: [Git]
+      tags:
+        - Git
       summary: List branches
       operationId: listBranches
       responses:
@@ -790,7 +820,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/GitBranch'
     post:
-      tags: [Git]
+      tags:
+        - Git
       summary: Create branch
       operationId: createBranch
       requestBody:
@@ -799,7 +830,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
                 name:
                   type: string
@@ -808,10 +840,10 @@ paths:
       responses:
         '201':
           description: Branch created
-
   /api/git/branches/{name}:
     delete:
-      tags: [Git]
+      tags:
+        - Git
       summary: Delete branch
       operationId: deleteBranch
       parameters:
@@ -823,10 +855,10 @@ paths:
       responses:
         '200':
           description: Branch deleted
-
   /api/files:
     get:
-      tags: [Files]
+      tags:
+        - Files
       summary: List files in directory
       operationId: listFiles
       parameters:
@@ -844,10 +876,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/FileEntry'
-
   /api/files/{path}:
     get:
-      tags: [Files]
+      tags:
+        - Files
       summary: Read file content
       operationId: readFile
       parameters:
@@ -870,7 +902,8 @@ paths:
                   path:
                     type: string
     put:
-      tags: [Files]
+      tags:
+        - Files
       summary: Write file content
       operationId: writeFile
       parameters:
@@ -885,7 +918,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [content]
+              required:
+                - content
               properties:
                 content:
                   type: string
@@ -893,7 +927,8 @@ paths:
         '200':
           description: File written
     delete:
-      tags: [Files]
+      tags:
+        - Files
       summary: Delete file
       operationId: deleteFile
       parameters:
@@ -905,10 +940,10 @@ paths:
       responses:
         '200':
           description: File deleted
-
   /api/files/search:
     get:
-      tags: [Files]
+      tags:
+        - Files
       summary: Search files
       operationId: searchFiles
       parameters:
@@ -932,10 +967,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/FileSearchResult'
-
   /api/terminal:
     get:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: List terminal sessions
       operationId: listTerminals
       responses:
@@ -948,7 +983,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/TerminalSession'
     post:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: Create terminal session
       operationId: createTerminal
       requestBody:
@@ -968,10 +1004,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TerminalSession'
-
   /api/terminal/{id}:
     get:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: Get terminal session
       operationId: getTerminal
       parameters:
@@ -984,7 +1020,8 @@ paths:
         '200':
           description: Terminal details
     delete:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: Close terminal session
       operationId: closeTerminal
       parameters:
@@ -996,10 +1033,10 @@ paths:
       responses:
         '200':
           description: Terminal closed
-
   /api/terminal/{id}/write:
     post:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: Write to terminal
       operationId: writeToTerminal
       parameters:
@@ -1014,17 +1051,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [data]
+              required:
+                - data
               properties:
                 data:
                   type: string
       responses:
         '200':
           description: Data written
-
   /api/terminal/{id}/resize:
     post:
-      tags: [Terminal]
+      tags:
+        - Terminal
       summary: Resize terminal
       operationId: resizeTerminal
       parameters:
@@ -1039,7 +1077,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [cols, rows]
+              required:
+                - cols
+                - rows
               properties:
                 cols:
                   type: integer
@@ -1048,10 +1088,10 @@ paths:
       responses:
         '200':
           description: Terminal resized
-
   /api/tests:
     get:
-      tags: [Tests]
+      tags:
+        - Tests
       summary: List test jobs
       operationId: listTestJobs
       responses:
@@ -1064,7 +1104,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/TestJob'
     post:
-      tags: [Tests]
+      tags:
+        - Tests
       summary: Run tests
       operationId: runTests
       requestBody:
@@ -1086,10 +1127,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TestJob'
-
   /api/tests/{id}:
     get:
-      tags: [Tests]
+      tags:
+        - Tests
       summary: Get test job
       operationId: getTestJob
       parameters:
@@ -1106,7 +1147,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/TestJob'
     delete:
-      tags: [Tests]
+      tags:
+        - Tests
       summary: Cancel test job
       operationId: cancelTestJob
       parameters:
@@ -1118,26 +1160,27 @@ paths:
       responses:
         '200':
           description: Test job cancelled
-
   /api/debug:
     get:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: List debug sessions
       operationId: listDebugSessions
       responses:
         '200':
           description: List of debug sessions
     post:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: Create debug session
       operationId: createDebugSession
       responses:
         '201':
           description: Debug session created
-
   /api/debug/{id}:
     get:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: Get debug session
       operationId: getDebugSession
       parameters:
@@ -1150,7 +1193,8 @@ paths:
         '200':
           description: Debug session details
     delete:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: End debug session
       operationId: endDebugSession
       parameters:
@@ -1162,10 +1206,10 @@ paths:
       responses:
         '200':
           description: Debug session ended
-
   /api/debug/{id}/breakpoint:
     get:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: List breakpoints
       operationId: listBreakpoints
       parameters:
@@ -1178,7 +1222,8 @@ paths:
         '200':
           description: List of breakpoints
     post:
-      tags: [Debug]
+      tags:
+        - Debug
       summary: Add breakpoint
       operationId: addBreakpoint
       parameters:
@@ -1192,7 +1237,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [file, line]
+              required:
+                - file
+                - line
               properties:
                 file:
                   type: string
@@ -1203,10 +1250,10 @@ paths:
       responses:
         '201':
           description: Breakpoint added
-
   /api/settings:
     get:
-      tags: [Settings]
+      tags:
+        - Settings
       summary: Get application settings
       operationId: getSettings
       responses:
@@ -1217,7 +1264,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Settings'
     put:
-      tags: [Settings]
+      tags:
+        - Settings
       summary: Update settings
       operationId: updateSettings
       requestBody:
@@ -1229,10 +1277,10 @@ paths:
       responses:
         '200':
           description: Settings updated
-
   /api/settings/rotate-key:
     post:
-      tags: [Settings]
+      tags:
+        - Settings
       summary: Rotate API key
       operationId: rotateApiKey
       requestBody:
@@ -1241,17 +1289,18 @@ paths:
           application/json:
             schema:
               type: object
-              required: [provider]
+              required:
+                - provider
               properties:
                 provider:
                   type: string
       responses:
         '200':
           description: Key rotated
-
   /api/extensions:
     get:
-      tags: [Extensions]
+      tags:
+        - Extensions
       summary: List extensions
       operationId: listExtensions
       responses:
@@ -1264,7 +1313,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/Extension'
     post:
-      tags: [Extensions]
+      tags:
+        - Extensions
       summary: Install extension
       operationId: installExtension
       requestBody:
@@ -1272,7 +1322,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [id]
+              required:
+                - id
               properties:
                 id:
                   type: string
@@ -1281,10 +1332,10 @@ paths:
       responses:
         '201':
           description: Extension installed
-
   /api/extensions/{id}:
     get:
-      tags: [Extensions]
+      tags:
+        - Extensions
       summary: Get extension
       operationId: getExtension
       parameters:
@@ -1297,7 +1348,8 @@ paths:
         '200':
           description: Extension details
     delete:
-      tags: [Extensions]
+      tags:
+        - Extensions
       summary: Uninstall extension
       operationId: uninstallExtension
       parameters:
@@ -1309,10 +1361,10 @@ paths:
       responses:
         '200':
           description: Extension uninstalled
-
   /api/mcp:
     post:
-      tags: [MCP]
+      tags:
+        - MCP
       summary: Execute MCP tool
       operationId: executeMcpTool
       requestBody:
@@ -1328,10 +1380,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MCPToolResult'
-
   /api/admin/users:
     get:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: List users
       operationId: listUsers
       security:
@@ -1348,7 +1400,8 @@ paths:
         '403':
           description: Forbidden - requires admin role
     post:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: Create user
       operationId: createUser
       security:
@@ -1359,7 +1412,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, role]
+              required:
+                - email
+                - role
               properties:
                 email:
                   type: string
@@ -1373,10 +1428,10 @@ paths:
           description: User created
         '403':
           description: Forbidden
-
   /api/admin/users/{id}:
     patch:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: Update user
       operationId: updateUser
       security:
@@ -1403,7 +1458,8 @@ paths:
         '403':
           description: Forbidden
     delete:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: Delete user
       operationId: deleteUser
       security:
@@ -1419,10 +1475,10 @@ paths:
           description: User deleted
         '403':
           description: Forbidden
-
   /api/admin/audit:
     get:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: Get audit logs
       operationId: getAuditLogs
       security:
@@ -1472,10 +1528,10 @@ paths:
                     type: integer
         '403':
           description: Forbidden
-
   /api/admin/backup:
     post:
-      tags: [Admin]
+      tags:
+        - Admin
       summary: Create backup
       operationId: createBackup
       security:
@@ -1497,10 +1553,10 @@ paths:
                     format: date-time
         '403':
           description: Forbidden
-
   /api/validate:
     post:
-      tags: [Settings]
+      tags:
+        - Settings
       summary: Validate configuration
       operationId: validateConfig
       requestBody:
@@ -1522,10 +1578,10 @@ paths:
                     type: array
                     items:
                       type: string
-
   /api/test-connection:
     post:
-      tags: [Settings]
+      tags:
+        - Settings
       summary: Test API connection
       operationId: testConnection
       requestBody:
@@ -1534,7 +1590,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [provider, apiKey]
+              required:
+                - provider
+                - apiKey
               properties:
                 provider:
                   type: string
@@ -1552,7 +1610,1735 @@ paths:
                     type: boolean
                   message:
                     type: string
-
+  /api/me/profile:
+    get:
+      tags:
+        - Integrations
+      summary: Get authenticated user profile and integration summary
+      operationId: getMeProfile
+      responses:
+        '200':
+          description: Profile payload
+    patch:
+      tags:
+        - Integrations
+      summary: Patch authenticated user profile
+      operationId: patchMeProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated profile
+  /api/me/integrations:
+    get:
+      tags:
+        - Integrations
+      summary: List authenticated user integrations
+      operationId: listMeIntegrations
+      responses:
+        '200':
+          description: Integration status list
+  /api/providers/catalog:
+    get:
+      tags:
+        - Providers
+      summary: Provider catalog with enabled/configured/runtime flags
+      operationId: getProviderCatalog
+      responses:
+        '200':
+          description: Provider catalog
+  /api/providers/models:
+    get:
+      tags:
+        - Providers
+      summary: Discover provider models for authenticated user
+      operationId: getProviderModels
+      responses:
+        '200':
+          description: Provider model list
+  /api/billing/checkout-session:
+    post:
+      tags:
+        - Billing
+      summary: Create Stripe checkout session
+      operationId: createCheckoutSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - plan
+                - successUrl
+                - cancelUrl
+              properties:
+                plan:
+                  type: string
+                  enum:
+                    - pro
+                    - team
+                    - enterprise
+                successUrl:
+                  type: string
+                cancelUrl:
+                  type: string
+      responses:
+        '200':
+          description: Checkout session created
+  /api/billing/portal-session:
+    post:
+      tags:
+        - Billing
+      summary: Create Stripe customer portal session
+      operationId: createPortalSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - returnUrl
+              properties:
+                returnUrl:
+                  type: string
+      responses:
+        '200':
+          description: Portal session created
+  /api/billing/subscription:
+    get:
+      tags:
+        - Billing
+      summary: Get current subscription snapshot
+      operationId: getBillingSubscription
+      responses:
+        '200':
+          description: Subscription payload
+  /api/billing/entitlements:
+    get:
+      tags:
+        - Billing
+      summary: Get effective entitlements for authenticated user
+      operationId: getBillingEntitlements
+      responses:
+        '200':
+          description: Entitlements payload
+  /api/billing/webhook:
+    post:
+      tags:
+        - Billing
+      summary: Stripe webhook endpoint
+      operationId: billingWebhook
+      responses:
+        '200':
+          description: Webhook accepted
+  /api/integrations/github/connect:
+    post:
+      tags:
+        - Integrations
+      summary: Start GitHub connect flow
+      operationId: githubConnect
+      responses:
+        '200':
+          description: Connect URL payload
+  /api/integrations/github/callback:
+    get:
+      tags:
+        - Integrations
+      summary: Complete GitHub connect flow
+      operationId: githubCallback
+      responses:
+        '200':
+          description: Callback result
+  /api/integrations/github/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get GitHub integration status
+      operationId: githubStatus
+      responses:
+        '200':
+          description: GitHub status
+  /api/integrations/github/disconnect:
+    delete:
+      tags:
+        - Integrations
+      summary: Disconnect GitHub integration
+      operationId: githubDisconnect
+      responses:
+        '200':
+          description: Disconnected
+  /api/integrations/github/webhook:
+    post:
+      tags:
+        - Integrations
+      summary: GitHub webhook endpoint
+      operationId: githubWebhook
+      responses:
+        '200':
+          description: Webhook accepted
+  /api/integrations/figma/connect:
+    post:
+      tags:
+        - Integrations
+      summary: Connect Figma token for authenticated user
+      operationId: figmaConnect
+      responses:
+        '200':
+          description: Connected
+  /api/integrations/figma/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get Figma integration status
+      operationId: figmaStatus
+      responses:
+        '200':
+          description: Figma status
+  /api/integrations/figma/disconnect:
+    delete:
+      tags:
+        - Integrations
+      summary: Disconnect Figma integration
+      operationId: figmaDisconnect
+      responses:
+        '200':
+          description: Disconnected
+  /api/integrations/mcp/servers:
+    get:
+      tags:
+        - Integrations
+      summary: List managed MCP servers
+      operationId: listManagedMcpServers
+      responses:
+        '200':
+          description: Server list
+    post:
+      tags:
+        - Integrations
+      summary: Create managed MCP server
+      operationId: createManagedMcpServer
+      responses:
+        '201':
+          description: Server created
+    patch:
+      tags:
+        - Integrations
+      summary: Update managed MCP server
+      operationId: updateManagedMcpServer
+      responses:
+        '200':
+          description: Server updated
+    delete:
+      tags:
+        - Integrations
+      summary: Delete managed MCP server
+      operationId: deleteManagedMcpServer
+      responses:
+        '200':
+          description: Server deleted
+  /api/integrations/mcp/templates:
+    get:
+      tags:
+        - Integrations
+      summary: List curated MCP server templates
+      operationId: listMcpTemplates
+      responses:
+        '200':
+          description: Template list
+  /api/integrations/slack/connect:
+    post:
+      tags:
+        - Integrations
+      summary: Start or complete Slack OAuth connection
+      operationId: slackConnect
+      responses:
+        '200':
+          description: Connection response
+  /api/integrations/slack/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get Slack integration status
+      operationId: slackStatus
+      responses:
+        '200':
+          description: Slack status
+  /api/integrations/slack/disconnect:
+    delete:
+      tags:
+        - Integrations
+      summary: Disconnect Slack integration
+      operationId: slackDisconnect
+      responses:
+        '200':
+          description: Disconnected
+  /api/integrations/slack/webhook:
+    post:
+      tags:
+        - Integrations
+      summary: Slack webhook endpoint
+      operationId: slackWebhook
+      responses:
+        '200':
+          description: Webhook accepted
+  /api/integrations/linear/connect:
+    post:
+      tags:
+        - Integrations
+      summary: Start or complete Linear OAuth connection
+      operationId: linearConnect
+      responses:
+        '200':
+          description: Connection response
+  /api/integrations/linear/status:
+    get:
+      tags:
+        - Integrations
+      summary: Get Linear integration status
+      operationId: linearStatus
+      responses:
+        '200':
+          description: Linear status
+  /api/integrations/linear/disconnect:
+    delete:
+      tags:
+        - Integrations
+      summary: Disconnect Linear integration
+      operationId: linearDisconnect
+      responses:
+        '200':
+          description: Disconnected
+  /api/integrations/linear/webhook:
+    post:
+      tags:
+        - Integrations
+      summary: Linear webhook endpoint
+      operationId: linearWebhook
+      responses:
+        '200':
+          description: Webhook accepted
+  /api/integrations/slack/callback:
+    get:
+      tags:
+        - Integrations
+      summary: Complete Slack OAuth callback
+      operationId: slackCallback
+      responses:
+        '200':
+          description: Callback result
+  /api/integrations/linear/callback:
+    get:
+      tags:
+        - Integrations
+      summary: Complete Linear OAuth callback
+      operationId: linearCallback
+      responses:
+        '200':
+          description: Callback result
+  /api/integrations/linear/issue-links:
+    get:
+      tags:
+        - Integrations
+      summary: List Linear issue links for authenticated user
+      operationId: linearIssueLinksList
+      responses:
+        '200':
+          description: Issue link list
+    post:
+      tags:
+        - Integrations
+      summary: Create Linear issue link mapping
+      operationId: linearIssueLinksCreate
+      responses:
+        '201':
+          description: Issue link created
+  /api/admin/tenants:
+    get:
+      tags:
+        - Admin
+      summary: GET /api/admin/tenants
+      operationId: getApiAdminTenants
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Admin
+      summary: POST /api/admin/tenants
+      operationId: postApiAdminTenants
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/admin/tenants/{id}:
+    get:
+      tags:
+        - Admin
+      summary: GET /api/admin/tenants/{id}
+      operationId: getApiAdminTenantsId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Admin
+      summary: PUT /api/admin/tenants/{id}
+      operationId: putApiAdminTenantsId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Admin
+      summary: DELETE /api/admin/tenants/{id}
+      operationId: deleteApiAdminTenantsId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/approvals/chains:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/approvals/chains
+      operationId: getApiApprovalsChains
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/approvals/chains
+      operationId: postApiApprovalsChains
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/approvals/chains
+      operationId: putApiApprovalsChains
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/approvals/chains
+      operationId: deleteApiApprovalsChains
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/approvals:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/approvals
+      operationId: getApiApprovals
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/approvals
+      operationId: postApiApprovals
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/approvals
+      operationId: putApiApprovals
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/approvals/{id}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/approvals/{id}
+      operationId: getApiApprovalsId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/approvals/{id}
+      operationId: deleteApiApprovalsId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/auth/register:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/auth/register
+      operationId: postApiAuthRegister
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/auth/{nextauth*}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/auth/{nextauth*}
+      operationId: getApiAuthNextauth
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/cli-detect:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/cli-detect
+      operationId: getApiClidetect
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/csrf:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/csrf
+      operationId: getApiCsrf
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/debug/{id}/breakpoint/{bpId}:
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/debug/{id}/breakpoint/{bpId}
+      operationId: deleteApiDebugIdBreakpointBpId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+    patch:
+      tags:
+        - Settings
+      summary: PATCH /api/debug/{id}/breakpoint/{bpId}
+      operationId: patchApiDebugIdBreakpointBpId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/eclipse/health:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/eclipse/health
+      operationId: getApiEclipseHealth
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/errors:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/errors
+      operationId: getApiErrors
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/errors
+      operationId: postApiErrors
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/errors
+      operationId: putApiErrors
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/figma/code:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/figma/code
+      operationId: postApiFigmaCode
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/figma/preview:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/figma/preview
+      operationId: getApiFigmaPreview
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/figma:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/figma
+      operationId: getApiFigma
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/figma
+      operationId: postApiFigma
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/figma/tokens:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/figma/tokens
+      operationId: postApiFigmaTokens
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/git/conflicts:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/git/conflicts
+      operationId: getApiGitConflicts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/git/conflicts
+      operationId: postApiGitConflicts
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/git/stash:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/git/stash
+      operationId: getApiGitStash
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/git/stash
+      operationId: postApiGitStash
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/git/stash/{index}:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/git/stash/{index}
+      operationId: postApiGitStashIndex
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/ideas/generate:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/ideas/generate
+      operationId: postApiIdeasGenerate
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/ideas/{id}/promote:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/ideas/{id}/promote
+      operationId: postApiIdeasIdPromote
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/lsp:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/lsp
+      operationId: getApiLsp
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/lsp
+      operationId: postApiLsp
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/me/preferences:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/me/preferences
+      operationId: getApiMePreferences
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/me/preferences
+      operationId: putApiMePreferences
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/metrics/dashboard:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/metrics/dashboard
+      operationId: getApiMetricsDashboard
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/models/catalog:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/models/catalog
+      operationId: getApiModelsCatalog
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/models/resolve:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/models/resolve
+      operationId: postApiModelsResolve
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/models:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/models
+      operationId: getApiModels
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/notifications:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/notifications
+      operationId: getApiNotifications
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/notifications
+      operationId: putApiNotifications
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/notifications
+      operationId: postApiNotifications
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/openapi:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/openapi
+      operationId: getApiOpenapi
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/design-packs:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/design-packs
+      operationId: getApiProjectsIdDesignpacks
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/design-packs
+      operationId: postApiProjectsIdDesignpacks
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Projects
+      summary: PUT /api/projects/{id}/design-packs
+      operationId: putApiProjectsIdDesignpacks
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/design-packs
+      operationId: deleteApiProjectsIdDesignpacks
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/projects/{id}/design-packs/{packId}:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/design-packs/{packId}
+      operationId: getApiProjectsIdDesignpacksPackId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Projects
+      summary: PUT /api/projects/{id}/design-packs/{packId}
+      operationId: putApiProjectsIdDesignpacksPackId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/design-packs/{packId}
+      operationId: deleteApiProjectsIdDesignpacksPackId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/projects/{id}/dev-packs:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/dev-packs
+      operationId: getApiProjectsIdDevpacks
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/dev-packs
+      operationId: postApiProjectsIdDevpacks
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Projects
+      summary: PUT /api/projects/{id}/dev-packs
+      operationId: putApiProjectsIdDevpacks
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/dev-packs
+      operationId: deleteApiProjectsIdDevpacks
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/projects/{id}/dev-packs/{packId}:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/dev-packs/{packId}
+      operationId: getApiProjectsIdDevpacksPackId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Projects
+      summary: PUT /api/projects/{id}/dev-packs/{packId}
+      operationId: putApiProjectsIdDevpacksPackId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/dev-packs/{packId}
+      operationId: deleteApiProjectsIdDevpacksPackId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+    patch:
+      tags:
+        - Projects
+      summary: PATCH /api/projects/{id}/dev-packs/{packId}
+      operationId: patchApiProjectsIdDevpacksPackId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/generate-tickets:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/generate-tickets
+      operationId: postApiProjectsIdGeneratetickets
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/generate-tickets
+      operationId: getApiProjectsIdGeneratetickets
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/sections:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/prd/sections
+      operationId: getApiProjectsIdPrdSections
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/sections/{sectionId}/link:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd/sections/{sectionId}/link
+      operationId: postApiProjectsIdPrdSectionsSectionIdLink
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/sections/{sectionId}/link-epic:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd/sections/{sectionId}/link-epic
+      operationId: postApiProjectsIdPrdSectionsSectionIdLinkepic
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/sections/{sectionId}/unlink:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd/sections/{sectionId}/unlink
+      operationId: postApiProjectsIdPrdSectionsSectionIdUnlink
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/sections/{sectionId}/unlink-epic:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd/sections/{sectionId}/unlink-epic
+      operationId: postApiProjectsIdPrdSectionsSectionIdUnlinkepic
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/versions/compare:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/prd/versions/compare
+      operationId: getApiProjectsIdPrdVersionsCompare
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/versions/rollback:
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd/versions/rollback
+      operationId: postApiProjectsIdPrdVersionsRollback
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd/versions:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/prd/versions
+      operationId: getApiProjectsIdPrdVersions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/prd-workflow:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/prd-workflow
+      operationId: getApiProjectsIdPrdworkflow
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/prd-workflow
+      operationId: postApiProjectsIdPrdworkflow
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Projects
+      summary: PUT /api/projects/{id}/prd-workflow
+      operationId: putApiProjectsIdPrdworkflow
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/projects/{id}/tickets/{ticketId}/attachments:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/tickets/{ticketId}/attachments
+      operationId: getApiProjectsIdTicketsTicketIdAttachments
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Projects
+      summary: POST /api/projects/{id}/tickets/{ticketId}/attachments
+      operationId: postApiProjectsIdTicketsTicketIdAttachments
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/tickets/{ticketId}/attachments
+      operationId: deleteApiProjectsIdTicketsTicketIdAttachments
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/projects/{id}/tickets/{ticketId}/attachments/{attachmentId}:
+    get:
+      tags:
+        - Projects
+      summary: GET /api/projects/{id}/tickets/{ticketId}/attachments/{attachmentId}
+      operationId: getApiProjectsIdTicketsTicketIdAttachmentsAttachmentId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Projects
+      summary: DELETE /api/projects/{id}/tickets/{ticketId}/attachments/{attachmentId}
+      operationId: deleteApiProjectsIdTicketsTicketIdAttachmentsAttachmentId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/prompts:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/prompts
+      operationId: getApiPrompts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/prompts
+      operationId: postApiPrompts
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/prompts/{id}/rollback:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/prompts/{id}/rollback
+      operationId: postApiPromptsIdRollback
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/prompts/{id}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/prompts/{id}
+      operationId: getApiPromptsId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/prompts/{id}
+      operationId: putApiPromptsId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/prompts/{id}
+      operationId: deleteApiPromptsId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/summaries:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/summaries
+      operationId: postApiSummaries
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/terminal/{id}/rename:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/terminal/{id}/rename
+      operationId: postApiTerminalIdRename
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/terminal/{id}/restore:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/terminal/{id}/restore
+      operationId: postApiTerminalIdRestore
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/terminal/{id}/terminate:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/terminal/{id}/terminate
+      operationId: postApiTerminalIdTerminate
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/ticket-templates:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/ticket-templates
+      operationId: getApiTickettemplates
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/ticket-templates
+      operationId: postApiTickettemplates
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/ticket-templates
+      operationId: putApiTickettemplates
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/ticket-templates
+      operationId: deleteApiTickettemplates
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/traces/{id}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/traces/{id}
+      operationId: getApiTracesId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/v1/health:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/health
+      operationId: getApiV1Health
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/v1/jobs:
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/v1/jobs
+      operationId: deleteApiV1Jobs
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/v1/projects:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/projects
+      operationId: getApiV1Projects
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/projects
+      operationId: postApiV1Projects
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs/emergency-stop:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/runs/emergency-stop
+      operationId: postApiV1RunsEmergencystop
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/runs
+      operationId: getApiV1Runs
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/v1/runs/{id}/artifacts:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/runs/{id}/artifacts
+      operationId: getApiV1RunsIdArtifacts
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/runs/{id}/artifacts
+      operationId: postApiV1RunsIdArtifacts
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs/{id}/cancel:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/runs/{id}/cancel
+      operationId: postApiV1RunsIdCancel
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs/{id}/pause:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/runs/{id}/pause
+      operationId: postApiV1RunsIdPause
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs/{id}/resume:
+    post:
+      tags:
+        - Settings
+      summary: POST /api/v1/runs/{id}/resume
+      operationId: postApiV1RunsIdResume
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/v1/runs/{id}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/runs/{id}
+      operationId: getApiV1RunsId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/v1/runs/{id}
+      operationId: deleteApiV1RunsId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+  /api/v1/sessions:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/sessions
+      operationId: getApiV1Sessions
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+  /api/v1/workspaces/{id}/quotas:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/v1/workspaces/{id}/quotas
+      operationId: getApiV1WorkspacesIdQuotas
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/v1/workspaces/{id}/quotas
+      operationId: putApiV1WorkspacesIdQuotas
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/workspaces:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/workspaces
+      operationId: getApiWorkspaces
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Settings
+      summary: POST /api/workspaces
+      operationId: postApiWorkspaces
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+  /api/workspaces/{id}:
+    get:
+      tags:
+        - Settings
+      summary: GET /api/workspaces/{id}
+      operationId: getApiWorkspacesId
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          description: Unauthorized
+    put:
+      tags:
+        - Settings
+      summary: PUT /api/workspaces/{id}
+      operationId: putApiWorkspacesId
+      responses:
+        '200':
+          description: Updated
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Settings
+      summary: DELETE /api/workspaces/{id}
+      operationId: deleteApiWorkspacesId
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
 components:
   securitySchemes:
     sessionAuth:
@@ -1560,14 +3346,16 @@ components:
       in: cookie
       name: next-auth.session-token
       description: NextAuth.js session cookie
-
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-          enum: [healthy, degraded, unhealthy]
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
         version:
           type: string
         uptime:
@@ -1586,7 +3374,10 @@ components:
                 type: string
               status:
                 type: string
-                enum: [healthy, degraded, unhealthy]
+                enum:
+                  - healthy
+                  - degraded
+                  - unhealthy
               message:
                 type: string
               latencyMs:
@@ -1621,7 +3412,6 @@ components:
                   type: integer
                 heapUsagePercent:
                   type: number
-
     Session:
       type: object
       properties:
@@ -1638,7 +3428,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ChatMessage'
-
     ChatMessage:
       type: object
       properties:
@@ -1646,7 +3435,10 @@ components:
           type: string
         role:
           type: string
-          enum: [user, assistant, system]
+          enum:
+            - user
+            - assistant
+            - system
         content:
           type: string
         timestamp:
@@ -1663,7 +3455,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Attachment'
-
     AgentInstance:
       type: object
       properties:
@@ -1685,19 +3476,34 @@ components:
           type: integer
         exitCode:
           type: integer
-
     AgentRole:
       type: string
-      enum: [researcher, planner, coder, validator, security, synthesizer]
-
+      enum:
+        - researcher
+        - planner
+        - coder
+        - validator
+        - security
+        - synthesizer
     CLIProvider:
       type: string
-      enum: [cursor, gemini, claude, copilot, codex, rovo, custom]
-
+      enum:
+        - cursor
+        - gemini
+        - claude
+        - copilot
+        - codex
+        - rovo
+        - custom
     AgentStatus:
       type: string
-      enum: [pending, spawning, running, completed, failed, cancelled]
-
+      enum:
+        - pending
+        - spawning
+        - running
+        - completed
+        - failed
+        - cancelled
     Attachment:
       type: object
       properties:
@@ -1709,7 +3515,6 @@ components:
           type: integer
         dataUrl:
           type: string
-
     Project:
       type: object
       properties:
@@ -1723,7 +3528,10 @@ components:
           type: string
         prdStatus:
           type: string
-          enum: [draft, approved, rejected]
+          enum:
+            - draft
+            - approved
+            - rejected
         features:
           type: array
           items:
@@ -1738,21 +3546,24 @@ components:
             $ref: '#/components/schemas/Ticket'
         status:
           type: string
-          enum: [planning, in_progress, completed, archived]
+          enum:
+            - planning
+            - in_progress
+            - completed
+            - archived
         createdAt:
           type: integer
         updatedAt:
           type: integer
-
     ProjectCreate:
       type: object
-      required: [name]
+      required:
+        - name
       properties:
         name:
           type: string
         description:
           type: string
-
     ProjectUpdate:
       type: object
       properties:
@@ -1762,8 +3573,11 @@ components:
           type: string
         status:
           type: string
-          enum: [planning, in_progress, completed, archived]
-
+          enum:
+            - planning
+            - in_progress
+            - completed
+            - archived
     Epic:
       type: object
       properties:
@@ -1781,7 +3595,10 @@ components:
             type: string
         status:
           type: string
-          enum: [draft, active, completed]
+          enum:
+            - draft
+            - active
+            - completed
         progress:
           type: number
           minimum: 0
@@ -1790,16 +3607,15 @@ components:
           type: integer
         updatedAt:
           type: integer
-
     EpicCreate:
       type: object
-      required: [title]
+      required:
+        - title
       properties:
         title:
           type: string
         description:
           type: string
-
     Ticket:
       type: object
       properties:
@@ -1845,10 +3661,13 @@ components:
           type: integer
         updatedAt:
           type: integer
-
     TicketCreate:
       type: object
-      required: [title, description, complexity, assignedRole]
+      required:
+        - title
+        - description
+        - complexity
+        - assignedRole
       properties:
         title:
           type: string
@@ -1868,19 +3687,31 @@ components:
           type: string
         epicId:
           type: string
-
     TicketComplexity:
       type: string
-      enum: [S, M, L, XL]
-
+      enum:
+        - S
+        - M
+        - L
+        - XL
     TicketStatus:
       type: string
-      enum: [backlog, in_progress, review, approved, rejected, done]
-
+      enum:
+        - backlog
+        - in_progress
+        - review
+        - approved
+        - rejected
+        - done
     TicketLevel:
       type: string
-      enum: [feature, epic, story, task, subtask, subatomic]
-
+      enum:
+        - feature
+        - epic
+        - story
+        - task
+        - subtask
+        - subatomic
     SLAConfig:
       type: object
       properties:
@@ -1890,8 +3721,11 @@ components:
           type: number
         priority:
           type: string
-          enum: [low, medium, high, critical]
-
+          enum:
+            - low
+            - medium
+            - high
+            - critical
     SwarmJob:
       type: object
       properties:
@@ -1903,7 +3737,10 @@ components:
           type: string
         mode:
           type: string
-          enum: [chat, swarm, project]
+          enum:
+            - chat
+            - swarm
+            - project
         status:
           $ref: '#/components/schemas/JobStatus'
         progress:
@@ -1922,11 +3759,14 @@ components:
           type: integer
         completedAt:
           type: integer
-
     JobStatus:
       type: string
-      enum: [queued, running, completed, failed, cancelled]
-
+      enum:
+        - queued
+        - running
+        - completed
+        - failed
+        - cancelled
     SwarmResult:
       type: object
       properties:
@@ -1946,7 +3786,6 @@ components:
             type: string
         validationPassed:
           type: boolean
-
     ScheduledTask:
       type: object
       properties:
@@ -1960,7 +3799,10 @@ components:
           type: string
         mode:
           type: string
-          enum: [chat, swarm, project]
+          enum:
+            - chat
+            - swarm
+            - project
         enabled:
           type: boolean
         lastRun:
@@ -1969,10 +3811,12 @@ components:
           type: integer
         createdAt:
           type: integer
-
     ScheduledTaskCreate:
       type: object
-      required: [name, cronExpression, prompt]
+      required:
+        - name
+        - cronExpression
+        - prompt
       properties:
         name:
           type: string
@@ -1982,8 +3826,10 @@ components:
           type: string
         mode:
           type: string
-          enum: [chat, swarm, project]
-
+          enum:
+            - chat
+            - swarm
+            - project
     GitStatus:
       type: object
       properties:
@@ -2007,7 +3853,6 @@ components:
           type: array
           items:
             type: string
-
     GitBranch:
       type: object
       properties:
@@ -2020,7 +3865,6 @@ components:
           type: boolean
         isRemote:
           type: boolean
-
     FileEntry:
       type: object
       properties:
@@ -2030,13 +3874,14 @@ components:
           type: string
         type:
           type: string
-          enum: [file, directory]
+          enum:
+            - file
+            - directory
         size:
           type: integer
         modified:
           type: string
           format: date-time
-
     FileSearchResult:
       type: object
       properties:
@@ -2053,7 +3898,6 @@ components:
                 type: integer
               content:
                 type: string
-
     TerminalSession:
       type: object
       properties:
@@ -2067,7 +3911,6 @@ components:
           type: string
         createdAt:
           type: integer
-
     TestJob:
       type: object
       properties:
@@ -2077,7 +3920,12 @@ components:
           type: string
         status:
           type: string
-          enum: [queued, running, completed, failed, cancelled]
+          enum:
+            - queued
+            - running
+            - completed
+            - failed
+            - cancelled
         result:
           $ref: '#/components/schemas/TestRunSummary'
         error:
@@ -2088,7 +3936,6 @@ components:
           type: integer
         completedAt:
           type: integer
-
     TestRunSummary:
       type: object
       properties:
@@ -2116,7 +3963,6 @@ components:
               properties:
                 pct:
                   type: number
-
     Settings:
       type: object
       properties:
@@ -2136,7 +3982,10 @@ components:
           maximum: 600
         researchDepth:
           type: string
-          enum: [shallow, medium, deep]
+          enum:
+            - shallow
+            - medium
+            - deep
         autoRerunThreshold:
           type: integer
           minimum: 0
@@ -2161,7 +4010,6 @@ components:
             $ref: '#/components/schemas/MCPServer'
         githubConfig:
           $ref: '#/components/schemas/GitHubConfig'
-
     MCPServer:
       type: object
       properties:
@@ -2181,7 +4029,6 @@ components:
             type: string
         enabled:
           type: boolean
-
     GitHubConfig:
       type: object
       properties:
@@ -2193,10 +4040,11 @@ components:
           type: string
         branchPrefix:
           type: string
-
     MCPToolCall:
       type: object
-      required: [serverId, toolName]
+      required:
+        - serverId
+        - toolName
       properties:
         serverId:
           type: string
@@ -2204,7 +4052,6 @@ components:
           type: string
         args:
           type: object
-
     MCPToolResult:
       type: object
       properties:
@@ -2218,7 +4065,6 @@ components:
           type: string
         timestamp:
           type: integer
-
     Extension:
       type: object
       properties:
@@ -2236,7 +4082,6 @@ components:
           type: array
           items:
             type: string
-
     User:
       type: object
       properties:
@@ -2253,11 +4098,12 @@ components:
           type: integer
         updatedAt:
           type: integer
-
     UserRole:
       type: string
-      enum: [admin, editor, viewer]
-
+      enum:
+        - admin
+        - editor
+        - viewer
     AuditAction:
       type: string
       enum:
@@ -2285,7 +4131,6 @@ components:
         - git_commit
         - git_push
         - git_pull
-
     AuditLogEntry:
       type: object
       properties:

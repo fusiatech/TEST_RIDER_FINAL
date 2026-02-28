@@ -27,7 +27,7 @@ function RootErrorFallback({ error, resetError }: RootErrorFallbackProps) {
             Application Error
           </h1>
           <p className="text-muted">
-            SwarmUI encountered an unexpected error. This has been logged for investigation.
+            Fusia AI encountered an unexpected error. This has been logged for investigation.
           </p>
         </div>
 

@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-02-28T04:09:53.518Z",
-  "wsUrl": "ws://127.0.0.1:4100/api/ws",
-  "durationMs": 11,
-  "pass": false,
-  "runAccepted": false,
-  "finalType": "swarm-error",
+  "timestamp": "2026-02-28T06:21:13.049Z",
+  "wsUrl": "ws://localhost:4100/api/ws",
+  "durationMs": 2526,
+  "pass": true,
+  "runAccepted": true,
+  "finalType": "swarm-result",
   "hasMockOutput": false
 }

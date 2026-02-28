@@ -5,16 +5,17 @@ import { SessionProvider } from '@/components/providers/session-provider'
 import { PWAPrompt } from '@/components/pwa-prompt'
 import { SkipLink } from '@/components/skip-link'
 import { RootErrorBoundary } from '@/components/root-error-boundary'
+import { BRAND } from '@/lib/brand'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'SwarmUI',
-  description: 'Parallel CLI agent orchestrator with multi-agent web UI',
+  title: BRAND.productName,
+  description: BRAND.description,
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'SwarmUI',
+    title: BRAND.productName,
   },
   icons: {
     icon: '/icons/icon-192.svg',
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#10b981',
+  themeColor: '#6d28d9',
 }
 
 export default function RootLayout({
@@ -37,6 +38,12 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var p=localStorage.getItem('fusia-theme-preset');if(p){document.documentElement.dataset.themePreset=p;}}catch(_e){}",
+          }}
+        />
       </head>
       <body>
         <SessionProvider>

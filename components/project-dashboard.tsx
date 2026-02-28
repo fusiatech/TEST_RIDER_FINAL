@@ -849,6 +849,8 @@ export function ProjectDashboard({
   const projects = useSwarmStore((s) => s.projects)
   const currentProjectId = useSwarmStore((s) => s.currentProjectId)
   const updateProject = useSwarmStore((s) => s.updateProject)
+  const uiPreferences = useSwarmStore((s) => s.uiPreferences)
+  const updateUIPreferences = useSwarmStore((s) => s.updateUIPreferences)
   const [selectedTicketId, setSelectedTicketIdInternal] = useState<string | null>(initialTicketId ?? null)
   const [activeTab, setActiveTab] = useState<DashboardTab>('board')
 
@@ -1097,7 +1099,11 @@ export function ProjectDashboard({
   const totalTickets = allTickets.length
   const completedCount = allTickets.filter((t) => t.status === 'done').length
   const failedCount = allTickets.filter((t) => t.status === 'rejected').length
+  const inProgressCount = allTickets.filter((t) => t.status === 'in_progress').length
+  const reviewCount = allTickets.filter((t) => t.status === 'review').length
   const completionPct = totalTickets > 0 ? Math.round((completedCount / totalTickets) * 100) : 0
+  const experienceLabel = uiPreferences.experienceLevel === 'expert' ? 'Expert' : 'Guided'
+  const activeEpic = currentProject?.epics.find((epic) => epic.status !== 'completed') ?? currentProject?.epics[0]
 
   const avgConfidence = useMemo(() => {
     const withConf = allTickets.filter((t) => t.confidence != null)
@@ -1236,6 +1242,64 @@ export function ProjectDashboard({
 
   return (
     <div className="space-y-6 p-6">
+      <Card className="border-border bg-card/70 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.14em] text-muted">Delivery Control Center</p>
+            <h2 className="text-xl font-semibold text-foreground">{currentProject?.name ?? 'Project Dashboard'}</h2>
+            <p className="text-sm text-muted">
+              {uiPreferences.experienceLevel === 'guided'
+                ? 'Follow prioritized work and next actions to move ideas into production.'
+                : 'Track dependency risk, execution flow, and throughput across the delivery graph.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{experienceLabel} Experience</Badge>
+            {activeEpic ? (
+              <Badge variant="secondary" className="max-w-[240px] truncate">
+                Active Epic: {activeEpic.title}
+              </Badge>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                void updateUIPreferences({
+                  experienceLevel: uiPreferences.experienceLevel === 'expert' ? 'guided' : 'expert',
+                })
+              }
+            >
+              Switch to {uiPreferences.experienceLevel === 'expert' ? 'Guided' : 'Expert'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Completion</p>
+          <p className="text-2xl font-semibold text-foreground">{completionPct}%</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">In Progress</p>
+          <p className="text-2xl font-semibold text-foreground">{inProgressCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">In Review</p>
+          <p className="text-2xl font-semibold text-foreground">{reviewCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Blocked</p>
+          <p className="text-2xl font-semibold text-foreground">{blockedCount}</p>
+        </Card>
+        <Card className="border-border p-3">
+          <p className="text-xs text-muted">Risk</p>
+          <p className="text-2xl font-semibold text-foreground">
+            {blockedCount > 0 || failedCount > 0 ? 'High' : completionPct < 40 ? 'Med' : 'Low'}
+          </p>
+        </Card>
+      </div>
+
       {/* PRD Section */}
       {currentProject && <PRDSection project={currentProject} />}
 
@@ -1514,57 +1578,61 @@ export function ProjectDashboard({
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="researcher">Researcher</SelectItem>
-                  <SelectItem value="planner">Planner</SelectItem>
-                  <SelectItem value="coder">Coder</SelectItem>
-                  <SelectItem value="validator">Validator</SelectItem>
-                  <SelectItem value="security">Security</SelectItem>
-                  <SelectItem value="synthesizer">Synthesizer</SelectItem>
-                </SelectContent>
-              </Select>
-              {currentProject?.epics && currentProject.epics.length > 0 && (
-                <Select value={epicFilter} onValueChange={setEpicFilter}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Epic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Epics</SelectItem>
-                    <SelectItem value="none">No Epic</SelectItem>
-                    {currentProject.epics.map((epic) => (
-                      <SelectItem key={epic.id} value={epic.id}>
-                        {epic.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {uiPreferences.experienceLevel === 'expert' && (
+                <>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="researcher">Researcher</SelectItem>
+                      <SelectItem value="planner">Planner</SelectItem>
+                      <SelectItem value="coder">Coder</SelectItem>
+                      <SelectItem value="validator">Validator</SelectItem>
+                      <SelectItem value="security">Security</SelectItem>
+                      <SelectItem value="synthesizer">Synthesizer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {currentProject?.epics && currentProject.epics.length > 0 && (
+                    <Select value={epicFilter} onValueChange={setEpicFilter}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Epic" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Epics</SelectItem>
+                        <SelectItem value="none">No Epic</SelectItem>
+                        {currentProject.epics.map((epic) => (
+                          <SelectItem key={epic.id} value={epic.id}>
+                            {epic.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center border border-border rounded-md">
+                    <Button
+                      variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-2 rounded-r-none"
+                      onClick={() => setViewMode('flat')}
+                      title="Flat view"
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className="h-8 px-2 rounded-l-none"
+                      onClick={() => setViewMode('tree')}
+                      title="Tree view"
+                    >
+                      <Network className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
               )}
-              {/* View Mode Toggle */}
-              <div className="flex items-center border border-border rounded-md">
-                <Button
-                  variant={viewMode === 'flat' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 px-2 rounded-r-none"
-                  onClick={() => setViewMode('flat')}
-                  title="Flat view"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'tree' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 px-2 rounded-l-none"
-                  onClick={() => setViewMode('tree')}
-                  title="Tree view"
-                >
-                  <Network className="h-4 w-4" />
-                </Button>
-              </div>
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
