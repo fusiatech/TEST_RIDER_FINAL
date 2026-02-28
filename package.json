@@ -122,7 +122,7 @@
     "shiki": "^1.24.0",
     "sonner": "^1.7.1",
     "swagger-ui-react": "^5.17.0",
-    "tailwind-merge": "^2.6.0",
+    "tailwind-merge": "^3.5.0",
     "utf-8-validate": "^6.0.6",
     "vscode-languageclient": "^9.0.1",
     "vscode-ws-jsonrpc": "^3.3.2",
